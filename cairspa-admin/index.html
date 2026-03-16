@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CAIR SPA — Admin Dashboard</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+  body { font-family: 'Inter', sans-serif; background: #faf9f7; }
+  .playfair { font-family: 'Playfair Display', serif; }
+  .sidebar-link { transition: all 0.2s; }
+  .sidebar-link:hover { background: rgba(157,32,64,0.08); }
+  .sidebar-link.active { background: rgba(157,32,64,0.12); border-right: 3px solid #9d2040; color: #9d2040; }
+  .badge-pending { background:#fff3cd; color:#856404; }
+  .badge-confirmed { background:#d1e7dd; color:#0f5132; }
+  .badge-completed { background:#cfe2ff; color:#084298; }
+  .badge-cancelled { background:#f8d7da; color:#842029; }
+  .badge-new { background:#fff3cd; color:#856404; }
+  .badge-contacted { background:#cfe2ff; color:#084298; }
+  .badge-converted { background:#d1e7dd; color:#0f5132; }
+  .badge-published { background:#d1e7dd; color:#0f5132; }
+  .badge-draft { background:#e2e3e5; color:#41464b; }
+  .card { background:white; border-radius:12px; box-shadow:0 1px 4px rgba(0,0,0,0.07); }
+  .btn-primary { background:#9d2040; color:white; border-radius:8px; padding:8px 18px; font-weight:500; transition:background 0.2s; }
+  .btn-primary:hover { background:#7d1932; }
+  .btn-secondary { background:#f3f4f6; color:#374151; border-radius:8px; padding:8px 18px; font-weight:500; transition:background 0.2s; }
+  .btn-secondary:hover { background:#e5e7eb; }
+  .input { border:1px solid #e5e7eb; border-radius:8px; padding:8px 12px; width:100%; font-size:14px; outline:none; transition:border 0.2s; }
+  .input:focus { border-color:#9d2040; }
+  .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:50; display:flex; align-items:center; justify-content:center; padding:20px; }
+  .modal { background:white; border-radius:16px; padding:28px; width:100%; max-width:640px; max-height:90vh; overflow-y:auto; }
+  .prose h1,.prose h2,.prose h3 { font-family:'Playfair Display',serif; margin:1em 0 0.5em; }
+  .prose p { margin:0.5em 0; line-height:1.7; }
+  .prose ul,.prose ol { padding-left:1.5em; margin:0.5em 0; }
+  textarea.input { min-height:120px; resize:vertical; }
+  .rich-toolbar button { padding:4px 10px; border:1px solid #e5e7eb; border-radius:4px; font-size:12px; cursor:pointer; }
+  .rich-toolbar button:hover { background:#f3f4f6; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useCallback } = React;
+
+// ── Mock API (replace with real Base44 SDK calls) ──────────────────────────
+const SERVICES = ["Dermal Fillers","Hydrafacial","RF Microneedling","Thread Lift","IV Infusions","Skin Rejuvenation","Vein Treatment","Weight Loss Injections","Exosome Therapy","NAD Therapy","Hair Transplant ARTAS","Other"];
+const TIMES = ["9:00 AM","10:00 AM","11:00 AM","12:00 PM","1:00 PM","2:00 PM","3:00 PM","4:00 PM","5:00 PM"];
+const CATEGORIES = ["Skin Care","Body Treatments","Hair","Wellness","News","Tips"];
+
+function useMockData() {
+  const [appointments, setAppointments] = useState([
+    { id:"1", client_name:"Jennifer M.", client_email:"jen@email.com", client_phone:"(949) 555-0101", service:"Dermal Fillers", preferred_date:"2026-03-18", preferred_time:"10:00 AM", status:"Confirmed", notes:"First time client", source:"Website Form", created_date:"2026-03-15" },
+    { id:"2", client_name:"Lisa R.", client_email:"lisa@email.com", client_phone:"(714) 555-0202", service:"Hydrafacial", preferred_date:"2026-03-19", preferred_time:"2:00 PM", status:"Pending", notes:"", source:"Callback Request", created_date:"2026-03-15" },
+    { id:"3", client_name:"David L.", client_email:"david@email.com", client_phone:"(949) 555-0303", service:"RF Microneedling", preferred_date:"2026-03-20", preferred_time:"11:00 AM", status:"Pending", notes:"Has acne scars", source:"Website Form", created_date:"2026-03-16" },
+    { id:"4", client_name:"Patricia G.", client_email:"pat@email.com", client_phone:"(714) 555-0404", service:"Thread Lift", preferred_date:"2026-03-17", preferred_time:"3:00 PM", status:"Completed", notes:"", source:"Phone", created_date:"2026-03-10" },
+  ]);
+  const [leads, setLeads] = useState([
+    { id:"1", name:"Maria G.", email:"maria@email.com", phone:"(714) 555-0505", service_interest:"Vein Treatment", message:"Interested in spider vein treatment on legs.", form_type:"Contact", status:"New", created_date:"2026-03-16" },
+    { id:"2", name:"James R.", email:"james@email.com", phone:"(949) 555-0606", service_interest:"Weight Loss Injections", message:"Want to know more about the weight loss program.", form_type:"Callback Request", status:"Contacted", created_date:"2026-03-14" },
+    { id:"3", name:"Sarah T.", email:"sarah@email.com", phone:"(714) 555-0707", service_interest:"Exosome Therapy", message:"What is exosome therapy and what does it cost?", form_type:"General Inquiry", status:"New", created_date:"2026-03-16" },
+  ]);
+  const [posts, setPosts] = useState([
+    { id:"1", title:"5 Benefits of Hydrafacial for All Skin Types", slug:"hydrafacial-benefits", excerpt:"Discover why Hydrafacial is the #1 facial treatment in America and how it can transform your skin.", category:"Skin Care", author:"CAIR SPA Team", status:"Published", published_date:"2026-03-10", cover_image:"", tags:"hydrafacial,skin,glow", content:"<h2>What is a HydraFacial?</h2><p>HydraFacial is a patented skin treatment that cleanses, extracts, and hydrates the skin simultaneously...</p>", seo_title:"", seo_description:"" },
+    { id:"2", title:"RF Microneedling: What to Expect Before and After", slug:"rf-microneedling-guide", excerpt:"Everything you need to know about radiofrequency microneedling — from preparation to recovery.", category:"Skin Care", author:"CAIR SPA Team", status:"Draft", published_date:"", cover_image:"", tags:"microneedling,rf,skin tightening", content:"<h2>What is RF Microneedling?</h2><p>Radiofrequency microneedling combines two powerful treatments into one...</p>", seo_title:"", seo_description:"" },
+  ]);
+  return { appointments, setAppointments, leads, setLeads, posts, setPosts };
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+function Badge({ status }) {
+  const s = (status||"").toLowerCase().replace(/\s/g,"-");
+  return <span className={`badge-${s} text-xs font-medium px-2.5 py-1 rounded-full`}>{status}</span>;
+}
+
+function StatCard({ icon, label, value, sub, color }) {
+  return (
+    <div className="card p-5 flex items-center gap-4">
+      <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl`} style={{background: color+'20'}}>
+        {icon}
+      </div>
+      <div>
+        <div className="text-2xl font-bold text-gray-800">{value}</div>
+        <div className="text-sm text-gray-500">{label}</div>
+        {sub && <div className="text-xs text-gray-400 mt-0.5">{sub}</div>}
+      </div>
+    </div>
+  );
+}
+
+// ── Booking Form Modal ─────────────────────────────────────────────────────
+function BookingModal({ appt, onClose, onSave }) {
+  const [form, setForm] = useState(appt || { client_name:"", client_email:"", client_phone:"", service:"Dermal Fillers", preferred_date:"", preferred_time:"9:00 AM", notes:"", status:"Pending", source:"Website Form" });
+  const set = (k,v) => setForm(f => ({...f,[k]:v}));
+  return (
+    <div className="modal-overlay" onClick={e => e.target===e.currentTarget && onClose()}>
+      <div className="modal">
+        <div className="flex justify-between items-center mb-5">
+          <h2 className="playfair text-xl font-bold text-gray-800">{appt ? "Edit Appointment" : "New Appointment"}</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="col-span-2 sm:col-span-1">
+            <label className="text-xs font-medium text-gray-500 mb-1 block">Client Name</label>
+            <input className="input" value={form.client_name} onChange={e=>set("client_name",e.target.value)} placeholder="Full name"/>
+          </div>
+          <div className="col-span-2 sm:col-span-1">
+            <label className="text-xs font-medium text-gray-500 mb-1 block">Phone</label>
+            <input className="input" value={form.client_phone} onChange={e=>set("client_phone",e.target.value)} placeholder="(949) 000-0000"/>
+          </div>
+          <div className="col-span-2">
+            <label className="text-xs font-medium text-gray-500 mb-1 block">Email</label>
+            <input className="input" value={form.client_email} onChange={e=>set("client_email",e.target.value)} placeholder="email@example.com"/>
+          </div>
+          <div className="col-span-2">
+            <label className="text-xs font-medium text-gray-500 mb-1 block">Service</label>
+            <select className="input" value={form.service} onChange={e=>set("service",e.target.value)}>
+              {SERVICES.map(s=><option key={s}>{s}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-gray-500 mb-1 block">Preferred Date</label>
+            <input type="date" className="input" value={form.preferred_date} onChange={e=>set("preferred_date",e.target.value)}/>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-gray-500 mb-1 block">Preferred Time</label>
+            <select className="input" value={form.preferred_time} onChange={e=>set("preferred_time",e.target.value)}>
+              {TIMES.map(t=><option key={t}>{t}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-gray-500 mb-1 block">Status</label>
+            <select className="input" value={form.status} onChange={e=>set("status",e.target.value)}>
+              {["Pending","Confirmed","Completed","Cancelled"].map(s=><option key={s}>{s}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-gray-500 mb-1 block">Source</label>
+            <select className="input" value={form.source} onChange={e=>set("source",e.target.value)}>
+              {["Website Form","Callback Request","Walk-in","Phone"].map(s=><option key={s}>{s}</option>)}
+            </select>
+          </div>
+          <div className="col-span-2">
+            <label className="text-xs font-medium text-gray-500 mb-1 block">Notes</label>
+            <textarea className="input" rows={3} value={form.notes} onChange={e=>set("notes",e.target.value)} placeholder="Any special notes..."/>
+          </div>
+        </div>
+        <div className="flex gap-3 mt-6 justify-end">
+          <button className="btn-secondary" onClick={onClose}>Cancel</button>
+          <button className="btn-primary" onClick={()=>onSave(form)}>Save Appointment</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Blog Editor Modal ──────────────────────────────────────────────────────
+function BlogModal({ post, onClose, onSave }) {
+  const [form, setForm] = useState(post || { title:"", slug:"", excerpt:"", content:"", cover_image:"", category:"Skin Care", tags:"", author:"CAIR SPA Team", status:"Draft", published_date:"", seo_title:"", seo_description:"" });
+  const [tab, setTab] = useState("content");
+  const set = (k,v) => setForm(f=>({...f,[k]:v}));
+
+  const genSlug = (title) => title.toLowerCase().replace(/[^a-z0-9\s]/g,"").replace(/\s+/g,"-");
+
+  const insertFormat = (tag) => {
+    const ta = document.getElementById("blog-content-editor");
+    if (!ta) return;
+    const start = ta.selectionStart, end = ta.selectionEnd;
+    const sel = form.content.substring(start,end) || "text";
+    let insertion = "";
+    if (tag==="b") insertion = `<strong>${sel}</strong>`;
+    else if (tag==="i") insertion = `<em>${sel}</em>`;
+    else if (tag==="h2") insertion = `\n<h2>${sel}</h2>\n`;
+    else if (tag==="h3") insertion = `\n<h3>${sel}</h3>\n`;
+    else if (tag==="ul") insertion = `\n<ul>\n  <li>${sel}</li>\n</ul>\n`;
+    else if (tag==="p") insertion = `\n<p>${sel}</p>\n`;
+    const newContent = form.content.substring(0,start) + insertion + form.content.substring(end);
+    set("content", newContent);
+  };
+
+  return (
+    <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="modal" style={{maxWidth:"760px"}}>
+        <div className="flex justify-between items-center mb-5">
+          <h2 className="playfair text-xl font-bold text-gray-800">{post?"Edit Post":"New Blog Post"}</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
+        </div>
+
+        <div className="flex gap-2 mb-5 border-b">
+          {["content","seo"].map(t=>(
+            <button key={t} onClick={()=>setTab(t)} className={`px-4 py-2 text-sm font-medium capitalize ${tab===t?"border-b-2 border-red-800 text-red-800":"text-gray-500"}`}>{t==="seo"?"SEO Settings":t}</button>
+          ))}
+        </div>
+
+        {tab==="content" && (
+          <div className="space-y-4">
+            <div>
+              <label className="text-xs font-medium text-gray-500 mb-1 block">Title</label>
+              <input className="input" value={form.title} onChange={e=>{set("title",e.target.value);set("slug",genSlug(e.target.value));}} placeholder="Post title..."/>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs font-medium text-gray-500 mb-1 block">Slug (URL)</label>
+                <input className="input" value={form.slug} onChange={e=>set("slug",e.target.value)} placeholder="post-url-slug"/>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-500 mb-1 block">Category</label>
+                <select className="input" value={form.category} onChange={e=>set("category",e.target.value)}>
+                  {CATEGORIES.map(c=><option key={c}>{c}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-500 mb-1 block">Author</label>
+                <input className="input" value={form.author} onChange={e=>set("author",e.target.value)}/>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-500 mb-1 block">Status</label>
+                <select className="input" value={form.status} onChange={e=>set("status",e.target.value)}>
+                  <option>Draft</option><option>Published</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-gray-500 mb-1 block">Excerpt (shown in blog list)</label>
+              <textarea className="input" rows={2} value={form.excerpt} onChange={e=>set("excerpt",e.target.value)} placeholder="Short description of the article..."/>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-gray-500 mb-1 block">Cover Image URL</label>
+              <input className="input" value={form.cover_image} onChange={e=>set("cover_image",e.target.value)} placeholder="https://..."/>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-gray-500 mb-2 block">Content (HTML)</label>
+              <div className="rich-toolbar flex gap-1 mb-2 flex-wrap">
+                {[["B","b"],["I","i"],["H2","h2"],["H3","h3"],["P","p"],["• List","ul"]].map(([label,tag])=>(
+                  <button key={tag} onClick={()=>insertFormat(tag)} type="button">{label}</button>
+                ))}
+              </div>
+              <textarea id="blog-content-editor" className="input font-mono text-sm" rows={12} value={form.content} onChange={e=>set("content",e.target.value)} placeholder="Write your article in HTML..."/>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-gray-500 mb-1 block">Tags (comma separated)</label>
+              <input className="input" value={form.tags} onChange={e=>set("tags",e.target.value)} placeholder="skin care, hydrafacial, glow"/>
+            </div>
+          </div>
+        )}
+
+        {tab==="seo" && (
+          <div className="space-y-4">
+            <div>
+              <label className="text-xs font-medium text-gray-500 mb-1 block">SEO Title (max 60 chars)</label>
+              <input className="input" value={form.seo_title} onChange={e=>set("seo_title",e.target.value)} placeholder="SEO-optimized title..."/>
+              <div className="text-xs text-gray-400 mt-1">{form.seo_title.length}/60 characters</div>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-gray-500 mb-1 block">Meta Description (max 160 chars)</label>
+              <textarea className="input" rows={3} value={form.seo_description} onChange={e=>set("seo_description",e.target.value)} placeholder="Meta description for search engines..."/>
+              <div className="text-xs text-gray-400 mt-1">{form.seo_description.length}/160 characters</div>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-gray-500 mb-1 block">Published Date</label>
+              <input type="date" className="input" value={form.published_date} onChange={e=>set("published_date",e.target.value)}/>
+            </div>
+            <div className="card p-4 bg-gray-50">
+              <div className="text-xs font-medium text-gray-500 mb-2">Google Preview</div>
+              <div className="text-blue-600 text-sm font-medium truncate">{form.seo_title || form.title || "Post Title"}</div>
+              <div className="text-green-700 text-xs">cair-spa.com/blog/{form.slug||"post-slug"}</div>
+              <div className="text-gray-600 text-xs mt-1">{form.seo_description || form.excerpt || "Meta description will appear here..."}</div>
+            </div>
+          </div>
+        )}
+
+        <div className="flex gap-3 mt-6 justify-end">
+          <button className="btn-secondary" onClick={onClose}>Cancel</button>
+          <button className="btn-primary" onClick={()=>onSave(form)}>
+            {form.status==="Published" ? "Publish Post" : "Save Draft"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Lead Detail Modal ──────────────────────────────────────────────────────
+function LeadModal({ lead, onClose, onSave }) {
+  const [form, setForm] = useState({...lead});
+  const set = (k,v) => setForm(f=>({...f,[k]:v}));
+  return (
+    <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="modal">
+        <div className="flex justify-between items-center mb-5">
+          <h2 className="playfair text-xl font-bold text-gray-800">Lead Details</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
+        </div>
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div><span className="text-xs text-gray-400">Name</span><p className="font-medium text-gray-800">{form.name}</p></div>
+            <div><span className="text-xs text-gray-400">Phone</span><p className="font-medium text-gray-800">{form.phone}</p></div>
+            <div className="col-span-2"><span className="text-xs text-gray-400">Email</span><p className="font-medium text-gray-800">{form.email}</p></div>
+            <div className="col-span-2"><span className="text-xs text-gray-400">Service Interest</span><p className="font-medium text-gray-800">{form.service_interest}</p></div>
+            <div className="col-span-2"><span className="text-xs text-gray-400">Message</span><p className="text-gray-700 text-sm mt-1">{form.message}</p></div>
+            <div><span className="text-xs text-gray-400">Type</span><p className="font-medium text-gray-800">{form.form_type}</p></div>
+            <div><span className="text-xs text-gray-400">Received</span><p className="font-medium text-gray-800">{form.created_date}</p></div>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-gray-500 mb-1 block">Update Status</label>
+            <select className="input" value={form.status} onChange={e=>set("status",e.target.value)}>
+              {["New","Contacted","Converted","Closed"].map(s=><option key={s}>{s}</option>)}
+            </select>
+          </div>
+        </div>
+        <div className="flex gap-3 mt-6">
+          <a href={`mailto:${form.email}`} className="btn-secondary flex-1 text-center text-sm">📧 Email Client</a>
+          <a href={`tel:${form.phone}`} className="btn-secondary flex-1 text-center text-sm">📞 Call Client</a>
+          <button className="btn-primary" onClick={()=>onSave(form)}>Update Status</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Pages ──────────────────────────────────────────────────────────────────
+function Dashboard({ appointments, leads, posts }) {
+  const pending = appointments.filter(a=>a.status==="Pending").length;
+  const today = new Date().toISOString().split("T")[0];
+  const todayAppts = appointments.filter(a=>a.preferred_date===today).length;
+  const newLeads = leads.filter(l=>l.status==="New").length;
+  const published = posts.filter(p=>p.status==="Published").length;
+
+  return (
+    <div>
+      <div className="mb-6">
+        <h1 className="playfair text-2xl font-bold text-gray-800">Dashboard</h1>
+        <p className="text-gray-500 text-sm mt-1">Welcome back — here's what's happening at CAIR SPA</p>
+      </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <StatCard icon="📅" label="Pending Appointments" value={pending} sub="Need confirmation" color="#9d2040"/>
+        <StatCard icon="🗓️" label="Today's Appointments" value={todayAppts} sub={today} color="#0ea5e9"/>
+        <StatCard icon="💬" label="New Leads" value={newLeads} sub="Awaiting response" color="#f59e0b"/>
+        <StatCard icon="📝" label="Published Posts" value={published} sub={`${posts.length} total`} color="#10b981"/>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="card p-5">
+          <h3 className="font-semibold text-gray-700 mb-4">Recent Appointments</h3>
+          <div className="space-y-3">
+            {appointments.slice(0,4).map(a=>(
+              <div key={a.id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+                <div>
+                  <p className="font-medium text-sm text-gray-800">{a.client_name}</p>
+                  <p className="text-xs text-gray-400">{a.service} · {a.preferred_date} {a.preferred_time}</p>
+                </div>
+                <Badge status={a.status}/>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="card p-5">
+          <h3 className="font-semibold text-gray-700 mb-4">Recent Leads</h3>
+          <div className="space-y-3">
+            {leads.map(l=>(
+              <div key={l.id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+                <div>
+                  <p className="font-medium text-sm text-gray-800">{l.name}</p>
+                  <p className="text-xs text-gray-400">{l.service_interest} · {l.form_type}</p>
+                </div>
+                <Badge status={l.status}/>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AppointmentsPage({ appointments, setAppointments }) {
+  const [modal, setModal] = useState(null);
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState("All");
+
+  const filtered = appointments.filter(a => {
+    const matchSearch = a.client_name.toLowerCase().includes(search.toLowerCase()) || a.service.toLowerCase().includes(search.toLowerCase());
+    const matchFilter = filter==="All" || a.status===filter;
+    return matchSearch && matchFilter;
+  });
+
+  const save = (form) => {
+    if (modal?.id) {
+      setAppointments(prev=>prev.map(a=>a.id===modal.id?{...a,...form}:a));
+    } else {
+      setAppointments(prev=>[...prev,{...form, id:Date.now().toString(), created_date:new Date().toISOString().split("T")[0]}]);
+    }
+    setModal(null);
+  };
+
+  const del = (id) => { if(confirm("Delete this appointment?")) setAppointments(prev=>prev.filter(a=>a.id!==id)); };
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="playfair text-2xl font-bold text-gray-800">Appointments</h1>
+          <p className="text-sm text-gray-500 mt-1">{appointments.length} total bookings</p>
+        </div>
+        <button className="btn-primary" onClick={()=>setModal({})}>+ New Appointment</button>
+      </div>
+
+      <div className="card p-4 mb-4 flex flex-col sm:flex-row gap-3">
+        <input className="input flex-1" placeholder="Search by name or service..." value={search} onChange={e=>setSearch(e.target.value)}/>
+        <div className="flex gap-2 flex-wrap">
+          {["All","Pending","Confirmed","Completed","Cancelled"].map(s=>(
+            <button key={s} onClick={()=>setFilter(s)} className={`px-3 py-1.5 text-xs rounded-full font-medium ${filter===s?"bg-red-800 text-white":"bg-gray-100 text-gray-600"}`}>{s}</button>
+          ))}
+        </div>
+      </div>
+
+      <div className="card overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50 border-b">
+            <tr>
+              {["Client","Service","Date & Time","Source","Status","Actions"].map(h=>(
+                <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-50">
+            {filtered.map(a=>(
+              <tr key={a.id} className="hover:bg-gray-50">
+                <td className="px-4 py-3">
+                  <p className="font-medium text-gray-800">{a.client_name}</p>
+                  <p className="text-xs text-gray-400">{a.client_phone}</p>
+                </td>
+                <td className="px-4 py-3 text-gray-600">{a.service}</td>
+                <td className="px-4 py-3">
+                  <p className="text-gray-700">{a.preferred_date}</p>
+                  <p className="text-xs text-gray-400">{a.preferred_time}</p>
+                </td>
+                <td className="px-4 py-3 text-gray-500 text-xs">{a.source}</td>
+                <td className="px-4 py-3"><Badge status={a.status}/></td>
+                <td className="px-4 py-3">
+                  <div className="flex gap-2">
+                    <button onClick={()=>setModal(a)} className="text-xs text-blue-600 hover:underline">Edit</button>
+                    <button onClick={()=>del(a.id)} className="text-xs text-red-500 hover:underline">Delete</button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {filtered.length===0 && (
+              <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-400">No appointments found</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {modal !== null && <BookingModal appt={modal?.id?modal:null} onClose={()=>setModal(null)} onSave={save}/>}
+    </div>
+  );
+}
+
+function LeadsPage({ leads, setLeads }) {
+  const [modal, setModal] = useState(null);
+  const [filter, setFilter] = useState("All");
+
+  const filtered = leads.filter(l=>filter==="All"||l.status===filter);
+
+  const save = (form) => {
+    setLeads(prev=>prev.map(l=>l.id===form.id?form:l));
+    setModal(null);
+  };
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="playfair text-2xl font-bold text-gray-800">Leads & Inquiries</h1>
+          <p className="text-sm text-gray-500 mt-1">{leads.filter(l=>l.status==="New").length} new leads awaiting response</p>
+        </div>
+      </div>
+
+      <div className="card p-3 mb-4 flex gap-2 flex-wrap">
+        {["All","New","Contacted","Converted","Closed"].map(s=>(
+          <button key={s} onClick={()=>setFilter(s)} className={`px-3 py-1.5 text-xs rounded-full font-medium ${filter===s?"bg-red-800 text-white":"bg-gray-100 text-gray-600"}`}>{s}</button>
+        ))}
+      </div>
+
+      <div className="space-y-3">
+        {filtered.map(l=>(
+          <div key={l.id} className="card p-4 flex items-start justify-between gap-4 cursor-pointer hover:shadow-md transition-shadow" onClick={()=>setModal(l)}>
+            <div className="flex-1">
+              <div className="flex items-center gap-3 mb-1">
+                <span className="font-semibold text-gray-800">{l.name}</span>
+                <Badge status={l.status}/>
+                <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{l.form_type}</span>
+              </div>
+              <p className="text-sm text-gray-500">{l.service_interest} · {l.email} · {l.phone}</p>
+              <p className="text-sm text-gray-600 mt-1 line-clamp-1">{l.message}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-xs text-gray-400">{l.created_date}</p>
+              <div className="flex gap-2 mt-2">
+                <a href={`mailto:${l.email}`} onClick={e=>e.stopPropagation()} className="text-xs bg-gray-100 px-2 py-1 rounded hover:bg-gray-200">Email</a>
+                <a href={`tel:${l.phone}`} onClick={e=>e.stopPropagation()} className="text-xs bg-gray-100 px-2 py-1 rounded hover:bg-gray-200">Call</a>
+              </div>
+            </div>
+          </div>
+        ))}
+        {filtered.length===0 && <div className="card p-8 text-center text-gray-400">No leads found</div>}
+      </div>
+
+      {modal && <LeadModal lead={modal} onClose={()=>setModal(null)} onSave={save}/>}
+    </div>
+  );
+}
+
+function BlogPage({ posts, setPosts }) {
+  const [modal, setModal] = useState(null);
+
+  const save = (form) => {
+    if (modal?.id) {
+      setPosts(prev=>prev.map(p=>p.id===modal.id?{...p,...form}:p));
+    } else {
+      setPosts(prev=>[...prev,{...form,id:Date.now().toString()}]);
+    }
+    setModal(null);
+  };
+
+  const del = (id) => { if(confirm("Delete this post?")) setPosts(prev=>prev.filter(p=>p.id!==id)); };
+  const toggle = (id) => setPosts(prev=>prev.map(p=>p.id===id?{...p,status:p.status==="Published"?"Draft":"Published"}:p));
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="playfair text-2xl font-bold text-gray-800">Blog Posts</h1>
+          <p className="text-sm text-gray-500 mt-1">{posts.filter(p=>p.status==="Published").length} published · {posts.filter(p=>p.status==="Draft").length} drafts</p>
+        </div>
+        <button className="btn-primary" onClick={()=>setModal({})}>+ New Post</button>
+      </div>
+
+      <div className="space-y-3">
+        {posts.map(p=>(
+          <div key={p.id} className="card p-5 flex items-start gap-4">
+            {p.cover_image && <img src={p.cover_image} alt="" className="w-20 h-16 object-cover rounded-lg"/>}
+            {!p.cover_image && <div className="w-20 h-16 bg-gradient-to-br from-red-900 to-red-700 rounded-lg flex items-center justify-center text-white text-xl">✍️</div>}
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <h3 className="font-semibold text-gray-800">{p.title}</h3>
+                <Badge status={p.status}/>
+              </div>
+              <p className="text-sm text-gray-500 line-clamp-2">{p.excerpt}</p>
+              <div className="flex gap-3 mt-2 text-xs text-gray-400">
+                <span>📁 {p.category}</span>
+                <span>✍️ {p.author}</span>
+                {p.published_date && <span>📅 {p.published_date}</span>}
+                {p.tags && <span>🏷️ {p.tags}</span>}
+              </div>
+            </div>
+            <div className="flex flex-col gap-2 items-end">
+              <button onClick={()=>setModal(p)} className="text-xs btn-secondary">Edit</button>
+              <button onClick={()=>toggle(p.id)} className={`text-xs px-3 py-1.5 rounded-lg font-medium ${p.status==="Published"?"bg-yellow-100 text-yellow-700":"bg-green-100 text-green-700"}`}>
+                {p.status==="Published"?"Unpublish":"Publish"}
+              </button>
+              <button onClick={()=>del(p.id)} className="text-xs text-red-500 hover:underline">Delete</button>
+            </div>
+          </div>
+        ))}
+        {posts.length===0 && <div className="card p-8 text-center text-gray-400">No posts yet. Create your first article!</div>}
+      </div>
+
+      {modal!==null && <BlogModal post={modal?.id?modal:null} onClose={()=>setModal(null)} onSave={save}/>}
+    </div>
+  );
+}
+
+// ── Main App ───────────────────────────────────────────────────────────────
+function App() {
+  const [page, setPage] = useState("dashboard");
+  const { appointments, setAppointments, leads, setLeads, posts, setPosts } = useMockData();
+
+  const nav = [
+    { id:"dashboard", icon:"🏠", label:"Dashboard" },
+    { id:"appointments", icon:"📅", label:"Appointments", badge: appointments.filter(a=>a.status==="Pending").length },
+    { id:"leads", icon:"💬", label:"Leads", badge: leads.filter(l=>l.status==="New").length },
+    { id:"blog", icon:"✍️", label:"Blog Posts" },
+  ];
+
+  return (
+    <div className="flex h-screen overflow-hidden">
+      {/* Sidebar */}
+      <div className="w-60 bg-white border-r border-gray-100 flex flex-col shadow-sm">
+        <div className="p-5 border-b border-gray-100">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-red-900 flex items-center justify-center text-white font-bold text-sm">C</div>
+            <div>
+              <div className="font-bold text-gray-800 text-sm playfair">CAIR SPA</div>
+              <div className="text-xs text-gray-400">Admin Panel</div>
+            </div>
+          </div>
+        </div>
+        <nav className="flex-1 p-3 space-y-1">
+          {nav.map(n=>(
+            <button key={n.id} onClick={()=>setPage(n.id)} className={`sidebar-link w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium text-gray-600 ${page===n.id?"active":""}`}>
+              <span className="flex items-center gap-2.5"><span>{n.icon}</span>{n.label}</span>
+              {n.badge>0 && <span className="bg-red-800 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">{n.badge}</span>}
+            </button>
+          ))}
+        </nav>
+        <div className="p-4 border-t border-gray-100">
+          <a href="https://cair-spa.vercel.app" target="_blank" className="flex items-center gap-2 text-xs text-gray-400 hover:text-gray-600">
+            <span>🌐</span> View Live Site
+          </a>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 overflow-auto">
+        <div className="max-w-5xl mx-auto p-6 sm:p-8">
+          {page==="dashboard" && <Dashboard appointments={appointments} leads={leads} posts={posts}/>}
+          {page==="appointments" && <AppointmentsPage appointments={appointments} setAppointments={setAppointments}/>}
+          {page==="leads" && <LeadsPage leads={leads} setLeads={setLeads}/>}
+          {page==="blog" && <BlogPage posts={posts} setPosts={setPosts}/>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
