@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CAIR SPA — Admin Dashboard</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter',sans-serif;background:#f8f7f5;color:#1a1a1a}
+  .playfair{font-family:'Playfair Display',serif}
+  .sidebar{width:240px;min-height:100vh;background:#0f0f0f;display:flex;flex-direction:column}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:10px 16px;border-radius:8px;cursor:pointer;font-size:13.5px;font-weight:500;color:#9ca3af;transition:all .15s;margin:1px 8px}
+  .nav-item:hover{background:#1f1f1f;color:#fff}
+  .nav-item.active{background:#9d2040;color:#fff}
+  .card{background:#fff;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+  .badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.3px}
+  .badge-pending{background:#fef3c7;color:#92400e}
+  .badge-confirmed{background:#d1fae5;color:#065f46}
+  .badge-completed{background:#dbeafe;color:#1e40af}
+  .badge-cancelled{background:#fee2e2;color:#991b1b}
+  .badge-new{background:#fef3c7;color:#92400e}
+  .badge-contacted{background:#dbeafe;color:#1e40af}
+  .badge-converted{background:#d1fae5;color:#065f46}
+  .badge-closed{background:#f3f4f6;color:#6b7280}
+  .badge-published{background:#d1fae5;color:#065f46}
+  .badge-draft{background:#f3f4f6;color:#6b7280}
+  .btn{padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .15s}
+  .btn-primary{background:#9d2040;color:#fff}
+  .btn-primary:hover{background:#7d1830}
+  .btn-ghost{background:transparent;color:#6b7280;border:1px solid #e5e7eb}
+  .btn-ghost:hover{background:#f9fafb}
+  .input{width:100%;padding:9px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;outline:none;font-family:'Inter',sans-serif;transition:border .15s}
+  .input:focus{border-color:#9d2040;box-shadow:0 0 0 3px rgba(157,32,64,.08)}
+  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px}
+  .modal{background:#fff;border-radius:16px;width:100%;max-width:580px;max-height:90vh;overflow-y:auto;padding:28px}
+  .cal-day{min-height:90px;border:1px solid #f3f4f6;border-radius:8px;padding:6px;cursor:pointer;transition:background .1s}
+  .cal-day:hover{background:#fdf2f5}
+  .cal-day.today{border-color:#9d2040;background:#fff5f7}
+  .cal-day.other-month{background:#fafafa}
+  .cal-event{font-size:10px;padding:2px 5px;border-radius:4px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+  .stat-card{background:#fff;border-radius:12px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.08);display:flex;align-items:center;gap:16px}
+  .stat-icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px}
+  table{width:100%;border-collapse:collapse}
+  th{text-align:left;padding:10px 14px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#9ca3af;background:#f9fafb;border-bottom:1px solid #f3f4f6}
+  td{padding:12px 14px;font-size:13px;border-bottom:1px solid #f9fafb;vertical-align:middle}
+  tr:hover td{background:#fafafa}
+  .tag{display:inline-block;background:#f3f4f6;color:#6b7280;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:500}
+  ::-webkit-scrollbar{width:5px;height:5px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:#e5e7eb;border-radius:3px}
+  .notif-dot{width:8px;height:8px;background:#ef4444;border-radius:50%;display:inline-block}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const {useState,useEffect,useCallback,useMemo}=React;
+
+// ─── Simulated Base44 SDK ────────────────────────────────────────────────────
+// In production this connects to real Base44 entities
+const DB = {
+  appointments: [
+    {id:"a1",client_name:"Jennifer Martinez",client_email:"jen.martinez@email.com",client_phone:"(949) 555-0101",service:"Dermal Fillers",preferred_date:"2026-03-17",preferred_time:"10:00 AM",status:"Confirmed",notes:"First time client, wants natural look",source:"Website Form",created_date:"2026-03-15T08:23:00"},
+    {id:"a2",client_name:"Lisa Rodriguez",client_email:"lisa.r@email.com",client_phone:"(714) 555-0202",service:"Hydrafacial",preferred_date:"2026-03-18",preferred_time:"2:00 PM",status:"Pending",notes:"",source:"Callback Request",created_date:"2026-03-15T14:10:00"},
+    {id:"a3",client_name:"David Lee",client_email:"david.l@email.com",client_phone:"(949) 555-0303",service:"RF Microneedling",preferred_date:"2026-03-19",preferred_time:"11:00 AM",status:"Pending",notes:"Has acne scars on cheeks",source:"Website Form",created_date:"2026-03-16T09:05:00"},
+    {id:"a4",client_name:"Patricia Gomez",client_email:"pat.g@email.com",client_phone:"(714) 555-0404",service:"Thread Lift",preferred_date:"2026-03-12",preferred_time:"3:00 PM",status:"Completed",notes:"",source:"Phone",created_date:"2026-03-10T11:30:00"},
+    {id:"a5",client_name:"Sarah Thompson",client_email:"sarah.t@email.com",client_phone:"(949) 555-0505",service:"IV Infusions",preferred_date:"2026-03-20",preferred_time:"9:00 AM",status:"Confirmed",notes:"Wants vitamin C drip",source:"Website Form",created_date:"2026-03-16T16:00:00"},
+    {id:"a6",client_name:"Michael Chen",client_email:"mchen@email.com",client_phone:"(714) 555-0606",service:"NAD Therapy",preferred_date:"2026-03-21",preferred_time:"1:00 PM",status:"Pending",notes:"",source:"Website Form",created_date:"2026-03-16T17:30:00"},
+    {id:"a7",client_name:"Amanda Wilson",client_email:"amanda.w@email.com",client_phone:"(949) 555-0707",service:"Weight Loss Injections",preferred_date:"2026-03-22",preferred_time:"10:00 AM",status:"Pending",notes:"",source:"Callback Request",created_date:"2026-03-16T18:00:00"},
+  ],
+  leads: [
+    {id:"l1",name:"Maria Garcia",email:"maria.g@email.com",phone:"(714) 555-0808",service_interest:"Vein Treatment",message:"Interested in spider vein treatment on both legs. What is the cost?",form_type:"Contact",status:"New",created_date:"2026-03-16T07:45:00"},
+    {id:"l2",name:"James Rivera",email:"james.r@email.com",phone:"(949) 555-0909",service_interest:"Weight Loss Injections",message:"Want to learn more about the weight loss program and pricing.",form_type:"Callback Request",status:"Contacted",created_date:"2026-03-14T13:20:00"},
+    {id:"l3",name:"Sarah Turner",email:"sarah.turner@email.com",phone:"(714) 555-1010",service_interest:"Exosome Therapy",message:"What exactly is exosome therapy and how many sessions do I need?",form_type:"General Inquiry",status:"New",created_date:"2026-03-16T10:15:00"},
+    {id:"l4",name:"Robert Kim",email:"rkim@email.com",phone:"(949) 555-1111",service_interest:"Hair Transplant ARTAS",message:"Looking into hair restoration, can I schedule a consult?",form_type:"Callback Request",status:"New",created_date:"2026-03-16T15:30:00"},
+  ],
+  posts: [
+    {id:"p1",title:"5 Benefits of Hydrafacial for All Skin Types",slug:"hydrafacial-benefits",excerpt:"Discover why Hydrafacial is the #1 facial treatment in America.",category:"Skin Care",author:"CAIR SPA Team",status:"Published",published_date:"2026-03-10",cover_image:"",tags:"hydrafacial,skin,glow",content:"<h2>What is a HydraFacial?</h2><p>HydraFacial is a patented skin treatment that cleanses, extracts, and hydrates...</p>",seo_title:"5 Benefits of Hydrafacial | CAIR SPA Huntington Beach",seo_description:"Learn about the top 5 benefits of Hydrafacial treatments at CAIR SPA in Huntington Beach, Orange County."},
+    {id:"p2",title:"RF Microneedling: What to Expect Before and After",slug:"rf-microneedling-guide",excerpt:"Everything you need to know about radiofrequency microneedling.",category:"Skin Care",author:"CAIR SPA Team",status:"Draft",published_date:"",cover_image:"",tags:"microneedling,rf,skin tightening",content:"<h2>What is RF Microneedling?</h2><p>Radiofrequency microneedling combines two powerful treatments...</p>",seo_title:"",seo_description:""},
+    {id:"p3",title:"NAD+ Therapy: The Anti-Aging Secret of the Stars",slug:"nad-therapy-anti-aging",excerpt:"Why celebrities and athletes are turning to NAD+ IV therapy for longevity.",category:"Wellness",author:"CAIR SPA Team",status:"Published",published_date:"2026-03-08",cover_image:"",tags:"NAD,anti-aging,IV therapy",content:"<h2>What is NAD+?</h2><p>NAD+ (Nicotinamide adenine dinucleotide) is a coenzyme...</p>",seo_title:"NAD+ Therapy Anti-Aging | CAIR SPA",seo_description:"Discover NAD+ IV therapy at CAIR SPA in Huntington Beach — the anti-aging treatment loved by celebrities."},
+  ]
+};
+
+const SERVICES=["Dermal Fillers","Hydrafacial","RF Microneedling","Thread Lift","IV Infusions","Skin Rejuvenation","Vein Treatment","Weight Loss Injections","Exosome Therapy","NAD Therapy","Hair Transplant ARTAS","Other"];
+const TIMES=["9:00 AM","10:00 AM","11:00 AM","12:00 PM","1:00 PM","2:00 PM","3:00 PM","4:00 PM","5:00 PM"];
+const APPT_STATUSES=["Pending","Confirmed","Completed","Cancelled"];
+const LEAD_STATUSES=["New","Contacted","Converted","Closed"];
+const CATEGORIES=["Skin Care","Body Treatments","Hair","Wellness","News","Tips"];
+const SERVICE_COLORS={"Dermal Fillers":"#fde8ef","Hydrafacial":"#e0f2fe","RF Microneedling":"#f0fdf4","Thread Lift":"#fef9c3","IV Infusions":"#ede9fe","Skin Rejuvenation":"#fff7ed","Vein Treatment":"#f0f9ff","Weight Loss Injections":"#fdf4ff","Exosome Therapy":"#f0fdf4","NAD Therapy":"#eff6ff","Hair Transplant ARTAS":"#fff1f2","Other":"#f9fafb"};
+const SERVICE_TEXT_COLORS={"Dermal Fillers":"#9d174d","Hydrafacial":"#0369a1","RF Microneedling":"#166534","Thread Lift":"#854d0e","IV Infusions":"#5b21b6","Skin Rejuvenation":"#c2410c","Vein Treatment":"#0c4a6e","Weight Loss Injections":"#7e22ce","Exosome Therapy":"#14532d","NAD Therapy":"#1e3a8a","Hair Transplant ARTAS":"#881337","Other":"#374151"};
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+function Badge({status}){
+  const k=(status||"").toLowerCase().replace(/\s+/g,"-");
+  return <span className={`badge badge-${k}`}>{status}</span>;
+}
+
+function formatDate(d){
+  if(!d)return"";
+  const dt=new Date(d);
+  return dt.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});
+}
+function formatTime(d){
+  if(!d)return"";
+  const dt=new Date(d);
+  return dt.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"});
+}
+function timeAgo(d){
+  if(!d)return"";
+  const diff=Date.now()-new Date(d).getTime();
+  const m=Math.floor(diff/60000);
+  if(m<1)return"just now";
+  if(m<60)return`${m}m ago`;
+  const h=Math.floor(m/60);
+  if(h<24)return`${h}h ago`;
+  return`${Math.floor(h/24)}d ago`;
+}
+
+// ─── Stat Card ────────────────────────────────────────────────────────────────
+function StatCard({icon,label,value,sub,bg,trend}){
+  return(
+    <div className="stat-card">
+      <div className="stat-icon" style={{background:bg}}>{icon}</div>
+      <div className="flex-1">
+        <div style={{fontSize:26,fontWeight:700,color:"#111"}}>{value}</div>
+        <div style={{fontSize:13,color:"#6b7280",marginTop:1}}>{label}</div>
+        {sub&&<div style={{fontSize:11,color:trend==="up"?"#059669":trend==="down"?"#dc2626":"#9ca3af",marginTop:2}}>{sub}</div>}
+      </div>
+    </div>
+  );
+}
+
+// ─── Appointment Modal ────────────────────────────────────────────────────────
+function ApptModal({appt,onClose,onSave}){
+  const[form,setForm]=useState(appt||{client_name:"",client_email:"",client_phone:"",service:"Dermal Fillers",preferred_date:"",preferred_time:"10:00 AM",notes:"",status:"Pending",source:"Website Form"});
+  const set=(k,v)=>setForm(f=>({...f,[k]:v}));
+  return(
+    <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="modal">
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+          <h2 className="playfair" style={{fontSize:20,fontWeight:700}}>{appt?.id?"Edit Appointment":"New Appointment"}</h2>
+          <button onClick={onClose} style={{background:"none",border:"none",fontSize:20,cursor:"pointer",color:"#9ca3af"}}>✕</button>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+          <div style={{gridColumn:"1/-1"}}>
+            <label style={{fontSize:11,fontWeight:600,color:"#6b7280",display:"block",marginBottom:4,textTransform:"uppercase",letterSpacing:".4px"}}>Client Name *</label>
+            <input className="input" value={form.client_name} onChange={e=>set("client_name",e.target.value)} placeholder="Full name"/>
+          </div>
+          <div>
+            <label style={{fontSize:11,fontWeight:600,color:"#6b7280",display:"block",marginBottom:4,textTransform:"uppercase",letterSpacing:".4px"}}>Phone</label>
+            <input className="input" value={form.client_phone} onChange={e=>set("client_phone",e.target.value)} placeholder="(949) 000-0000"/>
+          </div>
+          <div>
+            <label style={{fontSize:11,fontWeight:600,color:"#6b7280",display:"block",marginBottom:4,textTransform:"uppercase",letterSpacing:".4px"}}>Email</label>
+            <input className="input" value={form.client_email} onChange={e=>set("client_email",e.target.value)} placeholder="email@example.com"/>
+          </div>
+          <div style={{gridColumn:"1/-1"}}>
+            <label style={{fontSize:11,fontWeight:600,color:"#6b7280",display:"block",marginBottom:4,textTransform:"uppercase",letterSpacing:".4px"}}>Service</label>
+            <select className="input" value={form.service} onChange={e=>set("service",e.target.value)}>
+              {SERVICES.map(s=><option key={s}>{s}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={{fontSize:11,fontWeight:600,color:"#6b7280",display:"block",marginBottom:4,textTransform:"uppercase",letterSpacing:".4px"}}>Date</label>
+            <input type="date" className="input" value={form.preferred_date} onChange={e=>set("preferred_date",e.target.value)}/>
+          </div>
+          <div>
+            <label style={{fontSize:11,fontWeight:600,color:"#6b7280",display:"block",marginBottom:4,textTransform:"uppercase",letterSpacing:".4px"}}>Time</label>
+            <select className="input" value={form.preferred_time} onChange={e=>set("preferred_time",e.target.value)}>
+              {TIMES.map(t=><option key={t}>{t}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={{fontSize:11,fontWeight:600,color:"#6b7280",display:"block",marginBottom:4,textTransform:"uppercase",letterSpacing:".4px"}}>Status</label>
+            <select className="input" value={form.status} onChange={e=>set("status",e.target.value)}>
+              {APPT_STATUSES.map(s=><option key={s}>{s}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={{fontSize:11,fontWeight:600,color:"#6b7280",display:"block",marginBottom:4,textTransform:"uppercase",letterSpacing:".4px"}}>Source</label>
+            <select className="input" value={form.source} onChange={e=>set("source",e.target.value)}>
+              {["Website Form","Callback Request","Walk-in","Phone"].map(s=><option key={s}>{s}</option>)}
+            </select>
+          </div>
+          <div style={{gridColumn:"1/-1"}}>
+            <label style={{fontSize:11,fontWeight:600,color:"#6b7280",display:"block",marginBottom:4,textTransform:"uppercase",letterSpacing:".4px"}}>Notes</label>
+            <textarea className="input" rows={3} style={{resize:"vertical"}} value={form.notes} onChange={e=>set("notes",e.target.value)} placeholder="Any special notes or requests..."/>
+          </div>
+        </div>
+        <div style={{display:"flex",gap:10,marginTop:20,justifyContent:"flex-end"}}>
+          <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
+          <button className="btn btn-primary" onClick={()=>onSave(form)}>Save Appointment</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Lead Modal ───────────────────────────────────────────────────────────────
+function LeadModal({lead,onClose,onSave}){
+  const[status,setStatus]=useState(lead.status);
+  return(
+    <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="modal">
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+          <h2 className="playfair" style={{fontSize:20,fontWeight:700}}>Lead Details</h2>
+          <button onClick={onClose} style={{background:"none",border:"none",fontSize:20,cursor:"pointer",color:"#9ca3af"}}>✕</button>
+        </div>
+        <div style={{background:"#f9fafb",borderRadius:10,padding:16,marginBottom:16}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+            {[["Name",lead.name],["Phone",lead.phone],["Email",lead.email,"1/-1"],["Service Interest",lead.service_interest],["Form Type",lead.form_type],["Received",timeAgo(lead.created_date)]].map(([k,v,span])=>(
+              <div key={k} style={{gridColumn:span||"auto"}}>
+                <div style={{fontSize:10,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:".4px",marginBottom:2}}>{k}</div>
+                <div style={{fontSize:13,fontWeight:500,color:"#111"}}>{v}</div>
+              </div>
+            ))}
+          </div>
+          {lead.message&&<div style={{marginTop:12,paddingTop:12,borderTop:"1px solid #e5e7eb"}}>
+            <div style={{fontSize:10,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:".4px",marginBottom:4}}>Message</div>
+            <div style={{fontSize:13,color:"#374151",lineHeight:1.6}}>{lead.message}</div>
+          </div>}
+        </div>
+        <div style={{marginBottom:16}}>
+          <label style={{fontSize:11,fontWeight:600,color:"#6b7280",display:"block",marginBottom:6,textTransform:"uppercase",letterSpacing:".4px"}}>Update Status</label>
+          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+            {LEAD_STATUSES.map(s=>(
+              <button key={s} onClick={()=>setStatus(s)} style={{padding:"6px 14px",borderRadius:20,fontSize:12,fontWeight:600,cursor:"pointer",border:"2px solid",borderColor:status===s?"#9d2040":"#e5e7eb",background:status===s?"#9d2040":"#fff",color:status===s?"#fff":"#374151",transition:"all .15s"}}>{s}</button>
+            ))}
+          </div>
+        </div>
+        <div style={{display:"flex",gap:10,marginTop:20}}>
+          <a href={`mailto:${lead.email}`} className="btn btn-ghost" style={{flex:1,textAlign:"center",textDecoration:"none"}}>📧 Email</a>
+          <a href={`tel:${lead.phone}`} className="btn btn-ghost" style={{flex:1,textAlign:"center",textDecoration:"none"}}>📞 Call</a>
+          <button className="btn btn-primary" onClick={()=>onSave({...lead,status})}>Save</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Blog Modal ───────────────────────────────────────────────────────────────
+function BlogModal({post,onClose,onSave}){
+  const[form,setForm]=useState(post||{title:"",slug:"",excerpt:"",content:"",cover_image:"",category:"Skin Care",tags:"",author:"CAIR SPA Team",status:"Draft",published_date:"",seo_title:"",seo_description:""});
+  const[tab,setTab]=useState("content");
+  const set=(k,v)=>setForm(f=>({...f,[k]:v}));
+  const slug=t=>t.toLowerCase().replace(/[^a-z0-9\s]/g,"").replace(/\s+/g,"-");
+  return(
+    <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="modal" style={{maxWidth:700}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+          <h2 className="playfair" style={{fontSize:20,fontWeight:700}}>{post?.id?"Edit Post":"New Blog Post"}</h2>
+          <button onClick={onClose} style={{background:"none",border:"none",fontSize:20,cursor:"pointer",color:"#9ca3af"}}>✕</button>
+        </div>
+        <div style={{display:"flex",gap:0,borderBottom:"1px solid #e5e7eb",marginBottom:18}}>
+          {["content","seo"].map(t=>(
+            <button key={t} onClick={()=>setTab(t)} style={{padding:"8px 16px",fontSize:13,fontWeight:600,cursor:"pointer",border:"none",borderBottom:`2px solid ${tab===t?"#9d2040":"transparent"}`,background:"transparent",color:tab===t?"#9d2040":"#6b7280",textTransform:"capitalize",transition:"all .15s"}}>
+              {t==="seo"?"SEO & Meta":"Content"}
+            </button>
+          ))}
+        </div>
+        {tab==="content"&&<div style={{display:"flex",flexDirection:"column",gap:14}}>
+          <div>
+            <label style={{fontSize:11,fontWeight:600,color:"#6b7280",display:"block",marginBottom:4,textTransform:"uppercase",letterSpacing:".4px"}}>Title</label>
+            <input className="input" value={form.title} onChange={e=>{set("title",e.target.value);if(!post?.id)set("slug",slug(e.target.value));}} placeholder="Article title..."/>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12}}>
+            <div>
+              <label style={{fontSize:11,fontWeight:600,color:"#6b7280",display:"block",marginBottom:4,textTransform:"uppercase",letterSpacing:".4px"}}>Slug</label>
+              <input className="input" value={form.slug} onChange={e=>set("slug",e.target.value)}/>
+            </div>
+            <div>
+              <label style={{fontSize:11,fontWeight:600,color:"#6b7280",display:"block",marginBottom:4,textTransform:"uppercase",letterSpacing:".4px"}}>Category</label>
+              <select className="input" value={form.category} onChange={e=>set("category",e.target.value)}>
+                {CATEGORIES.map(c=><option key={c}>{c}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{fontSize:11,fontWeight:600,color:"#6b7280",display:"block",marginBottom:4,textTransform:"uppercase",letterSpacing:".4px"}}>Status</label>
+              <select className="input" value={form.status} onChange={e=>set("status",e.target.value)}>
+                <option>Draft</option><option>Published</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label style={{fontSize:11,fontWeight:600,color:"#6b7280",display:"block",marginBottom:4,textTransform:"uppercase",letterSpacing:".4px"}}>Excerpt</label>
+            <textarea className="input" rows={2} style={{resize:"vertical"}} value={form.excerpt} onChange={e=>set("excerpt",e.target.value)} placeholder="Short description shown in blog listing..."/>
+          </div>
+          <div>
+            <label style={{fontSize:11,fontWeight:600,color:"#6b7280",display:"block",marginBottom:4,textTransform:"uppercase",letterSpacing:".4px"}}>Content (HTML)</label>
+            <div style={{display:"flex",gap:4,marginBottom:6,flexWrap:"wrap"}}>
+              {[["B","<strong>","</strong>"],["I","<em>","</em>"],["H2","<h2>","</h2>"],["H3","<h3>","</h3>"],["P","<p>","</p>"],["UL","<ul>\n  <li>","</li>\n</ul>"]].map(([label,open,close])=>(
+                <button key={label} onClick={()=>{
+                  const ta=document.getElementById("blog-editor");
+                  if(!ta)return;
+                  const s=ta.selectionStart,e2=ta.selectionEnd;
+                  const sel=form.content.substring(s,e2)||"text";
+                  set("content",form.content.substring(0,s)+open+sel+close+form.content.substring(e2));
+                }} style={{padding:"3px 8px",fontSize:11,fontWeight:700,border:"1px solid #e5e7eb",borderRadius:4,cursor:"pointer",background:"#f9fafb"}}>{label}</button>
+              ))}
+            </div>
+            <textarea id="blog-editor" className="input" rows={10} style={{fontFamily:"monospace",fontSize:12,resize:"vertical"}} value={form.content} onChange={e=>set("content",e.target.value)}/>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+            <div>
+              <label style={{fontSize:11,fontWeight:600,color:"#6b7280",display:"block",marginBottom:4,textTransform:"uppercase",letterSpacing:".4px"}}>Tags (comma separated)</label>
+              <input className="input" value={form.tags} onChange={e=>set("tags",e.target.value)} placeholder="skin care, hydrafacial"/>
+            </div>
+            <div>
+              <label style={{fontSize:11,fontWeight:600,color:"#6b7280",display:"block",marginBottom:4,textTransform:"uppercase",letterSpacing:".4px"}}>Cover Image URL</label>
+              <input className="input" value={form.cover_image} onChange={e=>set("cover_image",e.target.value)} placeholder="https://..."/>
+            </div>
+          </div>
+        </div>}
+        {tab==="seo"&&<div style={{display:"flex",flexDirection:"column",gap:14}}>
+          <div>
+            <label style={{fontSize:11,fontWeight:600,color:"#6b7280",display:"block",marginBottom:4,textTransform:"uppercase",letterSpacing:".4px"}}>SEO Title <span style={{color:form.seo_title.length>60?"#ef4444":"#9ca3af"}}>{form.seo_title.length}/60</span></label>
+            <input className="input" value={form.seo_title} onChange={e=>set("seo_title",e.target.value)} placeholder="SEO optimized title..."/>
+          </div>
+          <div>
+            <label style={{fontSize:11,fontWeight:600,color:"#6b7280",display:"block",marginBottom:4,textTransform:"uppercase",letterSpacing:".4px"}}>Meta Description <span style={{color:form.seo_description.length>160?"#ef4444":"#9ca3af"}}>{form.seo_description.length}/160</span></label>
+            <textarea className="input" rows={3} style={{resize:"vertical"}} value={form.seo_description} onChange={e=>set("seo_description",e.target.value)} placeholder="Meta description for Google..."/>
+          </div>
+          <div>
+            <label style={{fontSize:11,fontWeight:600,color:"#6b7280",display:"block",marginBottom:4,textTransform:"uppercase",letterSpacing:".4px"}}>Publish Date</label>
+            <input type="date" className="input" value={form.published_date} onChange={e=>set("published_date",e.target.value)}/>
+          </div>
+          <div style={{background:"#f9fafb",borderRadius:10,padding:14,border:"1px solid #e5e7eb"}}>
+            <div style={{fontSize:11,fontWeight:700,color:"#6b7280",textTransform:"uppercase",letterSpacing:".4px",marginBottom:8}}>Google Preview</div>
+            <div style={{fontSize:18,color:"#1a0dab",fontWeight:500}}>{form.seo_title||form.title||"Post Title"}</div>
+            <div style={{fontSize:13,color:"#006621",margin:"2px 0"}}>cairspa.com/blog/{form.slug||"post-slug"}</div>
+            <div style={{fontSize:13,color:"#545454",lineHeight:1.5}}>{form.seo_description||form.excerpt||"Meta description appears here..."}</div>
+          </div>
+        </div>}
+        <div style={{display:"flex",gap:10,marginTop:20,justifyContent:"flex-end"}}>
+          <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
+          <button className="btn btn-primary" onClick={()=>onSave(form)}>{form.status==="Published"?"Publish Post":"Save Draft"}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Calendar ─────────────────────────────────────────────────────────────────
+function CalendarView({appointments,onSelectAppt,onNewAppt}){
+  const today=new Date();
+  const[current,setCurrent]=useState({year:today.getFullYear(),month:today.getMonth()});
+  const[selected,setSelected]=useState(null);
+
+  const daysInMonth=(y,m)=>new Date(y,m+1,0).getDate();
+  const firstDay=(y,m)=>new Date(y,m,1).getDay();
+  const MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const DAYS=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+
+  const {year,month}=current;
+  const days=daysInMonth(year,month);
+  const startDay=firstDay(year,month);
+  const prevDays=daysInMonth(year,month-1);
+
+  const apptsByDate=useMemo(()=>{
+    const map={};
+    appointments.forEach(a=>{
+      if(!map[a.preferred_date])map[a.preferred_date]=[];
+      map[a.preferred_date].push(a);
+    });
+    return map;
+  },[appointments]);
+
+  const cells=[];
+  // prev month trailing days
+  for(let i=startDay-1;i>=0;i--){
+    cells.push({day:prevDays-i,current:false,date:null});
+  }
+  // current month
+  for(let d=1;d<=days;d++){
+    const mm=String(month+1).padStart(2,"0");
+    const dd=String(d).padStart(2,"0");
+    cells.push({day:d,current:true,date:`${year}-${mm}-${dd}`});
+  }
+  // next month
+  const remaining=(7-cells.length%7)%7;
+  for(let i=1;i<=remaining;i++) cells.push({day:i,current:false,date:null});
+
+  const todayStr=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}`;
+
+  const statusColor={Confirmed:"#dcfce7",Pending:"#fef3c7",Completed:"#dbeafe",Cancelled:"#fee2e2"};
+  const statusText={Confirmed:"#166534",Pending:"#92400e",Completed:"#1e40af",Cancelled:"#991b1b"};
+
+  return(
+    <div>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20}}>
+        <h2 className="playfair" style={{fontSize:22,fontWeight:700}}>Appointment Calendar</h2>
+        <div style={{display:"flex",alignItems:"center",gap:12}}>
+          <button onClick={()=>setCurrent(c=>{const d=new Date(c.year,c.month-1);return{year:d.getFullYear(),month:d.getMonth()}})} style={{width:32,height:32,borderRadius:8,border:"1px solid #e5e7eb",background:"#fff",cursor:"pointer",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center"}}>‹</button>
+          <span style={{fontWeight:700,fontSize:15,minWidth:140,textAlign:"center"}}>{MONTHS[month]} {year}</span>
+          <button onClick={()=>setCurrent(c=>{const d=new Date(c.year,c.month+1);return{year:d.getFullYear(),month:d.getMonth()}})} style={{width:32,height:32,borderRadius:8,border:"1px solid #e5e7eb",background:"#fff",cursor:"pointer",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center"}}>›</button>
+          <button className="btn btn-primary" style={{marginLeft:8}} onClick={()=>onNewAppt()}>+ Book Appointment</button>
+        </div>
+      </div>
+
+      {/* Legend */}
+      <div style={{display:"flex",gap:12,marginBottom:14,flexWrap:"wrap"}}>
+        {Object.entries(statusColor).map(([k,v])=>(
+          <div key={k} style={{display:"flex",alignItems:"center",gap:5,fontSize:12}}>
+            <div style={{width:10,height:10,borderRadius:3,background:v,border:`1px solid ${statusText[k]}33`}}/>
+            <span style={{color:"#6b7280"}}>{k}</span>
+          </div>
+        ))}
+      </div>
+
+      <div className="card" style={{overflow:"hidden"}}>
+        {/* Header */}
+        <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",background:"#f9fafb",borderBottom:"1px solid #f3f4f6"}}>
+          {DAYS.map(d=><div key={d} style={{padding:"10px 0",textAlign:"center",fontSize:11,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:".5px"}}>{d}</div>)}
+        </div>
+        {/* Grid */}
+        <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)"}}>
+          {cells.map((cell,i)=>{
+            const appts=cell.date?apptsByDate[cell.date]||[]:[];
+            const isToday=cell.date===todayStr;
+            const isSel=cell.date&&selected===cell.date;
+            return(
+              <div key={i} className={`cal-day${isToday?" today":""}${!cell.current?" other-month":""}`}
+                style={{borderColor:isSel?"#9d2040":undefined,background:isSel?"#fff5f7":undefined}}
+                onClick={()=>{if(cell.date){setSelected(cell.date);}}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:2}}>
+                  <span style={{fontSize:12,fontWeight:isToday?700:500,color:isToday?"#9d2040":cell.current?"#374151":"#d1d5db",width:22,height:22,display:"flex",alignItems:"center",justifyContent:"center",borderRadius:"50%",background:isToday?"#fde8ef":"transparent"}}>{cell.day}</span>
+                  {appts.length>0&&<span style={{fontSize:9,fontWeight:700,color:"#9d2040",background:"#fde8ef",borderRadius:10,padding:"1px 5px"}}>{appts.length}</span>}
+                </div>
+                {appts.slice(0,2).map(a=>(
+                  <div key={a.id} className="cal-event"
+                    style={{background:statusColor[a.status]||"#f3f4f6",color:statusText[a.status]||"#374151"}}
+                    onClick={e=>{e.stopPropagation();onSelectAppt(a);}}>
+                    {a.preferred_time} {a.client_name.split(" ")[0]}
+                  </div>
+                ))}
+                {appts.length>2&&<div style={{fontSize:10,color:"#9ca3af",paddingLeft:2}}>+{appts.length-2} more</div>}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Selected day sidebar */}
+      {selected&&apptsByDate[selected]&&(
+        <div className="card" style={{marginTop:16,padding:16}}>
+          <div style={{fontWeight:700,fontSize:14,marginBottom:12,color:"#111"}}>
+            📅 Appointments on {new Date(selected+"T12:00:00").toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})}
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            {(apptsByDate[selected]||[]).map(a=>(
+              <div key={a.id} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 12px",background:"#f9fafb",borderRadius:8,cursor:"pointer"}} onClick={()=>onSelectAppt(a)}>
+                <div style={{fontSize:12,fontWeight:700,color:"#9d2040",minWidth:60}}>{a.preferred_time}</div>
+                <div style={{flex:1}}>
+                  <div style={{fontWeight:600,fontSize:13}}>{a.client_name}</div>
+                  <div style={{fontSize:12,color:"#6b7280"}}>{a.service}</div>
+                </div>
+                <Badge status={a.status}/>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Dashboard Home ───────────────────────────────────────────────────────────
+function Dashboard({appointments,leads,posts,onNav}){
+  const pending=appointments.filter(a=>a.status==="Pending").length;
+  const today=new Date().toISOString().split("T")[0];
+  const todayAppts=appointments.filter(a=>a.preferred_date===today);
+  const newLeads=leads.filter(l=>l.status==="New").length;
+  const published=posts.filter(p=>p.status==="Published").length;
+  const recent=[...appointments].sort((a,b)=>new Date(b.created_date)-new Date(a.created_date)).slice(0,3);
+  const recentLeads=[...leads].sort((a,b)=>new Date(b.created_date)-new Date(a.created_date)).slice(0,3);
+
+  return(
+    <div>
+      <div style={{marginBottom:24}}>
+        <h1 className="playfair" style={{fontSize:26,fontWeight:700,color:"#111"}}>Good evening 👋</h1>
+        <p style={{color:"#6b7280",fontSize:14,marginTop:4}}>Here's what's happening at CAIR SPA today</p>
+      </div>
+
+      {/* Stats */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:24}}>
+        <StatCard icon="📅" label="Pending Appointments" value={pending} sub="Need confirmation" bg="#fde8ef"/>
+        <StatCard icon="🗓️" label="Today's Bookings" value={todayAppts.length} sub={today} bg="#e0f2fe"/>
+        <StatCard icon="💬" label="New Leads" value={newLeads} sub="Awaiting response" bg="#fef3c7"/>
+        <StatCard icon="✍️" label="Published Posts" value={published} sub={`${posts.length} total`} bg="#dcfce7"/>
+      </div>
+
+      {/* Today's schedule */}
+      {todayAppts.length>0&&(
+        <div className="card" style={{padding:18,marginBottom:16}}>
+          <div style={{fontWeight:700,fontSize:14,marginBottom:12,color:"#111",display:"flex",alignItems:"center",gap:8}}>
+            <span>📋</span> Today's Schedule
+            <span style={{marginLeft:"auto",fontSize:12,color:"#9ca3af",fontWeight:400}}>{today}</span>
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            {todayAppts.map(a=>(
+              <div key={a.id} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 12px",background:"#f9fafb",borderRadius:8}}>
+                <div style={{fontSize:12,fontWeight:700,color:"#9d2040",minWidth:60}}>{a.preferred_time}</div>
+                <div style={{flex:1}}>
+                  <div style={{fontWeight:600,fontSize:13}}>{a.client_name}</div>
+                  <div style={{fontSize:12,color:"#6b7280"}}>{a.service}</div>
+                </div>
+                <Badge status={a.status}/>
+                {a.client_phone&&<a href={`tel:${a.client_phone}`} style={{fontSize:11,color:"#9d2040",textDecoration:"none",background:"#fde8ef",padding:"3px 8px",borderRadius:6}}>📞 Call</a>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+        {/* Recent Bookings */}
+        <div className="card" style={{padding:18}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+            <div style={{fontWeight:700,fontSize:14,color:"#111"}}>Recent Bookings</div>
+            <button onClick={()=>onNav("appointments")} style={{fontSize:12,color:"#9d2040",background:"none",border:"none",cursor:"pointer",fontWeight:500}}>View all →</button>
+          </div>
+          {recent.map(a=>(
+            <div key={a.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"9px 0",borderBottom:"1px solid #f3f4f6"}}>
+              <div>
+                <div style={{fontWeight:600,fontSize:13,color:"#111"}}>{a.client_name}</div>
+                <div style={{fontSize:11,color:"#9ca3af"}}>{a.service} · {a.preferred_date}</div>
+              </div>
+              <Badge status={a.status}/>
+            </div>
+          ))}
+        </div>
+
+        {/* New Leads */}
+        <div className="card" style={{padding:18}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+            <div style={{fontWeight:700,fontSize:14,color:"#111"}}>New Leads</div>
+            <button onClick={()=>onNav("leads")} style={{fontSize:12,color:"#9d2040",background:"none",border:"none",cursor:"pointer",fontWeight:500}}>View all →</button>
+          </div>
+          {recentLeads.map(l=>(
+            <div key={l.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"9px 0",borderBottom:"1px solid #f3f4f6"}}>
+              <div>
+                <div style={{fontWeight:600,fontSize:13,color:"#111"}}>{l.name}</div>
+                <div style={{fontSize:11,color:"#9ca3af"}}>{l.service_interest} · {timeAgo(l.created_date)}</div>
+              </div>
+              <Badge status={l.status}/>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Appointments Page ────────────────────────────────────────────────────────
+function AppointmentsPage({appointments,setAppointments}){
+  const[modal,setModal]=useState(null);
+  const[search,setSearch]=useState("");
+  const[filter,setFilter]=useState("All");
+  const[view,setView]=useState("list");
+
+  const filtered=appointments.filter(a=>{
+    const q=search.toLowerCase();
+    return(a.client_name.toLowerCase().includes(q)||a.service.toLowerCase().includes(q)||a.client_email.toLowerCase().includes(q))&&(filter==="All"||a.status===filter);
+  });
+
+  const save=form=>{
+    if(form.id) setAppointments(prev=>prev.map(a=>a.id===form.id?{...a,...form}:a));
+    else setAppointments(prev=>[{...form,id:"a"+Date.now(),created_date:new Date().toISOString()},...prev]);
+    setModal(null);
+  };
+  const del=id=>{if(confirm("Delete this appointment?"))setAppointments(prev=>prev.filter(a=>a.id!==id))};
+
+  return(
+    <div>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20}}>
+        <div>
+          <h1 className="playfair" style={{fontSize:24,fontWeight:700}}>Appointments</h1>
+          <p style={{color:"#6b7280",fontSize:13,marginTop:2}}>{appointments.length} total · {appointments.filter(a=>a.status==="Pending").length} pending</p>
+        </div>
+        <div style={{display:"flex",gap:8}}>
+          <div style={{display:"flex",background:"#f3f4f6",borderRadius:8,padding:3}}>
+            {[["list","☰ List"],["cal","📅 Calendar"]].map(([v,l])=>(
+              <button key={v} onClick={()=>setView(v)} style={{padding:"5px 12px",borderRadius:6,fontSize:12,fontWeight:600,border:"none",cursor:"pointer",background:view===v?"#fff":"transparent",color:view===v?"#111":"#6b7280",boxShadow:view===v?"0 1px 3px rgba(0,0,0,.1)":"none",transition:"all .15s"}}>{l}</button>
+            ))}
+          </div>
+          <button className="btn btn-primary" onClick={()=>setModal({})}>+ New Appointment</button>
+        </div>
+      </div>
+
+      {view==="cal"?(
+        <CalendarView appointments={appointments} onSelectAppt={a=>setModal(a)} onNewAppt={()=>setModal({})}/>
+      ):(
+        <>
+          <div className="card" style={{padding:"12px 14px",marginBottom:14,display:"flex",gap:12,flexWrap:"wrap",alignItems:"center"}}>
+            <input className="input" style={{maxWidth:280}} placeholder="🔍  Search name, service, email..." value={search} onChange={e=>setSearch(e.target.value)}/>
+            <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+              {["All",...APPT_STATUSES].map(s=>(
+                <button key={s} onClick={()=>setFilter(s)} style={{padding:"5px 12px",borderRadius:20,fontSize:12,fontWeight:600,border:"none",cursor:"pointer",background:filter===s?"#9d2040":"#f3f4f6",color:filter===s?"#fff":"#6b7280",transition:"all .15s"}}>{s}</button>
+              ))}
+            </div>
+            <span style={{marginLeft:"auto",fontSize:12,color:"#9ca3af"}}>{filtered.length} results</span>
+          </div>
+          <div className="card" style={{overflow:"hidden"}}>
+            <table>
+              <thead>
+                <tr>
+                  <th>Client</th><th>Service</th><th>Date & Time</th><th>Source</th><th>Status</th><th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map(a=>(
+                  <tr key={a.id}>
+                    <td>
+                      <div style={{fontWeight:600,color:"#111",fontSize:13}}>{a.client_name}</div>
+                      <div style={{fontSize:11,color:"#9ca3af"}}>{a.client_phone}</div>
+                    </td>
+                    <td>
+                      <span style={{background:SERVICE_COLORS[a.service]||"#f3f4f6",color:SERVICE_TEXT_COLORS[a.service]||"#374151",padding:"3px 8px",borderRadius:6,fontSize:12,fontWeight:500}}>{a.service}</span>
+                    </td>
+                    <td>
+                      <div style={{fontWeight:500,fontSize:13}}>{a.preferred_date}</div>
+                      <div style={{fontSize:11,color:"#9ca3af"}}>{a.preferred_time}</div>
+                    </td>
+                    <td><span className="tag">{a.source}</span></td>
+                    <td><Badge status={a.status}/></td>
+                    <td>
+                      <div style={{display:"flex",gap:10}}>
+                        <button onClick={()=>setModal(a)} style={{fontSize:12,color:"#2563eb",background:"none",border:"none",cursor:"pointer",fontWeight:500}}>Edit</button>
+                        <button onClick={()=>del(a.id)} style={{fontSize:12,color:"#dc2626",background:"none",border:"none",cursor:"pointer",fontWeight:500}}>Delete</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {filtered.length===0&&<tr><td colSpan={6} style={{textAlign:"center",color:"#9ca3af",padding:40}}>No appointments found</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+      {modal!==null&&<ApptModal appt={modal?.id?modal:null} onClose={()=>setModal(null)} onSave={save}/>}
+    </div>
+  );
+}
+
+// ─── Leads Page ───────────────────────────────────────────────────────────────
+function LeadsPage({leads,setLeads}){
+  const[modal,setModal]=useState(null);
+  const[filter,setFilter]=useState("All");
+  const[search,setSearch]=useState("");
+
+  const filtered=leads.filter(l=>{
+    const q=search.toLowerCase();
+    return(l.name.toLowerCase().includes(q)||l.service_interest.toLowerCase().includes(q)||l.email.toLowerCase().includes(q))&&(filter==="All"||l.status===filter);
+  });
+
+  const save=form=>{setLeads(prev=>prev.map(l=>l.id===form.id?form:l));setModal(null);};
+
+  return(
+    <div>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20}}>
+        <div>
+          <h1 className="playfair" style={{fontSize:24,fontWeight:700}}>Leads & Inquiries</h1>
+          <p style={{color:"#6b7280",fontSize:13,marginTop:2}}>{leads.filter(l=>l.status==="New").length} new leads need attention</p>
+        </div>
+      </div>
+      <div className="card" style={{padding:"12px 14px",marginBottom:14,display:"flex",gap:12,flexWrap:"wrap",alignItems:"center"}}>
+        <input className="input" style={{maxWidth:280}} placeholder="🔍  Search name, service, email..." value={search} onChange={e=>setSearch(e.target.value)}/>
+        <div style={{display:"flex",gap:6}}>
+          {["All",...LEAD_STATUSES].map(s=>(
+            <button key={s} onClick={()=>setFilter(s)} style={{padding:"5px 12px",borderRadius:20,fontSize:12,fontWeight:600,border:"none",cursor:"pointer",background:filter===s?"#9d2040":"#f3f4f6",color:filter===s?"#fff":"#6b7280",transition:"all .15s"}}>{s}</button>
+          ))}
+        </div>
+      </div>
+      <div style={{display:"flex",flexDirection:"column",gap:10}}>
+        {filtered.map(l=>(
+          <div key={l.id} className="card" style={{padding:16,cursor:"pointer",transition:"box-shadow .15s"}} onClick={()=>setModal(l)}
+            onMouseEnter={e=>e.currentTarget.style.boxShadow="0 4px 12px rgba(0,0,0,.1)"}
+            onMouseLeave={e=>e.currentTarget.style.boxShadow="0 1px 3px rgba(0,0,0,.08)"}>
+            <div style={{display:"flex",alignItems:"flex-start",gap:12}}>
+              <div style={{width:40,height:40,borderRadius:10,background:"#fde8ef",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0}}>👤</div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:4}}>
+                  <span style={{fontWeight:700,fontSize:14,color:"#111"}}>{l.name}</span>
+                  <Badge status={l.status}/>
+                  <span className="tag">{l.form_type}</span>
+                </div>
+                <div style={{fontSize:12,color:"#6b7280",marginBottom:4}}>{l.service_interest} · {l.email} · {l.phone}</div>
+                <div style={{fontSize:13,color:"#374151",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:500}}>{l.message}</div>
+              </div>
+              <div style={{textAlign:"right",flexShrink:0}}>
+                <div style={{fontSize:11,color:"#9ca3af",marginBottom:6}}>{timeAgo(l.created_date)}</div>
+                <div style={{display:"flex",gap:6}}>
+                  <a href={`mailto:${l.email}`} onClick={e=>e.stopPropagation()} style={{fontSize:11,background:"#f3f4f6",padding:"4px 8px",borderRadius:6,textDecoration:"none",color:"#374151"}}>📧 Email</a>
+                  <a href={`tel:${l.phone}`} onClick={e=>e.stopPropagation()} style={{fontSize:11,background:"#f3f4f6",padding:"4px 8px",borderRadius:6,textDecoration:"none",color:"#374151"}}>📞 Call</a>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+        {filtered.length===0&&<div className="card" style={{padding:40,textAlign:"center",color:"#9ca3af"}}>No leads found</div>}
+      </div>
+      {modal&&<LeadModal lead={modal} onClose={()=>setModal(null)} onSave={save}/>}
+    </div>
+  );
+}
+
+// ─── Blog Page ────────────────────────────────────────────────────────────────
+function BlogPage({posts,setPosts}){
+  const[modal,setModal]=useState(null);
+  const[filter,setFilter]=useState("All");
+
+  const filtered=posts.filter(p=>filter==="All"||p.status===filter);
+  const save=form=>{
+    if(form.id) setPosts(prev=>prev.map(p=>p.id===form.id?{...p,...form}:p));
+    else setPosts(prev=>[{...form,id:"p"+Date.now()},...prev]);
+    setModal(null);
+  };
+  const del=id=>{if(confirm("Delete this post?"))setPosts(prev=>prev.filter(p=>p.id!==id))};
+  const toggle=id=>setPosts(prev=>prev.map(p=>p.id===id?{...p,status:p.status==="Published"?"Draft":"Published"}:p));
+
+  return(
+    <div>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20}}>
+        <div>
+          <h1 className="playfair" style={{fontSize:24,fontWeight:700}}>Blog Posts</h1>
+          <p style={{color:"#6b7280",fontSize:13,marginTop:2}}>{posts.filter(p=>p.status==="Published").length} published · {posts.filter(p=>p.status==="Draft").length} drafts</p>
+        </div>
+        <button className="btn btn-primary" onClick={()=>setModal({})}>+ New Post</button>
+      </div>
+      <div style={{display:"flex",gap:6,marginBottom:14}}>
+        {["All","Published","Draft"].map(s=>(
+          <button key={s} onClick={()=>setFilter(s)} style={{padding:"5px 14px",borderRadius:20,fontSize:12,fontWeight:600,border:"none",cursor:"pointer",background:filter===s?"#9d2040":"#f3f4f6",color:filter===s?"#fff":"#6b7280",transition:"all .15s"}}>{s}</button>
+        ))}
+      </div>
+      <div style={{display:"flex",flexDirection:"column",gap:10}}>
+        {filtered.map(p=>(
+          <div key={p.id} className="card" style={{padding:16,display:"flex",gap:14,alignItems:"flex-start"}}>
+            <div style={{width:64,height:64,borderRadius:10,background:"linear-gradient(135deg,#9d2040,#c0392b)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,flexShrink:0,overflow:"hidden"}}>
+              {p.cover_image?<img src={p.cover_image} style={{width:"100%",height:"100%",objectFit:"cover"}} alt=""/>:"✍️"}
+            </div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4,flexWrap:"wrap"}}>
+                <span style={{fontWeight:700,fontSize:14,color:"#111"}}>{p.title}</span>
+                <Badge status={p.status}/>
+              </div>
+              <div style={{fontSize:12,color:"#6b7280",marginBottom:4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.excerpt}</div>
+              <div style={{display:"flex",gap:12,fontSize:11,color:"#9ca3af",flexWrap:"wrap"}}>
+                <span>📁 {p.category}</span>
+                <span>✍️ {p.author}</span>
+                {p.published_date&&<span>📅 {p.published_date}</span>}
+                {p.tags&&p.tags.split(",").slice(0,2).map(t=><span key={t} className="tag">{t.trim()}</span>)}
+              </div>
+            </div>
+            <div style={{display:"flex",flexDirection:"column",gap:6,alignItems:"flex-end",flexShrink:0}}>
+              <button className="btn btn-ghost" style={{fontSize:12,padding:"5px 12px"}} onClick={()=>setModal(p)}>Edit</button>
+              <button onClick={()=>toggle(p.id)} style={{padding:"5px 12px",borderRadius:8,fontSize:12,fontWeight:600,border:"none",cursor:"pointer",background:p.status==="Published"?"#fef3c7":"#dcfce7",color:p.status==="Published"?"#92400e":"#065f46"}}>
+                {p.status==="Published"?"Unpublish":"Publish"}
+              </button>
+              <button onClick={()=>del(p.id)} style={{fontSize:12,color:"#dc2626",background:"none",border:"none",cursor:"pointer",padding:"5px 12px"}}>Delete</button>
+            </div>
+          </div>
+        ))}
+      </div>
+      {modal!==null&&<BlogModal post={modal?.id?modal:null} onClose={()=>setModal(null)} onSave={save}/>}
+    </div>
+  );
+}
+
+// ─── Main App ─────────────────────────────────────────────────────────────────
+function App(){
+  const[page,setPage]=useState("dashboard");
+  const[appointments,setAppointments]=useState(DB.appointments);
+  const[leads,setLeads]=useState(DB.leads);
+  const[posts,setPosts]=useState(DB.posts);
+  const[sidebarOpen,setSidebarOpen]=useState(true);
+
+  const pending=appointments.filter(a=>a.status==="Pending").length;
+  const newLeads=leads.filter(l=>l.status==="New").length;
+
+  const nav=[
+    {id:"dashboard",icon:"🏠",label:"Dashboard"},
+    {id:"appointments",icon:"📅",label:"Appointments",badge:pending},
+    {id:"calendar",icon:"🗓️",label:"Calendar"},
+    {id:"leads",icon:"💬",label:"Leads",badge:newLeads},
+    {id:"blog",icon:"✍️",label:"Blog Posts"},
+  ];
+
+  return(
+    <div style={{display:"flex",minHeight:"100vh"}}>
+      {/* Sidebar */}
+      <div className="sidebar" style={{flexShrink:0}}>
+        <div style={{padding:"20px 16px 16px",borderBottom:"1px solid #1f1f1f"}}>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <div style={{width:36,height:36,borderRadius:8,background:"#9d2040",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:15,color:"#fff",flexShrink:0}}>C</div>
+            <div>
+              <div className="playfair" style={{fontWeight:700,fontSize:14,color:"#fff",letterSpacing:".5px"}}>CAIR SPA</div>
+              <div style={{fontSize:10,color:"#4b5563",fontWeight:500,textTransform:"uppercase",letterSpacing:".5px"}}>Admin Portal</div>
+            </div>
+          </div>
+        </div>
+
+        <nav style={{flex:1,padding:"12px 0"}}>
+          <div style={{padding:"4px 16px 8px",fontSize:9,fontWeight:700,color:"#4b5563",textTransform:"uppercase",letterSpacing:"1px"}}>Navigation</div>
+          {nav.map(n=>(
+            <div key={n.id} className={`nav-item${page===n.id?" active":""}`} onClick={()=>setPage(n.id)}>
+              <span style={{fontSize:15}}>{n.icon}</span>
+              <span style={{flex:1}}>{n.label}</span>
+              {n.badge>0&&<span style={{background:page===n.id?"rgba(255,255,255,.25)":"#9d2040",color:"#fff",fontSize:10,fontWeight:700,borderRadius:10,padding:"1px 6px",minWidth:18,textAlign:"center"}}>{n.badge}</span>}
+            </div>
+          ))}
+        </nav>
+
+        <div style={{padding:"12px 16px",borderTop:"1px solid #1f1f1f"}}>
+          <a href="https://cairspa.com" target="_blank" style={{display:"flex",alignItems:"center",gap:8,fontSize:12,color:"#6b7280",textDecoration:"none",padding:"8px 10px",borderRadius:8,background:"#1a1a1a"}}>
+            <span>🌐</span> <span>cairspa.com</span> <span style={{marginLeft:"auto",fontSize:10}}>↗</span>
+          </a>
+        </div>
+      </div>
+
+      {/* Main */}
+      <div style={{flex:1,overflow:"auto",background:"#f8f7f5"}}>
+        {/* Top bar */}
+        <div style={{background:"#fff",borderBottom:"1px solid #f3f4f6",padding:"12px 28px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:10}}>
+          <div style={{fontSize:13,color:"#6b7280"}}>
+            {new Date().toLocaleDateString("en-US",{weekday:"long",year:"numeric",month:"long",day:"numeric"})}
+          </div>
+          <div style={{display:"flex",alignItems:"center",gap:12}}>
+            {newLeads>0&&<div style={{display:"flex",alignItems:"center",gap:6,background:"#fef3c7",borderRadius:8,padding:"5px 10px",fontSize:12,fontWeight:600,color:"#92400e",cursor:"pointer"}} onClick={()=>setPage("leads")}>
+              <span className="notif-dot"/>  {newLeads} new lead{newLeads>1?"s":""}
+            </div>}
+            <div style={{width:32,height:32,borderRadius:8,background:"#9d2040",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:700,fontSize:13}}>A</div>
+          </div>
+        </div>
+
+        <div style={{padding:"28px 28px",maxWidth:1100,margin:"0 auto"}}>
+          {page==="dashboard"&&<Dashboard appointments={appointments} leads={leads} posts={posts} onNav={setPage}/>}
+          {page==="appointments"&&<AppointmentsPage appointments={appointments} setAppointments={setAppointments}/>}
+          {page==="calendar"&&<CalendarView appointments={appointments} onSelectAppt={a=>{setPage("appointments");}} onNewAppt={()=>setPage("appointments")}/>}
+          {page==="leads"&&<LeadsPage leads={leads} setLeads={setLeads}/>}
+          {page==="blog"&&<BlogPage posts={posts} setPosts={setPosts}/>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
