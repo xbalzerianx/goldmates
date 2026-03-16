@@ -3,279 +3,214 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>CAIR SPA — Admin Dashboard</title>
+<title>CAIR SPA — Admin</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@base44/sdk/dist/index.umd.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 <style>
-  body { font-family: 'Inter', sans-serif; background: #faf9f7; }
-  .playfair { font-family: 'Playfair Display', serif; }
-  .sidebar-link { transition: all 0.2s; }
-  .sidebar-link:hover { background: rgba(157,32,64,0.08); }
-  .sidebar-link.active { background: rgba(157,32,64,0.12); border-right: 3px solid #9d2040; color: #9d2040; }
-  .badge-pending { background:#fff3cd; color:#856404; }
-  .badge-confirmed { background:#d1e7dd; color:#0f5132; }
-  .badge-completed { background:#cfe2ff; color:#084298; }
-  .badge-cancelled { background:#f8d7da; color:#842029; }
-  .badge-new { background:#fff3cd; color:#856404; }
-  .badge-contacted { background:#cfe2ff; color:#084298; }
-  .badge-converted { background:#d1e7dd; color:#0f5132; }
-  .badge-published { background:#d1e7dd; color:#0f5132; }
-  .badge-draft { background:#e2e3e5; color:#41464b; }
-  .card { background:white; border-radius:12px; box-shadow:0 1px 4px rgba(0,0,0,0.07); }
-  .btn-primary { background:#9d2040; color:white; border-radius:8px; padding:8px 18px; font-weight:500; transition:background 0.2s; }
-  .btn-primary:hover { background:#7d1932; }
-  .btn-secondary { background:#f3f4f6; color:#374151; border-radius:8px; padding:8px 18px; font-weight:500; transition:background 0.2s; }
-  .btn-secondary:hover { background:#e5e7eb; }
-  .input { border:1px solid #e5e7eb; border-radius:8px; padding:8px 12px; width:100%; font-size:14px; outline:none; transition:border 0.2s; }
-  .input:focus { border-color:#9d2040; }
-  .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:50; display:flex; align-items:center; justify-content:center; padding:20px; }
-  .modal { background:white; border-radius:16px; padding:28px; width:100%; max-width:640px; max-height:90vh; overflow-y:auto; }
-  .prose h1,.prose h2,.prose h3 { font-family:'Playfair Display',serif; margin:1em 0 0.5em; }
-  .prose p { margin:0.5em 0; line-height:1.7; }
-  .prose ul,.prose ol { padding-left:1.5em; margin:0.5em 0; }
-  textarea.input { min-height:120px; resize:vertical; }
-  .rich-toolbar button { padding:4px 10px; border:1px solid #e5e7eb; border-radius:4px; font-size:12px; cursor:pointer; }
-  .rich-toolbar button:hover { background:#f3f4f6; }
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:#f8f7f5;color:#1a1a1a}
+.playfair{font-family:'Playfair Display',serif}
+.sidebar{width:240px;min-height:100vh;background:#0f0f0f;display:flex;flex-direction:column;position:fixed;left:0;top:0;bottom:0;z-index:20}
+.main-content{margin-left:240px;min-height:100vh;display:flex;flex-direction:column}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 16px;border-radius:8px;cursor:pointer;font-size:13.5px;font-weight:500;color:#9ca3af;transition:all .15s;margin:1px 8px}
+.nav-item:hover{background:#1f1f1f;color:#fff}
+.nav-item.active{background:#9d2040;color:#fff}
+.card{background:#fff;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.3px}
+.badge-pending{background:#fef3c7;color:#92400e}
+.badge-confirmed{background:#d1fae5;color:#065f46}
+.badge-completed{background:#dbeafe;color:#1e40af}
+.badge-cancelled{background:#fee2e2;color:#991b1b}
+.badge-new{background:#fef9c3;color:#92400e}
+.badge-contacted{background:#dbeafe;color:#1e40af}
+.badge-converted{background:#d1fae5;color:#065f46}
+.badge-closed{background:#f3f4f6;color:#6b7280}
+.badge-published{background:#d1fae5;color:#065f46}
+.badge-draft{background:#f3f4f6;color:#6b7280}
+.btn{padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .15s;display:inline-flex;align-items:center;gap:6px}
+.btn-primary{background:#9d2040;color:#fff}
+.btn-primary:hover{background:#7d1830}
+.btn-ghost{background:transparent;color:#6b7280;border:1px solid #e5e7eb}
+.btn-ghost:hover{background:#f9fafb}
+.input{width:100%;padding:9px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;outline:none;font-family:'Inter',sans-serif;transition:border .15s;background:#fff}
+.input:focus{border-color:#9d2040;box-shadow:0 0 0 3px rgba(157,32,64,.08)}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px}
+.modal{background:#fff;border-radius:16px;width:100%;max-width:600px;max-height:90vh;overflow-y:auto;padding:28px}
+.cal-day{min-height:90px;border:1px solid #f3f4f6;border-radius:8px;padding:6px;cursor:pointer;transition:background .1s}
+.cal-day:hover{background:#fdf2f5}
+.cal-day.today{border-color:#9d2040;background:#fff5f7}
+.cal-day.other-month{background:#fafafa;opacity:.6}
+.cal-event{font-size:10px;padding:2px 5px;border-radius:4px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;padding:10px 14px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#9ca3af;background:#f9fafb;border-bottom:1px solid #f3f4f6}
+td{padding:12px 14px;font-size:13px;border-bottom:1px solid #f9fafb;vertical-align:middle}
+tr:hover td{background:#fafafa}
+.tag{display:inline-block;background:#f3f4f6;color:#6b7280;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:500}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-thumb{background:#e5e7eb;border-radius:3px}
+.loading{display:flex;align-items:center;justify-content:center;padding:60px;color:#9ca3af;font-size:14px;gap:10px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spinner{width:18px;height:18px;border:2px solid #e5e7eb;border-top-color:#9d2040;border-radius:50%;animation:spin .7s linear infinite}
 </style>
 </head>
 <body>
 <div id="root"></div>
 <script type="text/babel">
-const { useState, useEffect, useCallback } = React;
+const {useState,useEffect,useCallback,useMemo,useRef}=React;
 
-// ── Mock API (replace with real Base44 SDK calls) ──────────────────────────
-const SERVICES = ["Dermal Fillers","Hydrafacial","RF Microneedling","Thread Lift","IV Infusions","Skin Rejuvenation","Vein Treatment","Weight Loss Injections","Exosome Therapy","NAD Therapy","Hair Transplant ARTAS","Other"];
-const TIMES = ["9:00 AM","10:00 AM","11:00 AM","12:00 PM","1:00 PM","2:00 PM","3:00 PM","4:00 PM","5:00 PM"];
-const CATEGORIES = ["Skin Care","Body Treatments","Hair","Wellness","News","Tips"];
-
-function useMockData() {
-  const [appointments, setAppointments] = useState([
-    { id:"1", client_name:"Jennifer M.", client_email:"jen@email.com", client_phone:"(949) 555-0101", service:"Dermal Fillers", preferred_date:"2026-03-18", preferred_time:"10:00 AM", status:"Confirmed", notes:"First time client", source:"Website Form", created_date:"2026-03-15" },
-    { id:"2", client_name:"Lisa R.", client_email:"lisa@email.com", client_phone:"(714) 555-0202", service:"Hydrafacial", preferred_date:"2026-03-19", preferred_time:"2:00 PM", status:"Pending", notes:"", source:"Callback Request", created_date:"2026-03-15" },
-    { id:"3", client_name:"David L.", client_email:"david@email.com", client_phone:"(949) 555-0303", service:"RF Microneedling", preferred_date:"2026-03-20", preferred_time:"11:00 AM", status:"Pending", notes:"Has acne scars", source:"Website Form", created_date:"2026-03-16" },
-    { id:"4", client_name:"Patricia G.", client_email:"pat@email.com", client_phone:"(714) 555-0404", service:"Thread Lift", preferred_date:"2026-03-17", preferred_time:"3:00 PM", status:"Completed", notes:"", source:"Phone", created_date:"2026-03-10" },
-  ]);
-  const [leads, setLeads] = useState([
-    { id:"1", name:"Maria G.", email:"maria@email.com", phone:"(714) 555-0505", service_interest:"Vein Treatment", message:"Interested in spider vein treatment on legs.", form_type:"Contact", status:"New", created_date:"2026-03-16" },
-    { id:"2", name:"James R.", email:"james@email.com", phone:"(949) 555-0606", service_interest:"Weight Loss Injections", message:"Want to know more about the weight loss program.", form_type:"Callback Request", status:"Contacted", created_date:"2026-03-14" },
-    { id:"3", name:"Sarah T.", email:"sarah@email.com", phone:"(714) 555-0707", service_interest:"Exosome Therapy", message:"What is exosome therapy and what does it cost?", form_type:"General Inquiry", status:"New", created_date:"2026-03-16" },
-  ]);
-  const [posts, setPosts] = useState([
-    { id:"1", title:"5 Benefits of Hydrafacial for All Skin Types", slug:"hydrafacial-benefits", excerpt:"Discover why Hydrafacial is the #1 facial treatment in America and how it can transform your skin.", category:"Skin Care", author:"CAIR SPA Team", status:"Published", published_date:"2026-03-10", cover_image:"", tags:"hydrafacial,skin,glow", content:"<h2>What is a HydraFacial?</h2><p>HydraFacial is a patented skin treatment that cleanses, extracts, and hydrates the skin simultaneously...</p>", seo_title:"", seo_description:"" },
-    { id:"2", title:"RF Microneedling: What to Expect Before and After", slug:"rf-microneedling-guide", excerpt:"Everything you need to know about radiofrequency microneedling — from preparation to recovery.", category:"Skin Care", author:"CAIR SPA Team", status:"Draft", published_date:"", cover_image:"", tags:"microneedling,rf,skin tightening", content:"<h2>What is RF Microneedling?</h2><p>Radiofrequency microneedling combines two powerful treatments into one...</p>", seo_title:"", seo_description:"" },
-  ]);
-  return { appointments, setAppointments, leads, setLeads, posts, setPosts };
+// ── Base44 SDK Setup ──────────────────────────────────────────────────────────
+const APP_ID = "69b7cae883aa8d618e49d211";
+let sdk;
+try {
+  sdk = Base44.createClient({ appId: APP_ID });
+} catch(e) {
+  console.warn("SDK init:", e);
 }
 
-// ── Helpers ────────────────────────────────────────────────────────────────
-function Badge({ status }) {
-  const s = (status||"").toLowerCase().replace(/\s/g,"-");
-  return <span className={`badge-${s} text-xs font-medium px-2.5 py-1 rounded-full`}>{status}</span>;
-}
+const Appointment = sdk?.entities?.Appointment;
+const LeadForm = sdk?.entities?.LeadForm;
+const BlogPost = sdk?.entities?.BlogPost;
+const User = sdk?.entities?.User;
+const auth = sdk?.auth;
 
-function StatCard({ icon, label, value, sub, color }) {
-  return (
-    <div className="card p-5 flex items-center gap-4">
-      <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl`} style={{background: color+'20'}}>
-        {icon}
-      </div>
-      <div>
-        <div className="text-2xl font-bold text-gray-800">{value}</div>
-        <div className="text-sm text-gray-500">{label}</div>
-        {sub && <div className="text-xs text-gray-400 mt-0.5">{sub}</div>}
+// ── Constants ─────────────────────────────────────────────────────────────────
+const SERVICES=["Dermal Fillers","Hydrafacial","RF Microneedling","Thread Lift","IV Infusions","Skin Rejuvenation","Vein Treatment","Weight Loss Injections","Exosome Therapy","NAD Therapy","Hair Transplant ARTAS","Other"];
+const TIMES=["9:00 AM","10:00 AM","11:00 AM","12:00 PM","1:00 PM","2:00 PM","3:00 PM","4:00 PM","5:00 PM"];
+const APPT_STATUSES=["Pending","Confirmed","Completed","Cancelled"];
+const LEAD_STATUSES=["New","Contacted","Converted","Closed"];
+const CATEGORIES=["Skin Care","Body Treatments","Hair","Wellness","News","Tips"];
+const SVC_COLOR={"Dermal Fillers":["#fde8ef","#9d174d"],"Hydrafacial":["#e0f2fe","#0369a1"],"RF Microneedling":["#f0fdf4","#166534"],"Thread Lift":["#fef9c3","#854d0e"],"IV Infusions":["#ede9fe","#5b21b6"],"Skin Rejuvenation":["#fff7ed","#c2410c"],"Vein Treatment":["#f0f9ff","#0c4a6e"],"Weight Loss Injections":["#fdf4ff","#7e22ce"],"Exosome Therapy":["#f0fdf4","#14532d"],"NAD Therapy":["#eff6ff","#1e3a8a"],"Hair Transplant ARTAS":["#fff1f2","#881337"],"Other":["#f9fafb","#374151"]};
+const STATUS_COLORS={Confirmed:["#dcfce7","#166534"],Pending:["#fef3c7","#92400e"],Completed:["#dbeafe","#1e40af"],Cancelled:["#fee2e2","#991b1b"]};
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+const fmt=d=>{if(!d)return"";return new Date(d).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})};
+const timeAgo=d=>{if(!d)return"";const m=Math.floor((Date.now()-new Date(d))/60000);if(m<1)return"just now";if(m<60)return`${m}m ago`;const h=Math.floor(m/60);if(h<24)return`${h}h ago`;return`${Math.floor(h/24)}d ago`};
+const todayStr=()=>new Date().toISOString().split("T")[0];
+
+function Badge({status}){
+  const k=(status||"").toLowerCase().replace(/\s+/g,"-");
+  return <span className={`badge badge-${k}`}>{status}</span>;
+}
+function Spinner(){return <div className="spinner"/>}
+function Loading(){return <div className="loading"><Spinner/>Loading...</div>}
+
+// ── Login Page ────────────────────────────────────────────────────────────────
+function LoginPage({onLogin}){
+  const[email,setEmail]=useState("admincairspa@cairspa.com");
+  const[pass,setPass]=useState("");
+  const[err,setErr]=useState("");
+  const[loading,setLoading]=useState(false);
+
+  const submit=async(e)=>{
+    e.preventDefault();
+    setLoading(true);setErr("");
+    try{
+      await auth.login(email,pass);
+      onLogin();
+    }catch(e2){
+      setErr("Invalid email or password. Please try again.");
+    }finally{setLoading(false);}
+  };
+
+  return(
+    <div style={{minHeight:"100vh",background:"linear-gradient(135deg,#0f0f0f 0%,#1a0a12 50%,#0f0f0f 100%)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+      <div style={{width:"100%",maxWidth:400}}>
+        <div style={{textAlign:"center",marginBottom:32}}>
+          <div style={{width:60,height:60,background:"#9d2040",borderRadius:16,display:"flex",alignItems:"center",justifyContent:"center",fontSize:26,fontWeight:900,color:"#fff",margin:"0 auto 16px"}}>C</div>
+          <h1 className="playfair" style={{fontSize:28,fontWeight:700,color:"#fff",marginBottom:6}}>CAIR SPA</h1>
+          <p style={{color:"#6b7280",fontSize:13}}>Admin Portal</p>
+        </div>
+        <form onSubmit={submit} style={{background:"#fff",borderRadius:16,padding:28,boxShadow:"0 20px 60px rgba(0,0,0,.4)"}}>
+          <div style={{marginBottom:16}}>
+            <label style={{fontSize:11,fontWeight:700,color:"#6b7280",display:"block",marginBottom:6,textTransform:"uppercase",letterSpacing:".5px"}}>Email</label>
+            <input className="input" type="email" value={email} onChange={e=>setEmail(e.target.value)} required autoFocus/>
+          </div>
+          <div style={{marginBottom:20}}>
+            <label style={{fontSize:11,fontWeight:700,color:"#6b7280",display:"block",marginBottom:6,textTransform:"uppercase",letterSpacing:".5px"}}>Password</label>
+            <input className="input" type="password" value={pass} onChange={e=>setPass(e.target.value)} placeholder="••••••••••••••" required/>
+          </div>
+          {err&&<div style={{background:"#fee2e2",color:"#991b1b",borderRadius:8,padding:"10px 14px",fontSize:13,marginBottom:16}}>{err}</div>}
+          <button type="submit" className="btn btn-primary" style={{width:"100%",justifyContent:"center",padding:"11px 0",fontSize:14}} disabled={loading}>
+            {loading?<><Spinner/>Signing in...</>:"Sign In"}
+          </button>
+        </form>
       </div>
     </div>
   );
 }
 
-// ── Booking Form Modal ─────────────────────────────────────────────────────
-function BookingModal({ appt, onClose, onSave }) {
-  const [form, setForm] = useState(appt || { client_name:"", client_email:"", client_phone:"", service:"Dermal Fillers", preferred_date:"", preferred_time:"9:00 AM", notes:"", status:"Pending", source:"Website Form" });
-  const set = (k,v) => setForm(f => ({...f,[k]:v}));
-  return (
-    <div className="modal-overlay" onClick={e => e.target===e.currentTarget && onClose()}>
+// ── Appointment Modal ─────────────────────────────────────────────────────────
+function ApptModal({appt,onClose,onSave}){
+  const[form,setForm]=useState(appt||{client_name:"",client_email:"",client_phone:"",service:"Dermal Fillers",preferred_date:"",preferred_time:"10:00 AM",notes:"",status:"Pending",source:"Website Form"});
+  const[saving,setSaving]=useState(false);
+  const set=(k,v)=>setForm(f=>({...f,[k]:v}));
+
+  const save=async()=>{
+    setSaving(true);
+    try{await onSave(form);}finally{setSaving(false);}
+  };
+
+  return(
+    <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&onClose()}>
       <div className="modal">
-        <div className="flex justify-between items-center mb-5">
-          <h2 className="playfair text-xl font-bold text-gray-800">{appt ? "Edit Appointment" : "New Appointment"}</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+          <h2 className="playfair" style={{fontSize:20,fontWeight:700}}>{appt?.id?"Edit Appointment":"New Appointment"}</h2>
+          <button onClick={onClose} style={{background:"none",border:"none",fontSize:22,cursor:"pointer",color:"#9ca3af",lineHeight:1}}>✕</button>
         </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="col-span-2 sm:col-span-1">
-            <label className="text-xs font-medium text-gray-500 mb-1 block">Client Name</label>
-            <input className="input" value={form.client_name} onChange={e=>set("client_name",e.target.value)} placeholder="Full name"/>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+          <div style={{gridColumn:"1/-1"}}>
+            <label style={{fontSize:11,fontWeight:600,color:"#6b7280",display:"block",marginBottom:4,textTransform:"uppercase",letterSpacing:".4px"}}>Client Name *</label>
+            <input className="input" value={form.client_name} onChange={e=>set("client_name",e.target.value)}/>
           </div>
-          <div className="col-span-2 sm:col-span-1">
-            <label className="text-xs font-medium text-gray-500 mb-1 block">Phone</label>
-            <input className="input" value={form.client_phone} onChange={e=>set("client_phone",e.target.value)} placeholder="(949) 000-0000"/>
+          <div>
+            <label style={{fontSize:11,fontWeight:600,color:"#6b7280",display:"block",marginBottom:4,textTransform:"uppercase",letterSpacing:".4px"}}>Phone</label>
+            <input className="input" value={form.client_phone} onChange={e=>set("client_phone",e.target.value)}/>
           </div>
-          <div className="col-span-2">
-            <label className="text-xs font-medium text-gray-500 mb-1 block">Email</label>
-            <input className="input" value={form.client_email} onChange={e=>set("client_email",e.target.value)} placeholder="email@example.com"/>
+          <div>
+            <label style={{fontSize:11,fontWeight:600,color:"#6b7280",display:"block",marginBottom:4,textTransform:"uppercase",letterSpacing:".4px"}}>Email</label>
+            <input className="input" type="email" value={form.client_email} onChange={e=>set("client_email",e.target.value)}/>
           </div>
-          <div className="col-span-2">
-            <label className="text-xs font-medium text-gray-500 mb-1 block">Service</label>
+          <div style={{gridColumn:"1/-1"}}>
+            <label style={{fontSize:11,fontWeight:600,color:"#6b7280",display:"block",marginBottom:4,textTransform:"uppercase",letterSpacing:".4px"}}>Service</label>
             <select className="input" value={form.service} onChange={e=>set("service",e.target.value)}>
               {SERVICES.map(s=><option key={s}>{s}</option>)}
             </select>
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-500 mb-1 block">Preferred Date</label>
+            <label style={{fontSize:11,fontWeight:600,color:"#6b7280",display:"block",marginBottom:4,textTransform:"uppercase",letterSpacing:".4px"}}>Date</label>
             <input type="date" className="input" value={form.preferred_date} onChange={e=>set("preferred_date",e.target.value)}/>
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-500 mb-1 block">Preferred Time</label>
+            <label style={{fontSize:11,fontWeight:600,color:"#6b7280",display:"block",marginBottom:4,textTransform:"uppercase",letterSpacing:".4px"}}>Time</label>
             <select className="input" value={form.preferred_time} onChange={e=>set("preferred_time",e.target.value)}>
               {TIMES.map(t=><option key={t}>{t}</option>)}
             </select>
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-500 mb-1 block">Status</label>
+            <label style={{fontSize:11,fontWeight:600,color:"#6b7280",display:"block",marginBottom:4,textTransform:"uppercase",letterSpacing:".4px"}}>Status</label>
             <select className="input" value={form.status} onChange={e=>set("status",e.target.value)}>
-              {["Pending","Confirmed","Completed","Cancelled"].map(s=><option key={s}>{s}</option>)}
+              {APPT_STATUSES.map(s=><option key={s}>{s}</option>)}
             </select>
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-500 mb-1 block">Source</label>
+            <label style={{fontSize:11,fontWeight:600,color:"#6b7280",display:"block",marginBottom:4,textTransform:"uppercase",letterSpacing:".4px"}}>Source</label>
             <select className="input" value={form.source} onChange={e=>set("source",e.target.value)}>
               {["Website Form","Callback Request","Walk-in","Phone"].map(s=><option key={s}>{s}</option>)}
             </select>
           </div>
-          <div className="col-span-2">
-            <label className="text-xs font-medium text-gray-500 mb-1 block">Notes</label>
-            <textarea className="input" rows={3} value={form.notes} onChange={e=>set("notes",e.target.value)} placeholder="Any special notes..."/>
+          <div style={{gridColumn:"1/-1"}}>
+            <label style={{fontSize:11,fontWeight:600,color:"#6b7280",display:"block",marginBottom:4,textTransform:"uppercase",letterSpacing:".4px"}}>Notes</label>
+            <textarea className="input" rows={3} style={{resize:"vertical"}} value={form.notes} onChange={e=>set("notes",e.target.value)}/>
           </div>
         </div>
-        <div className="flex gap-3 mt-6 justify-end">
-          <button className="btn-secondary" onClick={onClose}>Cancel</button>
-          <button className="btn-primary" onClick={()=>onSave(form)}>Save Appointment</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Blog Editor Modal ──────────────────────────────────────────────────────
-function BlogModal({ post, onClose, onSave }) {
-  const [form, setForm] = useState(post || { title:"", slug:"", excerpt:"", content:"", cover_image:"", category:"Skin Care", tags:"", author:"CAIR SPA Team", status:"Draft", published_date:"", seo_title:"", seo_description:"" });
-  const [tab, setTab] = useState("content");
-  const set = (k,v) => setForm(f=>({...f,[k]:v}));
-
-  const genSlug = (title) => title.toLowerCase().replace(/[^a-z0-9\s]/g,"").replace(/\s+/g,"-");
-
-  const insertFormat = (tag) => {
-    const ta = document.getElementById("blog-content-editor");
-    if (!ta) return;
-    const start = ta.selectionStart, end = ta.selectionEnd;
-    const sel = form.content.substring(start,end) || "text";
-    let insertion = "";
-    if (tag==="b") insertion = `<strong>${sel}</strong>`;
-    else if (tag==="i") insertion = `<em>${sel}</em>`;
-    else if (tag==="h2") insertion = `\n<h2>${sel}</h2>\n`;
-    else if (tag==="h3") insertion = `\n<h3>${sel}</h3>\n`;
-    else if (tag==="ul") insertion = `\n<ul>\n  <li>${sel}</li>\n</ul>\n`;
-    else if (tag==="p") insertion = `\n<p>${sel}</p>\n`;
-    const newContent = form.content.substring(0,start) + insertion + form.content.substring(end);
-    set("content", newContent);
-  };
-
-  return (
-    <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
-      <div className="modal" style={{maxWidth:"760px"}}>
-        <div className="flex justify-between items-center mb-5">
-          <h2 className="playfair text-xl font-bold text-gray-800">{post?"Edit Post":"New Blog Post"}</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
-        </div>
-
-        <div className="flex gap-2 mb-5 border-b">
-          {["content","seo"].map(t=>(
-            <button key={t} onClick={()=>setTab(t)} className={`px-4 py-2 text-sm font-medium capitalize ${tab===t?"border-b-2 border-red-800 text-red-800":"text-gray-500"}`}>{t==="seo"?"SEO Settings":t}</button>
-          ))}
-        </div>
-
-        {tab==="content" && (
-          <div className="space-y-4">
-            <div>
-              <label className="text-xs font-medium text-gray-500 mb-1 block">Title</label>
-              <input className="input" value={form.title} onChange={e=>{set("title",e.target.value);set("slug",genSlug(e.target.value));}} placeholder="Post title..."/>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-xs font-medium text-gray-500 mb-1 block">Slug (URL)</label>
-                <input className="input" value={form.slug} onChange={e=>set("slug",e.target.value)} placeholder="post-url-slug"/>
-              </div>
-              <div>
-                <label className="text-xs font-medium text-gray-500 mb-1 block">Category</label>
-                <select className="input" value={form.category} onChange={e=>set("category",e.target.value)}>
-                  {CATEGORIES.map(c=><option key={c}>{c}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="text-xs font-medium text-gray-500 mb-1 block">Author</label>
-                <input className="input" value={form.author} onChange={e=>set("author",e.target.value)}/>
-              </div>
-              <div>
-                <label className="text-xs font-medium text-gray-500 mb-1 block">Status</label>
-                <select className="input" value={form.status} onChange={e=>set("status",e.target.value)}>
-                  <option>Draft</option><option>Published</option>
-                </select>
-              </div>
-            </div>
-            <div>
-              <label className="text-xs font-medium text-gray-500 mb-1 block">Excerpt (shown in blog list)</label>
-              <textarea className="input" rows={2} value={form.excerpt} onChange={e=>set("excerpt",e.target.value)} placeholder="Short description of the article..."/>
-            </div>
-            <div>
-              <label className="text-xs font-medium text-gray-500 mb-1 block">Cover Image URL</label>
-              <input className="input" value={form.cover_image} onChange={e=>set("cover_image",e.target.value)} placeholder="https://..."/>
-            </div>
-            <div>
-              <label className="text-xs font-medium text-gray-500 mb-2 block">Content (HTML)</label>
-              <div className="rich-toolbar flex gap-1 mb-2 flex-wrap">
-                {[["B","b"],["I","i"],["H2","h2"],["H3","h3"],["P","p"],["• List","ul"]].map(([label,tag])=>(
-                  <button key={tag} onClick={()=>insertFormat(tag)} type="button">{label}</button>
-                ))}
-              </div>
-              <textarea id="blog-content-editor" className="input font-mono text-sm" rows={12} value={form.content} onChange={e=>set("content",e.target.value)} placeholder="Write your article in HTML..."/>
-            </div>
-            <div>
-              <label className="text-xs font-medium text-gray-500 mb-1 block">Tags (comma separated)</label>
-              <input className="input" value={form.tags} onChange={e=>set("tags",e.target.value)} placeholder="skin care, hydrafacial, glow"/>
-            </div>
-          </div>
-        )}
-
-        {tab==="seo" && (
-          <div className="space-y-4">
-            <div>
-              <label className="text-xs font-medium text-gray-500 mb-1 block">SEO Title (max 60 chars)</label>
-              <input className="input" value={form.seo_title} onChange={e=>set("seo_title",e.target.value)} placeholder="SEO-optimized title..."/>
-              <div className="text-xs text-gray-400 mt-1">{form.seo_title.length}/60 characters</div>
-            </div>
-            <div>
-              <label className="text-xs font-medium text-gray-500 mb-1 block">Meta Description (max 160 chars)</label>
-              <textarea className="input" rows={3} value={form.seo_description} onChange={e=>set("seo_description",e.target.value)} placeholder="Meta description for search engines..."/>
-              <div className="text-xs text-gray-400 mt-1">{form.seo_description.length}/160 characters</div>
-            </div>
-            <div>
-              <label className="text-xs font-medium text-gray-500 mb-1 block">Published Date</label>
-              <input type="date" className="input" value={form.published_date} onChange={e=>set("published_date",e.target.value)}/>
-            </div>
-            <div className="card p-4 bg-gray-50">
-              <div className="text-xs font-medium text-gray-500 mb-2">Google Preview</div>
-              <div className="text-blue-600 text-sm font-medium truncate">{form.seo_title || form.title || "Post Title"}</div>
-              <div className="text-green-700 text-xs">cair-spa.com/blog/{form.slug||"post-slug"}</div>
-              <div className="text-gray-600 text-xs mt-1">{form.seo_description || form.excerpt || "Meta description will appear here..."}</div>
-            </div>
-          </div>
-        )}
-
-        <div className="flex gap-3 mt-6 justify-end">
-          <button className="btn-secondary" onClick={onClose}>Cancel</button>
-          <button className="btn-primary" onClick={()=>onSave(form)}>
-            {form.status==="Published" ? "Publish Post" : "Save Draft"}
+        <div style={{display:"flex",gap:10,marginTop:20,justifyContent:"flex-end"}}>
+          <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
+          <button className="btn btn-primary" onClick={save} disabled={saving}>
+            {saving?<><Spinner/>Saving...</>:"Save Appointment"}
           </button>
         </div>
       </div>
@@ -283,345 +218,642 @@ function BlogModal({ post, onClose, onSave }) {
   );
 }
 
-// ── Lead Detail Modal ──────────────────────────────────────────────────────
-function LeadModal({ lead, onClose, onSave }) {
-  const [form, setForm] = useState({...lead});
-  const set = (k,v) => setForm(f=>({...f,[k]:v}));
-  return (
-    <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
+// ── Lead Modal ────────────────────────────────────────────────────────────────
+function LeadModal({lead,onClose,onSave}){
+  const[status,setStatus]=useState(lead.status||"New");
+  const[saving,setSaving]=useState(false);
+  const save=async()=>{setSaving(true);try{await onSave({...lead,status});}finally{setSaving(false);}};
+  return(
+    <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&onClose()}>
       <div className="modal">
-        <div className="flex justify-between items-center mb-5">
-          <h2 className="playfair text-xl font-bold text-gray-800">Lead Details</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+          <h2 className="playfair" style={{fontSize:20,fontWeight:700}}>Lead Details</h2>
+          <button onClick={onClose} style={{background:"none",border:"none",fontSize:22,cursor:"pointer",color:"#9ca3af"}}>✕</button>
         </div>
-        <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div><span className="text-xs text-gray-400">Name</span><p className="font-medium text-gray-800">{form.name}</p></div>
-            <div><span className="text-xs text-gray-400">Phone</span><p className="font-medium text-gray-800">{form.phone}</p></div>
-            <div className="col-span-2"><span className="text-xs text-gray-400">Email</span><p className="font-medium text-gray-800">{form.email}</p></div>
-            <div className="col-span-2"><span className="text-xs text-gray-400">Service Interest</span><p className="font-medium text-gray-800">{form.service_interest}</p></div>
-            <div className="col-span-2"><span className="text-xs text-gray-400">Message</span><p className="text-gray-700 text-sm mt-1">{form.message}</p></div>
-            <div><span className="text-xs text-gray-400">Type</span><p className="font-medium text-gray-800">{form.form_type}</p></div>
-            <div><span className="text-xs text-gray-400">Received</span><p className="font-medium text-gray-800">{form.created_date}</p></div>
+        <div style={{background:"#f9fafb",borderRadius:10,padding:16,marginBottom:16}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+            {[["Name",lead.name],["Phone",lead.phone],["Email",lead.email,"1/-1"],["Service Interest",lead.service_interest],["Form Type",lead.form_type],["Received",timeAgo(lead.created_date)]].map(([k,v,span])=>(
+              <div key={k} style={{gridColumn:span||"auto"}}>
+                <div style={{fontSize:10,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:".4px",marginBottom:2}}>{k}</div>
+                <div style={{fontSize:13,fontWeight:500}}>{v}</div>
+              </div>
+            ))}
+          </div>
+          {lead.message&&<div style={{marginTop:12,paddingTop:12,borderTop:"1px solid #e5e7eb"}}>
+            <div style={{fontSize:10,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:".4px",marginBottom:4}}>Message</div>
+            <div style={{fontSize:13,color:"#374151",lineHeight:1.6}}>{lead.message}</div>
+          </div>}
+        </div>
+        <div style={{marginBottom:16}}>
+          <label style={{fontSize:11,fontWeight:600,color:"#6b7280",display:"block",marginBottom:8,textTransform:"uppercase",letterSpacing:".4px"}}>Update Status</label>
+          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+            {LEAD_STATUSES.map(s=>(
+              <button key={s} onClick={()=>setStatus(s)} style={{padding:"6px 14px",borderRadius:20,fontSize:12,fontWeight:600,cursor:"pointer",border:"2px solid",borderColor:status===s?"#9d2040":"#e5e7eb",background:status===s?"#9d2040":"#fff",color:status===s?"#fff":"#374151",transition:"all .15s"}}>{s}</button>
+            ))}
+          </div>
+        </div>
+        <div style={{display:"flex",gap:10,marginTop:20}}>
+          <a href={`mailto:${lead.email}`} className="btn btn-ghost" style={{flex:1,justifyContent:"center",textDecoration:"none"}}>📧 Email</a>
+          <a href={`tel:${lead.phone}`} className="btn btn-ghost" style={{flex:1,justifyContent:"center",textDecoration:"none"}}>📞 Call</a>
+          <button className="btn btn-primary" onClick={save} disabled={saving}>{saving?<><Spinner/>Saving...</>:"Save"}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Blog Modal ────────────────────────────────────────────────────────────────
+function BlogModal({post,onClose,onSave}){
+  const[form,setForm]=useState(post||{title:"",slug:"",excerpt:"",content:"",cover_image:"",category:"Skin Care",tags:"",author:"CAIR SPA Team",status:"Draft",published_date:"",seo_title:"",seo_description:""});
+  const[tab,setTab]=useState("content");
+  const[saving,setSaving]=useState(false);
+  const set=(k,v)=>setForm(f=>({...f,[k]:v}));
+  const slug=t=>t.toLowerCase().replace(/[^a-z0-9\s]/g,"").replace(/\s+/g,"-");
+  const save=async()=>{setSaving(true);try{await onSave(form);}finally{setSaving(false);}};
+
+  return(
+    <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="modal" style={{maxWidth:700}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+          <h2 className="playfair" style={{fontSize:20,fontWeight:700}}>{post?.id?"Edit Post":"New Blog Post"}</h2>
+          <button onClick={onClose} style={{background:"none",border:"none",fontSize:22,cursor:"pointer",color:"#9ca3af"}}>✕</button>
+        </div>
+        <div style={{display:"flex",gap:0,borderBottom:"1px solid #e5e7eb",marginBottom:18}}>
+          {[["content","Content"],["seo","SEO & Meta"]].map(([t,l])=>(
+            <button key={t} onClick={()=>setTab(t)} style={{padding:"8px 18px",fontSize:13,fontWeight:600,cursor:"pointer",border:"none",borderBottom:`2px solid ${tab===t?"#9d2040":"transparent"}`,background:"transparent",color:tab===t?"#9d2040":"#6b7280"}}>{l}</button>
+          ))}
+        </div>
+        {tab==="content"&&<div style={{display:"flex",flexDirection:"column",gap:14}}>
+          <div>
+            <label style={{fontSize:11,fontWeight:600,color:"#6b7280",display:"block",marginBottom:4,textTransform:"uppercase",letterSpacing:".4px"}}>Title</label>
+            <input className="input" value={form.title} onChange={e=>{set("title",e.target.value);if(!post?.id)set("slug",slug(e.target.value));}}/>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12}}>
+            <div>
+              <label style={{fontSize:11,fontWeight:600,color:"#6b7280",display:"block",marginBottom:4,textTransform:"uppercase",letterSpacing:".4px"}}>Slug</label>
+              <input className="input" value={form.slug} onChange={e=>set("slug",e.target.value)}/>
+            </div>
+            <div>
+              <label style={{fontSize:11,fontWeight:600,color:"#6b7280",display:"block",marginBottom:4,textTransform:"uppercase",letterSpacing:".4px"}}>Category</label>
+              <select className="input" value={form.category} onChange={e=>set("category",e.target.value)}>
+                {CATEGORIES.map(c=><option key={c}>{c}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{fontSize:11,fontWeight:600,color:"#6b7280",display:"block",marginBottom:4,textTransform:"uppercase",letterSpacing:".4px"}}>Status</label>
+              <select className="input" value={form.status} onChange={e=>set("status",e.target.value)}>
+                <option>Draft</option><option>Published</option>
+              </select>
+            </div>
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-500 mb-1 block">Update Status</label>
-            <select className="input" value={form.status} onChange={e=>set("status",e.target.value)}>
-              {["New","Contacted","Converted","Closed"].map(s=><option key={s}>{s}</option>)}
-            </select>
+            <label style={{fontSize:11,fontWeight:600,color:"#6b7280",display:"block",marginBottom:4,textTransform:"uppercase",letterSpacing:".4px"}}>Excerpt</label>
+            <textarea className="input" rows={2} style={{resize:"vertical"}} value={form.excerpt} onChange={e=>set("excerpt",e.target.value)}/>
           </div>
-        </div>
-        <div className="flex gap-3 mt-6">
-          <a href={`mailto:${form.email}`} className="btn-secondary flex-1 text-center text-sm">📧 Email Client</a>
-          <a href={`tel:${form.phone}`} className="btn-secondary flex-1 text-center text-sm">📞 Call Client</a>
-          <button className="btn-primary" onClick={()=>onSave(form)}>Update Status</button>
+          <div>
+            <label style={{fontSize:11,fontWeight:600,color:"#6b7280",display:"block",marginBottom:4,textTransform:"uppercase",letterSpacing:".4px"}}>Content (HTML)</label>
+            <textarea className="input" rows={10} style={{fontFamily:"monospace",fontSize:12,resize:"vertical"}} value={form.content} onChange={e=>set("content",e.target.value)}/>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+            <div>
+              <label style={{fontSize:11,fontWeight:600,color:"#6b7280",display:"block",marginBottom:4,textTransform:"uppercase",letterSpacing:".4px"}}>Tags</label>
+              <input className="input" value={form.tags} onChange={e=>set("tags",e.target.value)} placeholder="skin care, hydrafacial"/>
+            </div>
+            <div>
+              <label style={{fontSize:11,fontWeight:600,color:"#6b7280",display:"block",marginBottom:4,textTransform:"uppercase",letterSpacing:".4px"}}>Cover Image URL</label>
+              <input className="input" value={form.cover_image} onChange={e=>set("cover_image",e.target.value)}/>
+            </div>
+          </div>
+        </div>}
+        {tab==="seo"&&<div style={{display:"flex",flexDirection:"column",gap:14}}>
+          <div>
+            <label style={{fontSize:11,fontWeight:600,color:"#6b7280",display:"block",marginBottom:4,textTransform:"uppercase",letterSpacing:".4px"}}>SEO Title <span style={{color:form.seo_title.length>60?"#ef4444":"#9ca3af"}}>{form.seo_title.length}/60</span></label>
+            <input className="input" value={form.seo_title} onChange={e=>set("seo_title",e.target.value)}/>
+          </div>
+          <div>
+            <label style={{fontSize:11,fontWeight:600,color:"#6b7280",display:"block",marginBottom:4,textTransform:"uppercase",letterSpacing:".4px"}}>Meta Description <span style={{color:form.seo_description.length>160?"#ef4444":"#9ca3af"}}>{form.seo_description.length}/160</span></label>
+            <textarea className="input" rows={3} style={{resize:"vertical"}} value={form.seo_description} onChange={e=>set("seo_description",e.target.value)}/>
+          </div>
+          <div>
+            <label style={{fontSize:11,fontWeight:600,color:"#6b7280",display:"block",marginBottom:4,textTransform:"uppercase",letterSpacing:".4px"}}>Publish Date</label>
+            <input type="date" className="input" value={form.published_date} onChange={e=>set("published_date",e.target.value)}/>
+          </div>
+          <div style={{background:"#f9fafb",borderRadius:10,padding:14,border:"1px solid #e5e7eb"}}>
+            <div style={{fontSize:11,fontWeight:700,color:"#6b7280",textTransform:"uppercase",marginBottom:8}}>Google Preview</div>
+            <div style={{fontSize:17,color:"#1a0dab",fontWeight:500}}>{form.seo_title||form.title||"Post Title"}</div>
+            <div style={{fontSize:13,color:"#006621",margin:"2px 0"}}>cairspa.com/blog/{form.slug||"post-slug"}</div>
+            <div style={{fontSize:13,color:"#545454",lineHeight:1.5}}>{form.seo_description||form.excerpt||"Meta description..."}</div>
+          </div>
+        </div>}
+        <div style={{display:"flex",gap:10,marginTop:20,justifyContent:"flex-end"}}>
+          <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
+          <button className="btn btn-primary" onClick={save} disabled={saving}>
+            {saving?<><Spinner/>Saving...</>:form.status==="Published"?"Publish Post":"Save Draft"}
+          </button>
         </div>
       </div>
     </div>
   );
 }
 
-// ── Pages ──────────────────────────────────────────────────────────────────
-function Dashboard({ appointments, leads, posts }) {
-  const pending = appointments.filter(a=>a.status==="Pending").length;
-  const today = new Date().toISOString().split("T")[0];
-  const todayAppts = appointments.filter(a=>a.preferred_date===today).length;
-  const newLeads = leads.filter(l=>l.status==="New").length;
-  const published = posts.filter(p=>p.status==="Published").length;
+// ── Calendar View ─────────────────────────────────────────────────────────────
+function CalendarView({appointments,onEdit,onNew}){
+  const today=new Date();
+  const[cur,setCur]=useState({y:today.getFullYear(),m:today.getMonth()});
+  const[sel,setSel]=useState(null);
+  const MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const DAYS=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  const {y,m}=cur;
+  const dim=(yr,mo)=>new Date(yr,mo+1,0).getDate();
+  const fd=(yr,mo)=>new Date(yr,mo,1).getDay();
+  const todayS=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}`;
 
-  return (
+  const byDate=useMemo(()=>{
+    const map={};
+    (appointments||[]).forEach(a=>{if(!map[a.preferred_date])map[a.preferred_date]=[];map[a.preferred_date].push(a);});
+    return map;
+  },[appointments]);
+
+  const cells=[];
+  const sd=fd(y,m),days=dim(y,m),pd=dim(y,m-1);
+  for(let i=sd-1;i>=0;i--)cells.push({day:pd-i,cur:false,date:null});
+  for(let d=1;d<=days;d++){const mm=String(m+1).padStart(2,"0"),dd=String(d).padStart(2,"0");cells.push({day:d,cur:true,date:`${y}-${mm}-${dd}`});}
+  const rem=(7-cells.length%7)%7;
+  for(let i=1;i<=rem;i++)cells.push({day:i,cur:false,date:null});
+
+  return(
     <div>
-      <div className="mb-6">
-        <h1 className="playfair text-2xl font-bold text-gray-800">Dashboard</h1>
-        <p className="text-gray-500 text-sm mt-1">Welcome back — here's what's happening at CAIR SPA</p>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20}}>
+        <h1 className="playfair" style={{fontSize:24,fontWeight:700}}>Calendar</h1>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <button onClick={()=>setCur(c=>{const d=new Date(c.y,c.m-1);return{y:d.getFullYear(),m:d.getMonth()}})} style={{width:32,height:32,borderRadius:8,border:"1px solid #e5e7eb",background:"#fff",cursor:"pointer",fontSize:16}}>‹</button>
+          <span style={{fontWeight:700,fontSize:15,minWidth:150,textAlign:"center"}}>{MONTHS[m]} {y}</span>
+          <button onClick={()=>setCur(c=>{const d=new Date(c.y,c.m+1);return{y:d.getFullYear(),m:d.getMonth()}})} style={{width:32,height:32,borderRadius:8,border:"1px solid #e5e7eb",background:"#fff",cursor:"pointer",fontSize:16}}>›</button>
+          <button className="btn btn-primary" onClick={onNew}>+ Book</button>
+        </div>
       </div>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <StatCard icon="📅" label="Pending Appointments" value={pending} sub="Need confirmation" color="#9d2040"/>
-        <StatCard icon="🗓️" label="Today's Appointments" value={todayAppts} sub={today} color="#0ea5e9"/>
-        <StatCard icon="💬" label="New Leads" value={newLeads} sub="Awaiting response" color="#f59e0b"/>
-        <StatCard icon="📝" label="Published Posts" value={published} sub={`${posts.length} total`} color="#10b981"/>
+      <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap"}}>
+        {Object.entries(STATUS_COLORS).map(([k,[bg,tc]])=>(
+          <div key={k} style={{display:"flex",alignItems:"center",gap:5,fontSize:12}}>
+            <div style={{width:10,height:10,borderRadius:3,background:bg,border:`1px solid ${tc}33`}}/>
+            <span style={{color:"#6b7280"}}>{k}</span>
+          </div>
+        ))}
       </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="card p-5">
-          <h3 className="font-semibold text-gray-700 mb-4">Recent Appointments</h3>
-          <div className="space-y-3">
-            {appointments.slice(0,4).map(a=>(
-              <div key={a.id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
-                <div>
-                  <p className="font-medium text-sm text-gray-800">{a.client_name}</p>
-                  <p className="text-xs text-gray-400">{a.service} · {a.preferred_date} {a.preferred_time}</p>
+      <div className="card" style={{overflow:"hidden"}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",background:"#f9fafb",borderBottom:"1px solid #f3f4f6"}}>
+          {DAYS.map(d=><div key={d} style={{padding:"10px 0",textAlign:"center",fontSize:11,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:".5px"}}>{d}</div>)}
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)"}}>
+          {cells.map((cell,i)=>{
+            const appts=cell.date?byDate[cell.date]||[]:[];
+            const isT=cell.date===todayS;
+            return(
+              <div key={i} className={`cal-day${isT?" today":""}${!cell.cur?" other-month":""}`} style={{borderColor:sel===cell.date?"#9d2040":undefined}} onClick={()=>cell.date&&setSel(cell.date===sel?null:cell.date)}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:2}}>
+                  <span style={{fontSize:12,fontWeight:isT?700:500,color:isT?"#9d2040":cell.cur?"#374151":"#d1d5db",width:22,height:22,display:"flex",alignItems:"center",justifyContent:"center",borderRadius:"50%",background:isT?"#fde8ef":"transparent"}}>{cell.day}</span>
+                  {appts.length>0&&<span style={{fontSize:9,fontWeight:700,color:"#9d2040",background:"#fde8ef",borderRadius:10,padding:"1px 5px"}}>{appts.length}</span>}
                 </div>
-                <Badge status={a.status}/>
+                {appts.slice(0,2).map(a=>{const[bg,tc]=STATUS_COLORS[a.status]||["#f3f4f6","#374151"];return(
+                  <div key={a.id} className="cal-event" style={{background:bg,color:tc}} onClick={e=>{e.stopPropagation();onEdit(a);}}>{a.preferred_time} {a.client_name.split(" ")[0]}</div>
+                )})}
+                {appts.length>2&&<div style={{fontSize:10,color:"#9ca3af",paddingLeft:2}}>+{appts.length-2}</div>}
               </div>
-            ))}
-          </div>
-        </div>
-        <div className="card p-5">
-          <h3 className="font-semibold text-gray-700 mb-4">Recent Leads</h3>
-          <div className="space-y-3">
-            {leads.map(l=>(
-              <div key={l.id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
-                <div>
-                  <p className="font-medium text-sm text-gray-800">{l.name}</p>
-                  <p className="text-xs text-gray-400">{l.service_interest} · {l.form_type}</p>
-                </div>
-                <Badge status={l.status}/>
-              </div>
-            ))}
-          </div>
+            );
+          })}
         </div>
       </div>
-    </div>
-  );
-}
-
-function AppointmentsPage({ appointments, setAppointments }) {
-  const [modal, setModal] = useState(null);
-  const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState("All");
-
-  const filtered = appointments.filter(a => {
-    const matchSearch = a.client_name.toLowerCase().includes(search.toLowerCase()) || a.service.toLowerCase().includes(search.toLowerCase());
-    const matchFilter = filter==="All" || a.status===filter;
-    return matchSearch && matchFilter;
-  });
-
-  const save = (form) => {
-    if (modal?.id) {
-      setAppointments(prev=>prev.map(a=>a.id===modal.id?{...a,...form}:a));
-    } else {
-      setAppointments(prev=>[...prev,{...form, id:Date.now().toString(), created_date:new Date().toISOString().split("T")[0]}]);
-    }
-    setModal(null);
-  };
-
-  const del = (id) => { if(confirm("Delete this appointment?")) setAppointments(prev=>prev.filter(a=>a.id!==id)); };
-
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="playfair text-2xl font-bold text-gray-800">Appointments</h1>
-          <p className="text-sm text-gray-500 mt-1">{appointments.length} total bookings</p>
-        </div>
-        <button className="btn-primary" onClick={()=>setModal({})}>+ New Appointment</button>
-      </div>
-
-      <div className="card p-4 mb-4 flex flex-col sm:flex-row gap-3">
-        <input className="input flex-1" placeholder="Search by name or service..." value={search} onChange={e=>setSearch(e.target.value)}/>
-        <div className="flex gap-2 flex-wrap">
-          {["All","Pending","Confirmed","Completed","Cancelled"].map(s=>(
-            <button key={s} onClick={()=>setFilter(s)} className={`px-3 py-1.5 text-xs rounded-full font-medium ${filter===s?"bg-red-800 text-white":"bg-gray-100 text-gray-600"}`}>{s}</button>
-          ))}
-        </div>
-      </div>
-
-      <div className="card overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 border-b">
-            <tr>
-              {["Client","Service","Date & Time","Source","Status","Actions"].map(h=>(
-                <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-50">
-            {filtered.map(a=>(
-              <tr key={a.id} className="hover:bg-gray-50">
-                <td className="px-4 py-3">
-                  <p className="font-medium text-gray-800">{a.client_name}</p>
-                  <p className="text-xs text-gray-400">{a.client_phone}</p>
-                </td>
-                <td className="px-4 py-3 text-gray-600">{a.service}</td>
-                <td className="px-4 py-3">
-                  <p className="text-gray-700">{a.preferred_date}</p>
-                  <p className="text-xs text-gray-400">{a.preferred_time}</p>
-                </td>
-                <td className="px-4 py-3 text-gray-500 text-xs">{a.source}</td>
-                <td className="px-4 py-3"><Badge status={a.status}/></td>
-                <td className="px-4 py-3">
-                  <div className="flex gap-2">
-                    <button onClick={()=>setModal(a)} className="text-xs text-blue-600 hover:underline">Edit</button>
-                    <button onClick={()=>del(a.id)} className="text-xs text-red-500 hover:underline">Delete</button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-            {filtered.length===0 && (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-400">No appointments found</td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {modal !== null && <BookingModal appt={modal?.id?modal:null} onClose={()=>setModal(null)} onSave={save}/>}
-    </div>
-  );
-}
-
-function LeadsPage({ leads, setLeads }) {
-  const [modal, setModal] = useState(null);
-  const [filter, setFilter] = useState("All");
-
-  const filtered = leads.filter(l=>filter==="All"||l.status===filter);
-
-  const save = (form) => {
-    setLeads(prev=>prev.map(l=>l.id===form.id?form:l));
-    setModal(null);
-  };
-
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="playfair text-2xl font-bold text-gray-800">Leads & Inquiries</h1>
-          <p className="text-sm text-gray-500 mt-1">{leads.filter(l=>l.status==="New").length} new leads awaiting response</p>
-        </div>
-      </div>
-
-      <div className="card p-3 mb-4 flex gap-2 flex-wrap">
-        {["All","New","Contacted","Converted","Closed"].map(s=>(
-          <button key={s} onClick={()=>setFilter(s)} className={`px-3 py-1.5 text-xs rounded-full font-medium ${filter===s?"bg-red-800 text-white":"bg-gray-100 text-gray-600"}`}>{s}</button>
-        ))}
-      </div>
-
-      <div className="space-y-3">
-        {filtered.map(l=>(
-          <div key={l.id} className="card p-4 flex items-start justify-between gap-4 cursor-pointer hover:shadow-md transition-shadow" onClick={()=>setModal(l)}>
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-1">
-                <span className="font-semibold text-gray-800">{l.name}</span>
-                <Badge status={l.status}/>
-                <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{l.form_type}</span>
-              </div>
-              <p className="text-sm text-gray-500">{l.service_interest} · {l.email} · {l.phone}</p>
-              <p className="text-sm text-gray-600 mt-1 line-clamp-1">{l.message}</p>
-            </div>
-            <div className="text-right">
-              <p className="text-xs text-gray-400">{l.created_date}</p>
-              <div className="flex gap-2 mt-2">
-                <a href={`mailto:${l.email}`} onClick={e=>e.stopPropagation()} className="text-xs bg-gray-100 px-2 py-1 rounded hover:bg-gray-200">Email</a>
-                <a href={`tel:${l.phone}`} onClick={e=>e.stopPropagation()} className="text-xs bg-gray-100 px-2 py-1 rounded hover:bg-gray-200">Call</a>
-              </div>
-            </div>
+      {sel&&byDate[sel]&&<div className="card" style={{marginTop:14,padding:16}}>
+        <div style={{fontWeight:700,fontSize:13,marginBottom:10}}>📅 {new Date(sel+"T12:00").toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})}</div>
+        {byDate[sel].map(a=>(
+          <div key={a.id} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 10px",background:"#f9fafb",borderRadius:8,marginBottom:6,cursor:"pointer"}} onClick={()=>onEdit(a)}>
+            <div style={{fontSize:12,fontWeight:700,color:"#9d2040",minWidth:65}}>{a.preferred_time}</div>
+            <div style={{flex:1}}><div style={{fontWeight:600,fontSize:13}}>{a.client_name}</div><div style={{fontSize:11,color:"#6b7280"}}>{a.service}</div></div>
+            <Badge status={a.status}/>
           </div>
         ))}
-        {filtered.length===0 && <div className="card p-8 text-center text-gray-400">No leads found</div>}
-      </div>
-
-      {modal && <LeadModal lead={modal} onClose={()=>setModal(null)} onSave={save}/>}
+      </div>}
     </div>
   );
 }
 
-function BlogPage({ posts, setPosts }) {
-  const [modal, setModal] = useState(null);
+// ── Dashboard ─────────────────────────────────────────────────────────────────
+function Dashboard({appointments,leads,posts,onNav}){
+  const pending=(appointments||[]).filter(a=>a.status==="Pending").length;
+  const today=todayStr();
+  const todayAppts=(appointments||[]).filter(a=>a.preferred_date===today);
+  const newLeads=(leads||[]).filter(l=>l.status==="New").length;
+  const published=(posts||[]).filter(p=>p.status==="Published").length;
+  const recentAppts=[...(appointments||[])].sort((a,b)=>new Date(b.created_date)-new Date(a.created_date)).slice(0,4);
+  const recentLeads=[...(leads||[])].sort((a,b)=>new Date(b.created_date)-new Date(a.created_date)).slice(0,4);
 
-  const save = (form) => {
-    if (modal?.id) {
-      setPosts(prev=>prev.map(p=>p.id===modal.id?{...p,...form}:p));
-    } else {
-      setPosts(prev=>[...prev,{...form,id:Date.now().toString()}]);
-    }
-    setModal(null);
-  };
-
-  const del = (id) => { if(confirm("Delete this post?")) setPosts(prev=>prev.filter(p=>p.id!==id)); };
-  const toggle = (id) => setPosts(prev=>prev.map(p=>p.id===id?{...p,status:p.status==="Published"?"Draft":"Published"}:p));
-
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="playfair text-2xl font-bold text-gray-800">Blog Posts</h1>
-          <p className="text-sm text-gray-500 mt-1">{posts.filter(p=>p.status==="Published").length} published · {posts.filter(p=>p.status==="Draft").length} drafts</p>
-        </div>
-        <button className="btn-primary" onClick={()=>setModal({})}>+ New Post</button>
-      </div>
-
-      <div className="space-y-3">
-        {posts.map(p=>(
-          <div key={p.id} className="card p-5 flex items-start gap-4">
-            {p.cover_image && <img src={p.cover_image} alt="" className="w-20 h-16 object-cover rounded-lg"/>}
-            {!p.cover_image && <div className="w-20 h-16 bg-gradient-to-br from-red-900 to-red-700 rounded-lg flex items-center justify-center text-white text-xl">✍️</div>}
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <h3 className="font-semibold text-gray-800">{p.title}</h3>
-                <Badge status={p.status}/>
-              </div>
-              <p className="text-sm text-gray-500 line-clamp-2">{p.excerpt}</p>
-              <div className="flex gap-3 mt-2 text-xs text-gray-400">
-                <span>📁 {p.category}</span>
-                <span>✍️ {p.author}</span>
-                {p.published_date && <span>📅 {p.published_date}</span>}
-                {p.tags && <span>🏷️ {p.tags}</span>}
-              </div>
-            </div>
-            <div className="flex flex-col gap-2 items-end">
-              <button onClick={()=>setModal(p)} className="text-xs btn-secondary">Edit</button>
-              <button onClick={()=>toggle(p.id)} className={`text-xs px-3 py-1.5 rounded-lg font-medium ${p.status==="Published"?"bg-yellow-100 text-yellow-700":"bg-green-100 text-green-700"}`}>
-                {p.status==="Published"?"Unpublish":"Publish"}
-              </button>
-              <button onClick={()=>del(p.id)} className="text-xs text-red-500 hover:underline">Delete</button>
-            </div>
-          </div>
-        ))}
-        {posts.length===0 && <div className="card p-8 text-center text-gray-400">No posts yet. Create your first article!</div>}
-      </div>
-
-      {modal!==null && <BlogModal post={modal?.id?modal:null} onClose={()=>setModal(null)} onSave={save}/>}
-    </div>
-  );
-}
-
-// ── Main App ───────────────────────────────────────────────────────────────
-function App() {
-  const [page, setPage] = useState("dashboard");
-  const { appointments, setAppointments, leads, setLeads, posts, setPosts } = useMockData();
-
-  const nav = [
-    { id:"dashboard", icon:"🏠", label:"Dashboard" },
-    { id:"appointments", icon:"📅", label:"Appointments", badge: appointments.filter(a=>a.status==="Pending").length },
-    { id:"leads", icon:"💬", label:"Leads", badge: leads.filter(l=>l.status==="New").length },
-    { id:"blog", icon:"✍️", label:"Blog Posts" },
+  const stats=[
+    {icon:"📅",label:"Pending Appointments",value:pending,sub:"Need confirmation",bg:"#fde8ef",page:"appointments"},
+    {icon:"🗓️",label:"Today's Bookings",value:todayAppts.length,sub:today,bg:"#e0f2fe",page:"calendar"},
+    {icon:"💬",label:"New Leads",value:newLeads,sub:"Awaiting response",bg:"#fef3c7",page:"leads"},
+    {icon:"✍️",label:"Published Posts",value:published,sub:`${(posts||[]).length} total`,bg:"#dcfce7",page:"blog"},
   ];
 
-  return (
-    <div className="flex h-screen overflow-hidden">
+  return(
+    <div>
+      <div style={{marginBottom:24}}>
+        <h1 className="playfair" style={{fontSize:26,fontWeight:700}}>Good {new Date().getHours()<12?"morning":new Date().getHours()<17?"afternoon":"evening"} 👋</h1>
+        <p style={{color:"#6b7280",fontSize:14,marginTop:4}}>Here's what's happening at CAIR SPA</p>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:24}}>
+        {stats.map(s=>(
+          <div key={s.label} style={{background:"#fff",borderRadius:12,padding:18,boxShadow:"0 1px 3px rgba(0,0,0,.08)",cursor:"pointer",transition:"box-shadow .15s"}}
+            onClick={()=>onNav(s.page)}
+            onMouseEnter={e=>e.currentTarget.style.boxShadow="0 4px 14px rgba(0,0,0,.1)"}
+            onMouseLeave={e=>e.currentTarget.style.boxShadow="0 1px 3px rgba(0,0,0,.08)"}>
+            <div style={{width:44,height:44,borderRadius:10,background:s.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,marginBottom:12}}>{s.icon}</div>
+            <div style={{fontSize:28,fontWeight:800,color:"#111",lineHeight:1}}>{s.value}</div>
+            <div style={{fontSize:12,color:"#6b7280",marginTop:4}}>{s.label}</div>
+          </div>
+        ))}
+      </div>
+      {todayAppts.length>0&&(
+        <div className="card" style={{padding:18,marginBottom:16}}>
+          <div style={{fontWeight:700,fontSize:14,marginBottom:12,display:"flex",alignItems:"center",gap:8}}>
+            📋 Today's Schedule <span style={{marginLeft:"auto",fontSize:12,color:"#9ca3af",fontWeight:400}}>{today}</span>
+          </div>
+          {todayAppts.map(a=>(
+            <div key={a.id} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 12px",background:"#f9fafb",borderRadius:8,marginBottom:6}}>
+              <div style={{fontSize:12,fontWeight:700,color:"#9d2040",minWidth:65}}>{a.preferred_time}</div>
+              <div style={{flex:1}}><div style={{fontWeight:600,fontSize:13}}>{a.client_name}</div><div style={{fontSize:11,color:"#6b7280"}}>{a.service}</div></div>
+              <Badge status={a.status}/>
+              {a.client_phone&&<a href={`tel:${a.client_phone}`} style={{fontSize:11,color:"#9d2040",textDecoration:"none",background:"#fde8ef",padding:"3px 8px",borderRadius:6}}>📞</a>}
+            </div>
+          ))}
+        </div>
+      )}
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+        <div className="card" style={{padding:18}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+            <div style={{fontWeight:700,fontSize:14}}>Recent Bookings</div>
+            <button onClick={()=>onNav("appointments")} style={{fontSize:12,color:"#9d2040",background:"none",border:"none",cursor:"pointer",fontWeight:600}}>View all →</button>
+          </div>
+          {recentAppts.map(a=>(
+            <div key={a.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"9px 0",borderBottom:"1px solid #f3f4f6"}}>
+              <div>
+                <div style={{fontWeight:600,fontSize:13}}>{a.client_name}</div>
+                <div style={{fontSize:11,color:"#9ca3af"}}>{a.service} · {a.preferred_date}</div>
+              </div>
+              <Badge status={a.status}/>
+            </div>
+          ))}
+          {recentAppts.length===0&&<div style={{color:"#9ca3af",fontSize:13,padding:"10px 0"}}>No appointments yet</div>}
+        </div>
+        <div className="card" style={{padding:18}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+            <div style={{fontWeight:700,fontSize:14}}>Recent Leads</div>
+            <button onClick={()=>onNav("leads")} style={{fontSize:12,color:"#9d2040",background:"none",border:"none",cursor:"pointer",fontWeight:600}}>View all →</button>
+          </div>
+          {recentLeads.map(l=>(
+            <div key={l.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"9px 0",borderBottom:"1px solid #f3f4f6"}}>
+              <div>
+                <div style={{fontWeight:600,fontSize:13}}>{l.name}</div>
+                <div style={{fontSize:11,color:"#9ca3af"}}>{l.service_interest} · {timeAgo(l.created_date)}</div>
+              </div>
+              <Badge status={l.status}/>
+            </div>
+          ))}
+          {recentLeads.length===0&&<div style={{color:"#9ca3af",fontSize:13,padding:"10px 0"}}>No leads yet</div>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Appointments Page ─────────────────────────────────────────────────────────
+function AppointmentsPage({appointments,reload}){
+  const[modal,setModal]=useState(null);
+  const[search,setSearch]=useState("");
+  const[filter,setFilter]=useState("All");
+  const[view,setView]=useState("list");
+
+  const filtered=(appointments||[]).filter(a=>{
+    const q=search.toLowerCase();
+    return(a.client_name?.toLowerCase().includes(q)||a.service?.toLowerCase().includes(q)||a.client_email?.toLowerCase().includes(q))&&(filter==="All"||a.status===filter);
+  });
+
+  const save=async(form)=>{
+    if(form.id) await Appointment.update(form.id,form);
+    else await Appointment.create(form);
+    reload();setModal(null);
+  };
+  const del=async(id)=>{if(confirm("Delete this appointment?"))await Appointment.delete(id);reload();};
+
+  return(
+    <div>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20}}>
+        <div>
+          <h1 className="playfair" style={{fontSize:24,fontWeight:700}}>Appointments</h1>
+          <p style={{color:"#6b7280",fontSize:13,marginTop:2}}>{(appointments||[]).length} total · {(appointments||[]).filter(a=>a.status==="Pending").length} pending</p>
+        </div>
+        <div style={{display:"flex",gap:8}}>
+          <div style={{display:"flex",background:"#f3f4f6",borderRadius:8,padding:3}}>
+            {[["list","☰ List"],["cal","📅 Calendar"]].map(([v,l])=>(
+              <button key={v} onClick={()=>setView(v)} style={{padding:"5px 12px",borderRadius:6,fontSize:12,fontWeight:600,border:"none",cursor:"pointer",background:view===v?"#fff":"transparent",color:view===v?"#111":"#6b7280",boxShadow:view===v?"0 1px 3px rgba(0,0,0,.1)":"none"}}>{l}</button>
+            ))}
+          </div>
+          <button className="btn btn-primary" onClick={()=>setModal({})}>+ New Appointment</button>
+        </div>
+      </div>
+      {view==="cal"?(
+        <CalendarView appointments={appointments} onEdit={a=>setModal(a)} onNew={()=>setModal({})}/>
+      ):(
+        <>
+          <div className="card" style={{padding:"12px 14px",marginBottom:14,display:"flex",gap:12,flexWrap:"wrap",alignItems:"center"}}>
+            <input className="input" style={{maxWidth:280}} placeholder="🔍  Search name, service, email..." value={search} onChange={e=>setSearch(e.target.value)}/>
+            <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+              {["All",...APPT_STATUSES].map(s=>(
+                <button key={s} onClick={()=>setFilter(s)} style={{padding:"5px 12px",borderRadius:20,fontSize:12,fontWeight:600,border:"none",cursor:"pointer",background:filter===s?"#9d2040":"#f3f4f6",color:filter===s?"#fff":"#6b7280"}}>{s}</button>
+              ))}
+            </div>
+            <span style={{marginLeft:"auto",fontSize:12,color:"#9ca3af"}}>{filtered.length} results</span>
+          </div>
+          <div className="card" style={{overflow:"hidden"}}>
+            <table>
+              <thead><tr><th>Client</th><th>Service</th><th>Date & Time</th><th>Source</th><th>Status</th><th>Actions</th></tr></thead>
+              <tbody>
+                {filtered.map(a=>{const[bg,tc]=SVC_COLOR[a.service]||["#f3f4f6","#374151"];return(
+                  <tr key={a.id}>
+                    <td><div style={{fontWeight:600,fontSize:13}}>{a.client_name}</div><div style={{fontSize:11,color:"#9ca3af"}}>{a.client_phone}</div></td>
+                    <td><span style={{background:bg,color:tc,padding:"3px 8px",borderRadius:6,fontSize:12,fontWeight:500}}>{a.service}</span></td>
+                    <td><div style={{fontWeight:500}}>{a.preferred_date}</div><div style={{fontSize:11,color:"#9ca3af"}}>{a.preferred_time}</div></td>
+                    <td><span className="tag">{a.source}</span></td>
+                    <td><Badge status={a.status}/></td>
+                    <td>
+                      <div style={{display:"flex",gap:10}}>
+                        <button onClick={()=>setModal(a)} style={{fontSize:12,color:"#2563eb",background:"none",border:"none",cursor:"pointer",fontWeight:500}}>Edit</button>
+                        <button onClick={()=>del(a.id)} style={{fontSize:12,color:"#dc2626",background:"none",border:"none",cursor:"pointer",fontWeight:500}}>Delete</button>
+                      </div>
+                    </td>
+                  </tr>
+                )})}
+                {filtered.length===0&&<tr><td colSpan={6} style={{textAlign:"center",color:"#9ca3af",padding:40}}>No appointments found</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+      {modal!==null&&<ApptModal appt={modal?.id?modal:null} onClose={()=>setModal(null)} onSave={save}/>}
+    </div>
+  );
+}
+
+// ── Leads Page ────────────────────────────────────────────────────────────────
+function LeadsPage({leads,reload}){
+  const[modal,setModal]=useState(null);
+  const[filter,setFilter]=useState("All");
+  const[search,setSearch]=useState("");
+
+  const filtered=(leads||[]).filter(l=>{
+    const q=search.toLowerCase();
+    return(l.name?.toLowerCase().includes(q)||l.service_interest?.toLowerCase().includes(q)||l.email?.toLowerCase().includes(q))&&(filter==="All"||l.status===filter);
+  });
+
+  const save=async(form)=>{await LeadForm.update(form.id,{status:form.status});reload();setModal(null);};
+
+  return(
+    <div>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20}}>
+        <div>
+          <h1 className="playfair" style={{fontSize:24,fontWeight:700}}>Leads & Inquiries</h1>
+          <p style={{color:"#6b7280",fontSize:13,marginTop:2}}>{(leads||[]).filter(l=>l.status==="New").length} new leads need attention</p>
+        </div>
+      </div>
+      <div className="card" style={{padding:"12px 14px",marginBottom:14,display:"flex",gap:12,flexWrap:"wrap",alignItems:"center"}}>
+        <input className="input" style={{maxWidth:280}} placeholder="🔍  Search..." value={search} onChange={e=>setSearch(e.target.value)}/>
+        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+          {["All",...LEAD_STATUSES].map(s=>(
+            <button key={s} onClick={()=>setFilter(s)} style={{padding:"5px 12px",borderRadius:20,fontSize:12,fontWeight:600,border:"none",cursor:"pointer",background:filter===s?"#9d2040":"#f3f4f6",color:filter===s?"#fff":"#6b7280"}}>{s}</button>
+          ))}
+        </div>
+        <span style={{marginLeft:"auto",fontSize:12,color:"#9ca3af"}}>{filtered.length} leads</span>
+      </div>
+      <div style={{display:"flex",flexDirection:"column",gap:10}}>
+        {filtered.map(l=>(
+          <div key={l.id} className="card" style={{padding:16,cursor:"pointer"}} onClick={()=>setModal(l)}
+            onMouseEnter={e=>e.currentTarget.style.boxShadow="0 4px 12px rgba(0,0,0,.1)"}
+            onMouseLeave={e=>e.currentTarget.style.boxShadow="0 1px 3px rgba(0,0,0,.08)"}>
+            <div style={{display:"flex",alignItems:"flex-start",gap:12}}>
+              <div style={{width:40,height:40,borderRadius:10,background:"#fde8ef",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0}}>👤</div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:4}}>
+                  <span style={{fontWeight:700,fontSize:14}}>{l.name}</span>
+                  <Badge status={l.status}/>
+                  <span className="tag">{l.form_type}</span>
+                </div>
+                <div style={{fontSize:12,color:"#6b7280",marginBottom:4}}>{l.service_interest} · {l.email} · {l.phone}</div>
+                <div style={{fontSize:13,color:"#374151",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:500}}>{l.message}</div>
+              </div>
+              <div style={{textAlign:"right",flexShrink:0}}>
+                <div style={{fontSize:11,color:"#9ca3af",marginBottom:6}}>{timeAgo(l.created_date)}</div>
+                <div style={{display:"flex",gap:6}}>
+                  <a href={`mailto:${l.email}`} onClick={e=>e.stopPropagation()} style={{fontSize:11,background:"#f3f4f6",padding:"4px 8px",borderRadius:6,textDecoration:"none",color:"#374151"}}>📧</a>
+                  <a href={`tel:${l.phone}`} onClick={e=>e.stopPropagation()} style={{fontSize:11,background:"#f3f4f6",padding:"4px 8px",borderRadius:6,textDecoration:"none",color:"#374151"}}>📞</a>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+        {filtered.length===0&&<div className="card" style={{padding:40,textAlign:"center",color:"#9ca3af"}}>No leads found</div>}
+      </div>
+      {modal&&<LeadModal lead={modal} onClose={()=>setModal(null)} onSave={save}/>}
+    </div>
+  );
+}
+
+// ── Blog Page ─────────────────────────────────────────────────────────────────
+function BlogPage({posts,reload}){
+  const[modal,setModal]=useState(null);
+  const[filter,setFilter]=useState("All");
+  const filtered=(posts||[]).filter(p=>filter==="All"||p.status===filter);
+
+  const save=async(form)=>{
+    if(form.id) await BlogPost.update(form.id,form);
+    else await BlogPost.create(form);
+    reload();setModal(null);
+  };
+  const del=async(id)=>{if(confirm("Delete this post?"))await BlogPost.delete(id);reload();};
+  const toggle=async(p)=>{await BlogPost.update(p.id,{status:p.status==="Published"?"Draft":"Published"});reload();};
+
+  return(
+    <div>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20}}>
+        <div>
+          <h1 className="playfair" style={{fontSize:24,fontWeight:700}}>Blog Posts</h1>
+          <p style={{color:"#6b7280",fontSize:13,marginTop:2}}>{(posts||[]).filter(p=>p.status==="Published").length} published · {(posts||[]).filter(p=>p.status==="Draft").length} drafts</p>
+        </div>
+        <button className="btn btn-primary" onClick={()=>setModal({})}>+ New Post</button>
+      </div>
+      <div style={{display:"flex",gap:6,marginBottom:14}}>
+        {["All","Published","Draft"].map(s=>(
+          <button key={s} onClick={()=>setFilter(s)} style={{padding:"5px 14px",borderRadius:20,fontSize:12,fontWeight:600,border:"none",cursor:"pointer",background:filter===s?"#9d2040":"#f3f4f6",color:filter===s?"#fff":"#6b7280"}}>{s}</button>
+        ))}
+      </div>
+      <div style={{display:"flex",flexDirection:"column",gap:10}}>
+        {filtered.map(p=>(
+          <div key={p.id} className="card" style={{padding:16,display:"flex",gap:14,alignItems:"flex-start"}}>
+            <div style={{width:60,height:60,borderRadius:10,background:"linear-gradient(135deg,#9d2040,#c0392b)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,flexShrink:0,overflow:"hidden"}}>
+              {p.cover_image?<img src={p.cover_image} style={{width:"100%",height:"100%",objectFit:"cover"}} alt=""/>:"✍️"}
+            </div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
+                <span style={{fontWeight:700,fontSize:14}}>{p.title}</span>
+                <Badge status={p.status}/>
+              </div>
+              <div style={{fontSize:12,color:"#6b7280",marginBottom:4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.excerpt}</div>
+              <div style={{display:"flex",gap:10,fontSize:11,color:"#9ca3af",flexWrap:"wrap"}}>
+                <span>📁 {p.category}</span>
+                {p.published_date&&<span>📅 {p.published_date}</span>}
+                {p.tags&&p.tags.split(",").slice(0,2).map(t=><span key={t} className="tag">{t.trim()}</span>)}
+              </div>
+            </div>
+            <div style={{display:"flex",flexDirection:"column",gap:6,alignItems:"flex-end",flexShrink:0}}>
+              <button className="btn btn-ghost" style={{fontSize:12,padding:"5px 12px"}} onClick={()=>setModal(p)}>Edit</button>
+              <button onClick={()=>toggle(p)} style={{padding:"5px 12px",borderRadius:8,fontSize:12,fontWeight:600,border:"none",cursor:"pointer",background:p.status==="Published"?"#fef3c7":"#dcfce7",color:p.status==="Published"?"#92400e":"#065f46"}}>
+                {p.status==="Published"?"Unpublish":"Publish"}
+              </button>
+              <button onClick={()=>del(p.id)} style={{fontSize:12,color:"#dc2626",background:"none",border:"none",cursor:"pointer",padding:"5px 12px"}}>Delete</button>
+            </div>
+          </div>
+        ))}
+        {filtered.length===0&&<div className="card" style={{padding:40,textAlign:"center",color:"#9ca3af"}}>No posts yet</div>}
+      </div>
+      {modal!==null&&<BlogModal post={modal?.id?modal:null} onClose={()=>setModal(null)} onSave={save}/>}
+    </div>
+  );
+}
+
+// ── Main App ──────────────────────────────────────────────────────────────────
+function App(){
+  const[page,setPage]=useState("dashboard");
+  const[user,setUser]=useState(null);
+  const[authChecked,setAuthChecked]=useState(false);
+  const[appointments,setAppointments]=useState([]);
+  const[leads,setLeads]=useState([]);
+  const[posts,setPosts]=useState([]);
+  const[loading,setLoading]=useState(true);
+
+  // Auth check
+  useEffect(()=>{
+    const check=async()=>{
+      try{
+        const u=await auth?.me();
+        if(u)setUser(u);
+      }catch(e){}
+      finally{setAuthChecked(true);}
+    };
+    check();
+  },[]);
+
+  // Load data
+  const loadData=useCallback(async()=>{
+    if(!user)return;
+    setLoading(true);
+    try{
+      const[a,l,p]=await Promise.all([
+        Appointment.list(),
+        LeadForm.list(),
+        BlogPost.list(),
+      ]);
+      setAppointments(a||[]);
+      setLeads(l||[]);
+      setPosts(p||[]);
+    }catch(e){console.error(e);}
+    finally{setLoading(false);}
+  },[user]);
+
+  useEffect(()=>{loadData();},[loadData]);
+
+  // Auto-refresh every 30s
+  useEffect(()=>{
+    if(!user)return;
+    const t=setInterval(loadData,30000);
+    return()=>clearInterval(t);
+  },[user,loadData]);
+
+  const logout=async()=>{try{await auth?.logout();}catch(e){}setUser(null);};
+
+  if(!authChecked)return(
+    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#f8f7f5"}}>
+      <div style={{textAlign:"center"}}><Spinner/><p style={{color:"#9ca3af",fontSize:13,marginTop:10}}>Checking session...</p></div>
+    </div>
+  );
+
+  if(!user)return <LoginPage onLogin={async()=>{const u=await auth?.me();setUser(u);}}/>;
+
+  const pending=(appointments||[]).filter(a=>a.status==="Pending").length;
+  const newLeads=(leads||[]).filter(l=>l.status==="New").length;
+
+  const nav=[
+    {id:"dashboard",icon:"🏠",label:"Dashboard"},
+    {id:"appointments",icon:"📅",label:"Appointments",badge:pending},
+    {id:"calendar",icon:"🗓️",label:"Calendar"},
+    {id:"leads",icon:"💬",label:"Leads",badge:newLeads},
+    {id:"blog",icon:"✍️",label:"Blog Posts"},
+  ];
+
+  return(
+    <div style={{display:"flex",minHeight:"100vh"}}>
       {/* Sidebar */}
-      <div className="w-60 bg-white border-r border-gray-100 flex flex-col shadow-sm">
-        <div className="p-5 border-b border-gray-100">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-red-900 flex items-center justify-center text-white font-bold text-sm">C</div>
+      <div className="sidebar">
+        <div style={{padding:"20px 16px 16px",borderBottom:"1px solid #1f1f1f"}}>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <div style={{width:36,height:36,borderRadius:8,background:"#9d2040",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:15,color:"#fff",flexShrink:0}}>C</div>
             <div>
-              <div className="font-bold text-gray-800 text-sm playfair">CAIR SPA</div>
-              <div className="text-xs text-gray-400">Admin Panel</div>
+              <div className="playfair" style={{fontWeight:700,fontSize:14,color:"#fff",letterSpacing:".5px"}}>CAIR SPA</div>
+              <div style={{fontSize:10,color:"#4b5563",fontWeight:500,textTransform:"uppercase",letterSpacing:".5px"}}>Admin Portal</div>
             </div>
           </div>
         </div>
-        <nav className="flex-1 p-3 space-y-1">
+        <nav style={{flex:1,padding:"12px 0",overflowY:"auto"}}>
           {nav.map(n=>(
-            <button key={n.id} onClick={()=>setPage(n.id)} className={`sidebar-link w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium text-gray-600 ${page===n.id?"active":""}`}>
-              <span className="flex items-center gap-2.5"><span>{n.icon}</span>{n.label}</span>
-              {n.badge>0 && <span className="bg-red-800 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">{n.badge}</span>}
-            </button>
+            <div key={n.id} className={`nav-item${page===n.id?" active":""}`} onClick={()=>setPage(n.id)}>
+              <span style={{fontSize:15}}>{n.icon}</span>
+              <span style={{flex:1}}>{n.label}</span>
+              {n.badge>0&&<span style={{background:page===n.id?"rgba(255,255,255,.25)":"#9d2040",color:"#fff",fontSize:10,fontWeight:700,borderRadius:10,padding:"1px 6px",minWidth:18,textAlign:"center"}}>{n.badge}</span>}
+            </div>
           ))}
         </nav>
-        <div className="p-4 border-t border-gray-100">
-          <a href="https://cair-spa.vercel.app" target="_blank" className="flex items-center gap-2 text-xs text-gray-400 hover:text-gray-600">
-            <span>🌐</span> View Live Site
+        <div style={{padding:"12px 16px",borderTop:"1px solid #1f1f1f"}}>
+          <div style={{fontSize:11,color:"#4b5563",marginBottom:8,padding:"0 8px",textTransform:"uppercase",letterSpacing:".5px",fontWeight:600}}>{user?.email}</div>
+          <a href="https://cairspa.com" target="_blank" style={{display:"flex",alignItems:"center",gap:8,fontSize:12,color:"#6b7280",textDecoration:"none",padding:"7px 10px",borderRadius:8,background:"#1a1a1a",marginBottom:6}}>
+            <span>🌐</span><span>cairspa.com</span><span style={{marginLeft:"auto",fontSize:10}}>↗</span>
           </a>
+          <button onClick={logout} style={{width:"100%",padding:"7px 10px",borderRadius:8,background:"#1a1a1a",border:"none",cursor:"pointer",fontSize:12,color:"#6b7280",textAlign:"left",display:"flex",alignItems:"center",gap:8}}>
+            <span>🚪</span><span>Sign Out</span>
+          </button>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="flex-1 overflow-auto">
-        <div className="max-w-5xl mx-auto p-6 sm:p-8">
-          {page==="dashboard" && <Dashboard appointments={appointments} leads={leads} posts={posts}/>}
-          {page==="appointments" && <AppointmentsPage appointments={appointments} setAppointments={setAppointments}/>}
-          {page==="leads" && <LeadsPage leads={leads} setLeads={setLeads}/>}
-          {page==="blog" && <BlogPage posts={posts} setPosts={setPosts}/>}
+      {/* Main */}
+      <div className="main-content">
+        <div style={{background:"#fff",borderBottom:"1px solid #f3f4f6",padding:"12px 28px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:10}}>
+          <div style={{fontSize:13,color:"#6b7280"}}>{new Date().toLocaleDateString("en-US",{weekday:"long",year:"numeric",month:"long",day:"numeric"})}</div>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <button onClick={loadData} style={{background:"none",border:"1px solid #e5e7eb",borderRadius:8,padding:"5px 10px",cursor:"pointer",fontSize:12,color:"#6b7280",display:"flex",alignItems:"center",gap:5}}>
+              🔄 Refresh
+            </button>
+            {newLeads>0&&<div style={{display:"flex",alignItems:"center",gap:6,background:"#fef3c7",borderRadius:8,padding:"5px 10px",fontSize:12,fontWeight:600,color:"#92400e",cursor:"pointer"}} onClick={()=>setPage("leads")}>
+              <div style={{width:7,height:7,background:"#ef4444",borderRadius:"50%"}}/>
+              {newLeads} new lead{newLeads>1?"s":""}
+            </div>}
+          </div>
+        </div>
+        <div style={{padding:"28px",flex:1}}>
+          {loading&&page==="dashboard"?<Loading/>:(
+            <>
+              {page==="dashboard"&&<Dashboard appointments={appointments} leads={leads} posts={posts} onNav={setPage}/>}
+              {page==="appointments"&&<AppointmentsPage appointments={appointments} reload={loadData}/>}
+              {page==="calendar"&&<CalendarView appointments={appointments} onEdit={a=>setPage("appointments")} onNew={()=>setPage("appointments")}/>}
+              {page==="leads"&&<LeadsPage leads={leads} reload={loadData}/>}
+              {page==="blog"&&<BlogPage posts={posts} reload={loadData}/>}
+            </>
+          )}
         </div>
       </div>
     </div>
