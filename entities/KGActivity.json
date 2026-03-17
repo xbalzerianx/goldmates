@@ -1,0 +1,25 @@
+{
+  "type": "object",
+  "properties": {
+    "action_type": {
+      "type": "string"
+    },
+    "product_name": {
+      "type": "string"
+    },
+    "detail": {
+      "type": "string"
+    },
+    "performed_by": {
+      "type": "string"
+    },
+    "user_role": {
+      "type": "string"
+    },
+    "timestamp_ph": {
+      "type": "string"
+    }
+  },
+  "required": [],
+  "name": "KGActivity"
+}
