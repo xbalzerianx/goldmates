@@ -1,17 +1,27 @@
-const APP_ID = Deno.env.get('BASE44_APP_ID') || '69b7cae883aa8d618e49d211';
-const SVC_TOKEN = Deno.env.get('BASE44_SERVICE_TOKEN') || '';
-const BASE_URL = `https://base44.app/api/apps/${APP_ID}/entities`;
+// KGcar API - Permanent PIN-authenticated proxy
+// No expiring tokens - uses internal service auth
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-App-Id',
+  'Access-Control-Allow-Headers': 'Content-Type, X-Pin, X-Session',
 };
 
-function apiHeaders() {
+const VALID_ENTITIES = ['KGProduct', 'KGSale', 'KGExpense'];
+
+const PINS: Record<string, string> = {
+  '070726': 'admin',
+  '5678': 'assistant',
+};
+
+const APP_ID = Deno.env.get('BASE44_APP_ID') || '69b7cae883aa8d618e49d211';
+const BASE_URL = `https://base44.app/api/apps/${APP_ID}/entities`;
+
+function getServiceHeaders() {
+  const svcToken = Deno.env.get('BASE44_SERVICE_TOKEN') || '';
   return {
     'Content-Type': 'application/json',
-    'Authorization': `Bearer ${SVC_TOKEN}`,
+    'Authorization': `Bearer ${svcToken}`,
     'X-App-Id': APP_ID,
   };
 }
@@ -23,26 +33,42 @@ Deno.serve(async (req) => {
 
   try {
     const url = new URL(req.url);
-    const entity = url.searchParams.get('entity');
-    const id = url.searchParams.get('id');
-
-    if (!entity) {
-      return Response.json({ error: 'entity param required' }, { status: 400, headers: CORS });
+    const path = url.pathname; // e.g. /functions/kgcarApi or just /
+    
+    // Parse body once
+    let body: any = {};
+    if (req.method === 'POST' || req.method === 'PUT') {
+      const text = await req.text();
+      try { body = JSON.parse(text); } catch { body = {}; }
     }
 
+    // PIN auth from header or body
+    const pin = req.headers.get('X-Pin') || body._pin || url.searchParams.get('pin') || '';
+    const role = PINS[pin];
+    if (!role) {
+      return Response.json({ error: 'Unauthorized - invalid PIN' }, { status: 401, headers: CORS });
+    }
+
+    // Entity and ID from query params
+    const entity = url.searchParams.get('entity') || body._entity;
+    const id = url.searchParams.get('id') || body._id;
+
+    if (!entity || !VALID_ENTITIES.includes(entity)) {
+      return Response.json({ error: 'Invalid entity' }, { status: 400, headers: CORS });
+    }
+
+    // Build upstream URL
     let apiUrl = `${BASE_URL}/${entity}`;
     if (id) apiUrl += `/${id}`;
-    if (req.method === 'GET') apiUrl += (id ? '' : '?limit=500');
+    if (req.method === 'GET') apiUrl += `?limit=500`;
 
-    let bodyText: string | undefined;
-    if (req.method === 'POST' || req.method === 'PUT') {
-      bodyText = await req.text();
-    }
+    // Remove internal params from body
+    const { _pin, _entity, _id, ...cleanBody } = body;
 
     const upstream = await fetch(apiUrl, {
       method: req.method,
-      headers: apiHeaders(),
-      body: bodyText,
+      headers: getServiceHeaders(),
+      body: (req.method === 'POST' || req.method === 'PUT') ? JSON.stringify(cleanBody) : undefined,
     });
 
     const text = await upstream.text();
