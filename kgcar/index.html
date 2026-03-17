@@ -492,6 +492,22 @@ tbody td{padding:13px 16px;vertical-align:middle}
         <div class="page-hdr">
           <div class="page-hdr-row">
             <div><div class="page-title">Sales Log</div><div class="page-sub">Complete transaction history</div></div>
+            <div class="flex gap8">
+              <select class="sel" id="exportPeriod" style="font-size:12px;padding:7px 12px">
+                <option value="all">All Time</option>
+                <option value="today">Today</option>
+                <option value="week">This Week</option>
+                <option value="month">This Month</option>
+                <option value="custom">Custom Range</option>
+              </select>
+              <div id="exportCustom" style="display:none;align-items:center;gap:6px" class="flex">
+                <input type="date" class="date-inp" id="expFrom" style="font-size:12px"/>
+                <span style="color:var(--gray);font-size:12px">to</span>
+                <input type="date" class="date-inp" id="expTo" style="font-size:12px"/>
+              </div>
+              <button class="btn btn-ghost btn-sm" onclick="exportCSV('sales')">⬇ Export Sales</button>
+              <button class="btn btn-ghost btn-sm" onclick="exportCSV('expenses')">⬇ Export Expenses</button>
+            </div>
           </div>
         </div>
         <div class="toolbar">
@@ -1029,7 +1045,7 @@ function renderInv(){
       <td><div class="flex gap8">
         <button class="btn btn-ghost btn-xs" onclick="openEdit('${p.id}')">✏️ Edit</button>
         <button class="btn btn-gold btn-xs" onclick="quickSell('${p.id}')">💰 Sell</button>
-        <button class="btn btn-xs" style="background:var(--red2);color:var(--red);border:1px solid rgba(239,68,68,.3)" onclick="confirmDelete('${p.id}','${p.product_name.replace(/'/g,\"\'\").replace(/`/g,'\`')}')">🗑️</button>
+        <button class="btn btn-xs" style="background:var(--red2);color:var(--red);border:1px solid rgba(239,68,68,.3)" onclick="confirmDelete(this.getAttribute('data-pid'),this.getAttribute('data-pname'))" data-pid="${p.id}" data-pname="${p.product_name}">🗑️</button>
       </div></td>
     </tr>`).join('')||`<tr><td colspan="7"><div class="empty"><div class="empty-icon">📦</div><div>No products found</div></div></td></tr>`;
   document.getElementById('invFooter').innerHTML=list.length?`${list.length} products · Total value: <span class="num text-gold fw7" style="font-size:15px">${peso(totVal)}</span>`:'';
@@ -1218,6 +1234,78 @@ async function doSale(){
 }
 
 // ═══════════════════ SALES LOG ═══════════════════
+document.addEventListener('change', function(e){
+  if(e.target && e.target.id==='exportPeriod'){
+    const cd = document.getElementById('exportCustom');
+    if(cd) cd.style.display = e.target.value==='custom' ? 'flex' : 'none';
+  }
+});
+
+// ═══════════════════ EXPORT CSV ═══════════════════
+function exportCSV(type) {
+  const period = document.getElementById('exportPeriod')?.value || 'all';
+  const from   = document.getElementById('expFrom')?.value || '';
+  const to     = document.getElementById('expTo')?.value || '';
+  const todayStr = today();
+  const now = new Date();
+
+  function inRange(d) {
+    if (!d) return false;
+    if (period==='today')  return d === todayStr;
+    if (period==='week')   { const s=new Date(now); s.setDate(s.getDate()-s.getDay()); return new Date(d)>=s; }
+    if (period==='month')  return d.startsWith(todayStr.slice(0,7));
+    if (period==='custom') return (!from||d>=from) && (!to||d<=to);
+    return true; // all
+  }
+
+  let rows=[], filename='', header=[];
+
+  if(type==='sales'){
+    header = ['Sale ID','Date','Product','SKU','Category','Qty','Unit Price','Total','Recorded By','Notes'];
+    rows = sales
+      .filter(s=>inRange(s.sale_date||s.created_date?.split('T')[0]))
+      .map(s=>[
+        s.sale_id||'',
+        s.sale_date||s.created_date?.split('T')[0]||'',
+        s.product_name||'',
+        s.product_id||'',
+        s.category||'',
+        s.qty_sold||0,
+        s.unit_price||0,
+        s.sale_total||0,
+        s.recorded_by||'',
+        s.notes||''
+      ]);
+    const lbl = period==='custom'&&from&&to ? `${from}_to_${to}` : period;
+    filename = `KGCAR_Sales_${lbl}_${todayStr}.csv`;
+  } else {
+    header = ['Date','Description','Category','Amount','Recorded By','Notes'];
+    rows = expenses
+      .filter(e=>inRange(e.expense_date||e.created_date?.split('T')[0]))
+      .map(e=>[
+        e.expense_date||e.created_date?.split('T')[0]||'',
+        e.description||'',
+        e.category||'',
+        e.amount||0,
+        e.recorded_by||'',
+        e.notes||''
+      ]);
+    const lbl = period==='custom'&&from&&to ? `${from}_to_${to}` : period;
+    filename = `KGCAR_Expenses_${lbl}_${todayStr}.csv`;
+  }
+
+  if(!rows.length){ toast('No data in selected period','err'); return; }
+
+  const escape = v => `"${String(v).replace(/"/g,'""')}"`;
+  const csv = [header, ...rows].map(r=>r.map(escape).join(',')).join('\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href=url; a.download=filename; a.click();
+  URL.revokeObjectURL(url);
+  toast(`✅ Exported ${rows.length} rows → ${filename}`,'ok');
+}
+
 function renderSL(){
   const q=document.getElementById('slQ').value.toLowerCase();
   const cat=document.getElementById('slCat').value;
