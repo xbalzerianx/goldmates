@@ -146,6 +146,7 @@ button,input,select,textarea{font-family:inherit}
 .ab-sale{background:var(--green2);color:var(--green)}
 .ab-add{background:var(--blue2);color:var(--blue)}
 .ab-edit{background:var(--gold3);color:var(--gold)}
+.ab-delete{background:var(--red2);color:var(--red)}
 
 /* TABLE */
 .tbl-wrap{overflow-x:auto;border-radius:var(--r);border:1px solid var(--navy3)}
@@ -552,6 +553,7 @@ tbody td{padding:13px 16px;vertical-align:middle}
     <div class="modal-title" id="modalTitle">+ Add Product</div>
     <div class="form-grid">
       <div class="fg"><label class="label">Product ID</label><input class="inp" id="mPid" placeholder="PRD-021"/></div>
+      <div class="fg"><label class="label">SKU (Barcode / Scan Code)</label><input class="inp" id="mSku" placeholder="e.g. 8850123456789"/></div>
       <div class="fg"><label class="label">Category</label>
         <select class="sel2" id="mCat">
           <option>Tires</option><option>Engine Oil</option><option>Brake Pads</option><option>Brake Oil</option>
@@ -572,6 +574,23 @@ tbody td{padding:13px 16px;vertical-align:middle}
     <div class="modal-foot">
       <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
       <button class="btn btn-gold" id="modalSaveBtn" onclick="saveProduct()">Save Product</button>
+    </div>
+  </div>
+</div>
+
+<!-- DELETE CONFIRM MODAL -->
+<div class="overlay" id="delModal">
+  <div class="modal" style="max-width:420px">
+    <div style="text-align:center;padding:10px 0 4px">
+      <div style="font-size:48px;margin-bottom:16px">🗑️</div>
+      <div class="modal-title" style="text-align:center;color:var(--red)">Delete Product?</div>
+      <p style="font-size:14px;color:var(--gray);margin-bottom:8px">You are about to permanently delete:</p>
+      <p id="delName" style="font-size:15px;font-weight:700;color:var(--white);background:var(--navy3);padding:12px 16px;border-radius:10px;margin-bottom:8px"></p>
+      <p style="font-size:12px;color:var(--red);opacity:.8">⚠️ This cannot be undone. Sales history is kept.</p>
+    </div>
+    <div class="modal-foot" style="justify-content:center;gap:12px">
+      <button class="btn btn-ghost" style="min-width:120px" onclick="closeDelModal()">Cancel</button>
+      <button class="btn btn-xs" id="delConfirmBtn" style="background:var(--red);color:#fff;border:none;padding:10px 24px;font-size:13px;border-radius:var(--r2);min-width:120px" onclick="doDelete()">Yes, Delete</button>
     </div>
   </div>
 </div>
@@ -603,6 +622,7 @@ let curUser=null, pinEntry='', pinTarget=null;
 async function apiGet(e,id=''){const r=await fetch(`${API}/${e}${id?'/'+id:''}?limit=500`,{headers:HDR});if(!r.ok)throw new Error(await r.text());return r.json();}
 async function apiPost(e,d){const r=await fetch(`${API}/${e}`,{method:'POST',headers:HDR,body:JSON.stringify(d)});if(!r.ok)throw new Error(await r.text());return r.json();}
 async function apiPut(e,id,d){const r=await fetch(`${API}/${e}/${id}`,{method:'PUT',headers:HDR,body:JSON.stringify(d)});if(!r.ok)throw new Error(await r.text());return r.json();}
+async function apiDel(e,id){const r=await fetch(`${API}/${e}/${id}`,{method:'DELETE',headers:HDR});if(!r.ok)throw new Error(await r.text());return r.json().catch(()=>({}));}
 
 // ═══════════════════ LOGIN ═══════════════════
 function selectUser(key) {
@@ -821,13 +841,13 @@ function renderInv(){
   const cat=document.getElementById('invCat').value;
   const stat=document.getElementById('invStat').value;
   const list=products.filter(p=>{
-    const mQ=!q||[p.product_name,p.brand||'',p.product_id||''].join(' ').toLowerCase().includes(q);
+    const mQ=!q||[p.product_name,p.brand||'',p.product_id||'',p.sku||''].join(' ').toLowerCase().includes(q);
     return mQ&&(!cat||p.category===cat)&&(!stat||st(p)===stat);
   });
   const totVal=list.reduce((s,p)=>s+(p.unit_price||0)*(p.stock_qty||0),0);
   document.getElementById('invBody').innerHTML=list.map(p=>`
     <tr>
-      <td><div class="fw7">${p.product_name}</div><div class="fs11 text-gray">${p.product_id||''} · ${p.brand||''}</div></td>
+      <td><div class="fw7">${p.product_name}</div><div class="fs11 text-gray">${p.product_id||''} · ${p.brand||''}</div>${p.sku?`<div class="fs11" style="color:var(--gold);opacity:.7">SKU: ${p.sku}</div>`:''}</td>
       <td><span class="badge b-cat">${p.category}</span></td>
       <td class="num text-gold fw7">${peso(p.unit_price)}<span class="fs11 text-gray">/${p.unit||'pcs'}</span></td>
       <td><span class="fw7 ${qtyColor(p)}">${num(p.stock_qty)}</span><span class="fs11 text-gray"> ${p.unit||'pcs'}</span></td>
@@ -836,6 +856,7 @@ function renderInv(){
       <td><div class="flex gap8">
         <button class="btn btn-ghost btn-xs" onclick="openEdit('${p.id}')">✏️ Edit</button>
         <button class="btn btn-gold btn-xs" onclick="quickSell('${p.id}')">💰 Sell</button>
+        <button class="btn btn-xs" style="background:var(--red2);color:var(--red);border:1px solid rgba(239,68,68,.3)" onclick="confirmDelete('${p.id}','${p.product_name.replace(/'/g,\"\'\").replace(/`/g,'\`')}')">🗑️</button>
       </div></td>
     </tr>`).join('')||`<tr><td colspan="7"><div class="empty"><div class="empty-icon">📦</div><div>No products found</div></div></td></tr>`;
   document.getElementById('invFooter').innerHTML=list.length?`${list.length} products · Total value: <span class="num text-gold fw7" style="font-size:15px">${peso(totVal)}</span>`:'';
@@ -846,7 +867,7 @@ function openAdd(){
   editId=null;
   document.getElementById('modalTitle').textContent='+ Add New Product';
   document.getElementById('modalSaveBtn').textContent='Save Product';
-  ['mPid','mName','mBrand','mPrice','mQty','mMin','mNotes'].forEach(id=>document.getElementById(id).value='');
+  ['mPid','mSku','mName','mBrand','mPrice','mQty','mMin','mNotes'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('mCat').value='Tires';
   document.getElementById('mUnit').value='pcs';
   document.getElementById('prodModal').classList.add('open');
@@ -857,6 +878,7 @@ function openEdit(id){
   document.getElementById('modalTitle').textContent='✏️ Edit Product';
   document.getElementById('modalSaveBtn').textContent='Update Product';
   document.getElementById('mPid').value=p.product_id||'';
+  document.getElementById('mSku').value=p.sku||'';
   document.getElementById('mName').value=p.product_name||'';
   document.getElementById('mBrand').value=p.brand||'';
   document.getElementById('mCat').value=p.category||'Tires';
@@ -871,6 +893,7 @@ function closeModal(){document.getElementById('prodModal').classList.remove('ope
 async function saveProduct(){
   const d={
     product_id:document.getElementById('mPid').value.trim(),
+    sku:document.getElementById('mSku').value.trim(),
     product_name:document.getElementById('mName').value.trim(),
     brand:document.getElementById('mBrand').value.trim(),
     category:document.getElementById('mCat').value,
@@ -932,9 +955,9 @@ function renderActLog(){
   loadActLogs();
   const who=document.getElementById('actWho').value;
   const list=actLogs.filter(l=>!who||l.performed_by===who);
-  const icons={sale:'💰',add:'➕',edit:'✏️'};
-  const abClass={sale:'ab-sale',add:'ab-add',edit:'ab-edit'};
-  const labels={sale:'Sale',add:'Added',edit:'Edited'};
+  const icons={sale:'💰',add:'➕',edit:'✏️',delete:'🗑️'};
+  const abClass={sale:'ab-sale',add:'ab-add',edit:'ab-edit',delete:'ab-delete'};
+  const labels={sale:'Sale',add:'Added',edit:'Edited',delete:'Deleted'};
   if(!list.length){
     document.getElementById('actLogBody').innerHTML=`<div class="empty"><div class="empty-icon">🕓</div><div>No activity recorded yet</div></div>`;
     return;
@@ -967,12 +990,12 @@ function saleSearch(){
   const q=document.getElementById('saleQ').value.toLowerCase().trim();
   const res=document.getElementById('saleResults');
   if(!q){res.style.display='none';return;}
-  const matches=products.filter(p=>[p.product_name,p.brand||'',p.product_id||''].join(' ').toLowerCase().includes(q)).slice(0,8);
+  const matches=products.filter(p=>[p.product_name,p.brand||'',p.product_id||'',p.sku||''].join(' ').toLowerCase().includes(q)).slice(0,8);
   if(!matches.length){res.style.display='none';return;}
   res.style.display='block';
   res.innerHTML=matches.map(p=>`
     <div class="prod-item" onclick="pickProd('${p.id}')">
-      <div><div class="prod-item-name">${p.product_name}</div><div class="prod-item-sub">${p.brand||''} · ${p.category}</div></div>
+      <div><div class="prod-item-name">${p.product_name}</div><div class="prod-item-sub">${p.brand||''} · ${p.category}${p.sku?' · SKU: '+p.sku:''}</div></div>
       <div style="text-align:right;flex-shrink:0;margin-left:12px">
         <div class="num text-gold fw7 fs12">${peso(p.unit_price)}</div>
         <div class="fs11 ${p.stock_qty<=0?'text-red':p.stock_qty<=(p.min_stock||0)?'text-yellow':'text-gray'}">${p.stock_qty} in stock</div>
@@ -1066,6 +1089,27 @@ function renderAlerts(){
   document.getElementById('alertsBody').innerHTML=
     (out.length?tbl(out,'text-red','⛔ Out of Stock'):'')+
     (low.length?tbl(low,'text-yellow','⚠️ Low Stock'):'');
+}
+
+// ═══════════════════ DELETE ═══════════════════
+let deleteTarget=null;
+function confirmDelete(id,name){
+  deleteTarget={id,name};
+  document.getElementById('delName').textContent=name;
+  document.getElementById('delModal').classList.add('open');
+}
+function closeDelModal(){document.getElementById('delModal').classList.remove('open');deleteTarget=null;}
+async function doDelete(){
+  if(!deleteTarget)return;
+  const btn=document.getElementById('delConfirmBtn');
+  btn.disabled=true;btn.textContent='Deleting…';
+  try {
+    await apiDel('KGProduct',deleteTarget.id);
+    await logActivity('delete',deleteTarget.name,'Product deleted from inventory');
+    toast(`🗑️ "${deleteTarget.name}" deleted`,'ok');
+    closeDelModal(); await loadAll();
+  } catch(e){toast('Failed: '+e.message,'err');}
+  finally{btn.disabled=false;btn.textContent='Yes, Delete';}
 }
 
 // ═══════════════════ TOAST / MODAL ═══════════════════
