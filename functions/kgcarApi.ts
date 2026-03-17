@@ -6,10 +6,9 @@ const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-App-Id',
-  'Content-Type': 'application/json',
 };
 
-function hdrs() {
+function apiHeaders() {
   return {
     'Content-Type': 'application/json',
     'Authorization': `Bearer ${SVC_TOKEN}`,
@@ -18,38 +17,41 @@ function hdrs() {
 }
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response(null, { headers: CORS, status: 204 });
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: CORS, status: 204 });
+  }
 
   try {
     const url = new URL(req.url);
-    // Path: /functions/kgcarApi/{entity}/{id?}
-    const pathParts = url.pathname.replace('/functions/kgcarApi', '').split('/').filter(Boolean);
-    const entity = pathParts[0];
-    const id = pathParts[1];
+    const entity = url.searchParams.get('entity');
+    const id = url.searchParams.get('id');
 
-    if (!entity) return Response.json({ error: 'entity required in path' }, { status: 400, headers: CORS });
+    if (!entity) {
+      return Response.json({ error: 'entity param required' }, { status: 400, headers: CORS });
+    }
 
     let apiUrl = `${BASE_URL}/${entity}`;
     if (id) apiUrl += `/${id}`;
-    if (req.method === 'GET') apiUrl += '?limit=500';
+    if (req.method === 'GET') apiUrl += (id ? '' : '?limit=500');
 
-    const body = (req.method === 'POST' || req.method === 'PUT')
-      ? await req.text()
-      : undefined;
+    let bodyText: string | undefined;
+    if (req.method === 'POST' || req.method === 'PUT') {
+      bodyText = await req.text();
+    }
 
-    const resp = await fetch(apiUrl, {
+    const upstream = await fetch(apiUrl, {
       method: req.method,
-      headers: hdrs(),
-      body,
+      headers: apiHeaders(),
+      body: bodyText,
     });
 
-    const text = await resp.text();
+    const text = await upstream.text();
     return new Response(text, {
-      status: resp.status,
+      status: upstream.status,
       headers: { ...CORS, 'Content-Type': 'application/json' },
     });
 
-  } catch (e) {
+  } catch (e: any) {
     return Response.json({ error: e.message }, { status: 500, headers: CORS });
   }
 });
