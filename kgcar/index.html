@@ -283,11 +283,11 @@ tbody td{padding:13px 16px;vertical-align:middle}
     <div class="login-users" id="loginUsers">
       <div class="user-card" data-user="admin" onclick="selectUser('admin')">
         <div class="user-avatar admin">👑</div>
-        <div><div class="user-name">Admin</div><div class="user-role">Full Access · PIN 1234</div></div>
+        <div><div class="user-name">Admin</div><div class="user-role">Administrator · Full Access</div></div>
       </div>
       <div class="user-card" data-user="asst" onclick="selectUser('asst')">
         <div class="user-avatar asst">🧑‍💼</div>
-        <div><div class="user-name">Assistant</div><div class="user-role">Full Access · PIN 5678</div></div>
+        <div><div class="user-name">Assistant</div><div class="user-role">Staff · Full Access</div></div>
       </div>
     </div>
     <div class="pin-section" id="pinSection">
@@ -295,6 +295,7 @@ tbody td{padding:13px 16px;vertical-align:middle}
       <div class="pin-dots" id="pinDots">
         <div class="pin-dot" id="d0"></div><div class="pin-dot" id="d1"></div>
         <div class="pin-dot" id="d2"></div><div class="pin-dot" id="d3"></div>
+        <div class="pin-dot" id="d4"></div><div class="pin-dot" id="d5"></div>
       </div>
       <div class="pin-pad">
         <button class="pin-btn" onclick="pinTap('1')">1</button>
@@ -350,7 +351,12 @@ tbody td{padding:13px 16px;vertical-align:middle}
       <span class="sb-item-icon">⚠️</span>Stock Alerts
       <span class="sb-badge yellow" id="sbBadge" style="display:none">0</span>
     </button>
-    <div class="sb-footer"><div class="sb-footer-text">KGCAR Admin v2.0</div></div>
+    <div class="sb-footer">
+      <div id="sbChangePinBtn" style="display:none;margin-bottom:10px">
+        <button class="btn btn-ghost btn-sm" style="width:100%;justify-content:center" onclick="openChangePin()">🔑 Change PINs</button>
+      </div>
+      <div class="sb-footer-text">KGCAR Admin v2.0</div>
+    </div>
   </nav>
 
   <div class="content">
@@ -617,6 +623,30 @@ tbody td{padding:13px 16px;vertical-align:middle}
   </div>
 </div>
 
+<!-- CHANGE PIN MODAL (Admin only) -->
+<div class="overlay" id="changePinModal">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-title">🔑 Change PINs</div>
+    <p style="font-size:13px;color:var(--gray);margin-bottom:22px">Set new 6-digit PINs for each account. Leave blank to keep current PIN.</p>
+    <div class="form-grid">
+      <div class="fg full">
+        <label class="label">👑 Admin PIN</label>
+        <input class="inp" type="password" id="newAdminPin" placeholder="Enter new 6-digit PIN" maxlength="6" inputmode="numeric" pattern="[0-9]*"/>
+        <div class="inp-hint">Leave blank to keep current PIN</div>
+      </div>
+      <div class="fg full">
+        <label class="label">🧑‍💼 Assistant PIN</label>
+        <input class="inp" type="password" id="newAsstPin" placeholder="Enter new 6-digit PIN" maxlength="6" inputmode="numeric" pattern="[0-9]*"/>
+        <div class="inp-hint">Leave blank to keep current PIN</div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeChangePin()">Cancel</button>
+      <button class="btn btn-gold" onclick="saveNewPins()">Save PINs</button>
+    </div>
+  </div>
+</div>
+
 <!-- ADD EXPENSE MODAL -->
 <div class="overlay" id="expModal">
   <div class="modal" style="max-width:480px">
@@ -677,9 +707,18 @@ const API = 'https://base44.app/api/apps/69b7cae883aa8d618e49d211/entities';
 const TOK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxZGZiZTQ4ZC0xNWU3LTRjZjgtYjY1OC0zNDAzYjAxYjYzNDEiLCJjbGllbnRfaWQiOiIxZGZiZTQ4ZC0xNWU3LTRjZjgtYjY1OC0zNDAzYjAxYjYzNDEiLCJhcHBfaWQiOiI2OWI3Y2FlODgzYWE4ZDYxOGU0OWQyMTEiLCJhdWQiOiJiYXNlNDRfYXBpIiwic2NvcGUiOiJhcHAuYWNjZXNzIiwiZXhwIjoxNzczNzA5NjQ1LCJpYXQiOjE3NzM3MDYwNDV9.CT8GyGjTEZrwvTHL6sMAvSWh9Qq_GF1Xt3D06i6Kqno';
 const HDR = {'Content-Type':'application/json','Authorization':'Bearer '+TOK,'X-App-Id':'69b7cae883aa8d618e49d211'};
 
+const DEFAULT_PINS = { admin:'070726', asst:'5678' };
+function getPins(){
+  try {
+    const s=localStorage.getItem('kgcar_pins');
+    if(s) return JSON.parse(s);
+  } catch(e){}
+  return {...DEFAULT_PINS};
+}
+function savePins(p){ localStorage.setItem('kgcar_pins',JSON.stringify(p)); }
 const USERS = {
-  admin: { name:'Admin', role:'admin', pin:'1234', emoji:'👑' },
-  asst:  { name:'Assistant', role:'asst', pin:'5678', emoji:'🧑‍💼' }
+  admin: { name:'Admin', role:'admin', emoji:'👑' },
+  asst:  { name:'Assistant', role:'asst', emoji:'🧑‍💼' }
 };
 const CAT_COLORS = {
   'Tires':'#ef4444','Engine Oil':'#f59e0b','Brake Pads':'#3b82f6','Brake Oil':'#8b5cf6',
@@ -709,10 +748,10 @@ function selectUser(key) {
   updateDots();
 }
 function pinTap(d) {
-  if(pinEntry.length>=4) return;
+  if(pinEntry.length>=6) return;
   pinEntry += d;
   updateDots();
-  if(pinEntry.length===4) setTimeout(checkPin, 150);
+  if(pinEntry.length===6) setTimeout(checkPin, 150);
 }
 function pinBack() { pinEntry=pinEntry.slice(0,-1); updateDots(); document.getElementById('pinErr').textContent=''; }
 function cancelPin() {
@@ -723,12 +762,12 @@ function cancelPin() {
   updateDots();
 }
 function updateDots() {
-  for(let i=0;i<4;i++) document.getElementById('d'+i).className='pin-dot'+(i<pinEntry.length?' filled':'');
+  for(let i=0;i<6;i++) document.getElementById('d'+i).className='pin-dot'+(i<pinEntry.length?' filled':'');
 }
 function checkPin() {
-  const u = USERS[pinTarget];
-  if(pinEntry === u.pin) {
-    curUser = { key: pinTarget, ...u };
+  const pins = getPins();
+  if(pinEntry === pins[pinTarget]) {
+    curUser = { key: pinTarget, ...USERS[pinTarget] };
     localStorage.setItem('kgcar_user', JSON.stringify(curUser));
     launchApp();
   } else {
@@ -746,6 +785,8 @@ function launchApp() {
     <div style="flex:1"><div class="sb-user-name">${curUser.name}</div><div class="sb-user-role">${curUser.role==='admin'?'Administrator':'Staff'}</div></div>
     <button class="sb-logout" onclick="logout()" title="Logout">⏻</button>`;
   document.getElementById('saleBy').value = curUser.name;
+  const cpBtn=document.getElementById('sbChangePinBtn');
+  if(cpBtn) cpBtn.style.display=curUser.role==='admin'?'block':'none';
   clock(); setInterval(clock,30000);
   document.getElementById('saleDate').value = today();
   loadAll();
@@ -1254,6 +1295,29 @@ function renderAlerts(){
     (out.length?tbl(out,'text-red','⛔ Out of Stock'):'')+
     (low.length?tbl(low,'text-yellow','⚠️ Low Stock'):'');
 }
+
+// ═══════════════════ CHANGE PIN (Admin only) ═══════════════════
+function openChangePin(){
+  document.getElementById('newAdminPin').value='';
+  document.getElementById('newAsstPin').value='';
+  document.getElementById('changePinModal').classList.add('open');
+}
+function closeChangePin(){ document.getElementById('changePinModal').classList.remove('open'); }
+function saveNewPins(){
+  const pins=getPins();
+  const newAdmin=document.getElementById('newAdminPin').value.trim();
+  const newAsst=document.getElementById('newAsstPin').value.trim();
+  if(newAdmin && (newAdmin.length!==6||!/^\d+$/.test(newAdmin))){toast('Admin PIN must be exactly 6 digits','err');return;}
+  if(newAsst && (newAsst.length!==6||!/^\d+$/.test(newAsst))){toast('Assistant PIN must be exactly 6 digits','err');return;}
+  if(newAdmin) pins.admin=newAdmin;
+  if(newAsst) pins.asst=newAsst;
+  savePins(pins);
+  closeChangePin();
+  toast('✅ PINs updated successfully','ok');
+}
+document.getElementById('changePinModal').addEventListener('click',e=>{
+  if(e.target===document.getElementById('changePinModal'))closeChangePin();
+});
 
 // ═══════════════════ ADD EXPENSE ═══════════════════
 function openAddExpense(){
