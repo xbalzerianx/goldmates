@@ -1285,9 +1285,9 @@ function renderActLog(){
   loadActLogs();
   const who=document.getElementById('actWho').value;
   const list=actLogs.filter(l=>!who||l.performed_by===who);
-  const icons={sale:'💰',add:'➕',edit:'✏️',delete:'🗑️',expense:'💸'};
-  const abClass={sale:'ab-sale',add:'ab-add',edit:'ab-edit',delete:'ab-delete',expense:'ab-expense'};
-  const labels={sale:'Sale',add:'Added',edit:'Edited',delete:'Deleted',expense:'Expense'};
+  const icons={sale:'💰',add:'➕',edit:'✏️',delete:'🗑️',expense:'💸',stock_update:'📦'};
+  const abClass={sale:'ab-sale',add:'ab-add',edit:'ab-edit',delete:'ab-delete',expense:'ab-expense',stock_update:'ab-add'};
+  const labels={sale:'Sale',add:'Added',edit:'Edited',delete:'Deleted',expense:'Expense',stock_update:'Stock Update'};
   if(!list.length){
     document.getElementById('actLogBody').innerHTML=`<div class="empty"><div class="empty-icon">🕓</div><div>No activity recorded yet</div></div>`;
     return;
@@ -1518,7 +1518,7 @@ function renderAlerts(){
           <tr><td><div class="fw7">${p.product_name}</div><div class="fs11 text-gray">${p.product_id||''}</div></td>
           <td><span class="badge b-cat">${p.category}</span></td>
           <td class="${cls} fw7">${p.stock_qty}</td><td class="text-gray">${p.min_stock||0}</td>
-          <td><button class="btn btn-ghost btn-xs" onclick="openEdit('${p.id}')">✏️ Update Stock</button></td></tr>`).join('')}
+          <td><div class="flex gap8"><button class="btn btn-xs" style="background:var(--green2);color:var(--green);border:1px solid rgba(16,185,129,.3);font-size:11px" onclick="openQtyModal('${p.id}')">📦 Add Stock</button><button class="btn btn-ghost btn-xs" onclick="quickSell('${p.id}')">💰 Sell</button></div></td></tr>`).join('')}
         </tbody></table></div></div>`;
   document.getElementById('alertsBody').innerHTML=
     (out.length?tbl(out,'text-red','⛔ Out of Stock'):'')+
