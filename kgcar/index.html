@@ -1147,11 +1147,10 @@ function openEdit(id){
   document.getElementById('mNotes').value=p.notes||'';
   document.getElementById('prodModal').classList.add('open');
 }
-function closeModal(){document.getElementById('prodModal').classList.remove('open');}
+async function closeModal(){document.getElementById('prodModal').classList.remove('open');}
 async function saveProduct(){
   const d={
     product_id:document.getElementById('mPid').value.trim(),
-    sku:document.getElementById('mSku').value.trim(),
     product_name:document.getElementById('mName').value.trim(),
     brand:document.getElementById('mBrand').value.trim(),
     category:document.getElementById('mCat').value,
@@ -1513,7 +1512,7 @@ async function saveExpense(){
 
 // ═══════════════════ DELETE ═══════════════════
 let deleteTarget=null;
-function confirmDelete(id,name){
+async function confirmDelete(id,name){
   deleteTarget={id,name};
   document.getElementById('delName').textContent=name;
   document.getElementById('delModal').classList.add('open');
