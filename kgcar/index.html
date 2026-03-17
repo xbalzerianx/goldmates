@@ -317,6 +317,20 @@ tbody td{padding:13px 16px;vertical-align:middle}
   /* net profit banner compact */
   .profit-banner{flex-direction:column;align-items:flex-start;gap:10px;padding:12px 14px !important}
   .profit-banner-right{text-align:left !important}
+  /* tighter table cells on mobile */
+  td,th{padding:8px 6px !important;font-size:12px}
+  .btn-xs{padding:4px 6px;font-size:10px}
+  /* modal full screen on small phones */
+  .modal{width:95vw;max-width:95vw !important;padding:18px 16px;max-height:88vh;overflow-y:auto}
+  /* overlay: content aligned top */
+  .overlay{align-items:flex-start;padding-top:24px}
+  /* form grid single col on mobile */
+  .form-grid{grid-template-columns:1fr !important}
+  /* tire size selects stack */
+  #tireSizeRow > div{flex-direction:column}
+  #tireSizeRow select,#tireSizeRow input{min-width:100% !important;width:100% !important}
+  /* qty modal */
+  #qtyInputVal{font-size:28px !important}
 }
 </style>
 </head>
@@ -664,27 +678,55 @@ tbody td{padding:13px 16px;vertical-align:middle}
 
 <!-- ADD/EDIT MODAL -->
 <div class="overlay" id="prodModal">
-  <div class="modal">
+  <div class="modal" style="max-width:560px">
     <div class="modal-title" id="modalTitle">+ Add Product</div>
     <div class="form-grid">
       <div class="fg"><label class="label">Product ID</label><input class="inp" id="mPid" placeholder="PRD-021"/></div>
-      <div class="fg"><label class="label">SKU (Barcode / Scan Code)</label><input class="inp" id="mSku" placeholder="e.g. 8850123456789"/></div>
       <div class="fg"><label class="label">Category</label>
-        <select class="sel2" id="mCat">
+        <select class="sel2" id="mCat" onchange="toggleTireSize()">
           <option>Tires</option><option>Engine Oil</option><option>Brake Pads</option><option>Brake Oil</option>
           <option>Filters</option><option>Batteries</option><option>Wipers</option><option>Lights</option>
-          <option>Belts & Hoses</option><option>Accessories</option>
+          <option>Belts &amp; Hoses</option><option>Accessories</option>
         </select>
       </div>
       <div class="fg full"><label class="label">Product Name</label><input class="inp" id="mName" placeholder="Full product name"/></div>
+      <!-- Tire size row - shown only for Tires category -->
+      <div class="fg full" id="tireSizeRow" style="display:none">
+        <label class="label">🔵 Tire Size</label>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+          <select class="sel2" id="mTireWidth" onchange="updateTirePreview()" style="flex:1;min-width:90px">
+            <option value="">Width</option>
+            <option>155</option><option>165</option><option>175</option><option>185</option>
+            <option>195</option><option>205</option><option>215</option><option>225</option>
+            <option>235</option><option>245</option><option>255</option><option>265</option>
+            <option>275</option><option>285</option><option>295</option><option>305</option>
+          </select>
+          <span style="color:var(--gray);font-weight:700">/</span>
+          <select class="sel2" id="mTireProfile" onchange="updateTirePreview()" style="flex:1;min-width:80px">
+            <option value="">Profile</option>
+            <option>30</option><option>35</option><option>40</option><option>45</option>
+            <option>50</option><option>55</option><option>60</option><option>65</option>
+            <option>70</option><option>75</option><option>80</option>
+          </select>
+          <span style="color:var(--gray);font-weight:700">R</span>
+          <select class="sel2" id="mTireRim" onchange="updateTirePreview()" style="flex:1;min-width:80px">
+            <option value="">Rim</option>
+            <option>13</option><option>14</option><option>15</option><option>16</option>
+            <option>17</option><option>18</option><option>19</option><option>20</option>
+            <option>21</option><option>22</option>
+          </select>
+          <input class="inp" id="mTireCustom" placeholder="or type custom size e.g. 205/55R16" oninput="updateTirePreview()" style="flex:2;min-width:160px"/>
+        </div>
+        <div class="inp-hint" style="margin-top:4px">Select from dropdowns OR type custom size. Preview: <span id="tireSizePreview" style="color:var(--gold);font-weight:700">—</span></div>
+      </div>
       <div class="fg"><label class="label">Brand</label><input class="inp" id="mBrand" placeholder="Brand"/></div>
       <div class="fg"><label class="label">Unit</label>
         <select class="sel2" id="mUnit"><option>pcs</option><option>set</option><option>liter</option><option>bottle</option><option>pair</option><option>box</option><option>roll</option></select>
       </div>
-      <div class="fg"><label class="label">Unit Price (₱)</label><input class="inp" type="number" id="mPrice" placeholder="0.00"/></div>
-      <div class="fg"><label class="label">Stock Qty</label><input class="inp" type="number" id="mQty" placeholder="0"/></div>
-      <div class="fg"><label class="label">Min Stock Alert</label><input class="inp" type="number" id="mMin" placeholder="0"/></div>
-      <div class="fg full"><label class="label">Notes</label><textarea class="ta" id="mNotes" placeholder="Optional…"></textarea></div>
+      <div class="fg"><label class="label">Unit Price (₱)</label><input class="inp" type="number" id="mPrice" placeholder="0.00" min="0" step="0.01"/></div>
+      <div class="fg"><label class="label">Stock Qty</label><input class="inp" type="number" id="mQty" placeholder="0" min="0"/></div>
+      <div class="fg"><label class="label">Min Stock Alert</label><input class="inp" type="number" id="mMin" placeholder="5" min="0"/></div>
+      <div class="fg full"><label class="label">Notes</label><textarea class="ta" id="mNotes" placeholder="Optional…" rows="2"></textarea></div>
     </div>
     <div class="modal-foot">
       <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
@@ -1105,14 +1147,15 @@ function renderInv(){
   const totVal=list.reduce((s,p)=>s+(p.unit_price||0)*(p.stock_qty||0),0);
   document.getElementById('invBody').innerHTML=list.map(p=>`
     <tr>
-      <td><div class="fw7">${p.product_name}</div><div class="fs11 text-gray">${p.product_id||''} · ${p.brand||''}</div>${p.sku?`<div class="fs11" style="color:var(--gold);opacity:.7">SKU: ${p.sku}</div>`:''}</td>
+      <td><div class="fw7">${p.product_name}</div><div class="fs11 text-gray">${p.product_id||''} · ${p.brand||''}</div>${p.tire_size?`<div class="fs11" style="color:var(--blue);font-weight:600">📐 ${p.tire_size}</div>`:''}</td>
       <td><span class="badge b-cat">${p.category}</span></td>
       <td class="num text-gold fw7">${peso(p.unit_price)}<span class="fs11 text-gray">/${p.unit||'pcs'}</span></td>
       <td><span class="fw7 ${qtyColor(p)}">${num(p.stock_qty)}</span><span class="fs11 text-gray"> ${p.unit||'pcs'}</span></td>
       <td class="num fw7">${peso((p.unit_price||0)*(p.stock_qty||0))}</td>
       <td>${badgeEl(p)}</td>
-      <td><div class="flex gap8">
-        <button class="btn btn-ghost btn-xs" onclick="openEdit('${p.id}')">✏️ Edit</button>
+      <td><div class="flex gap8" style="flex-wrap:wrap">
+        <button class="btn btn-ghost btn-xs" onclick="openEdit('${p.id}')">✏️</button>
+        <button class="btn btn-xs" style="background:var(--green2);color:var(--green);border:1px solid rgba(16,185,129,.3);font-size:11px;padding:4px 8px" onclick="openQtyModal('${p.id}')">📦 Stock</button>
         <button class="btn btn-gold btn-xs" onclick="quickSell('${p.id}')">💰 Sell</button>
         <button class="btn btn-xs" style="background:var(--red2);color:var(--red);border:1px solid rgba(239,68,68,.3)" onclick="confirmDelete(this.getAttribute('data-pid'),this.getAttribute('data-pname'))" data-pid="${p.id}" data-pname="${p.product_name}">🗑️</button>
       </div></td>
@@ -1125,9 +1168,12 @@ function openAdd(){
   editId=null;
   document.getElementById('modalTitle').textContent='+ Add New Product';
   document.getElementById('modalSaveBtn').textContent='Save Product';
-  ['mPid','mSku','mName','mBrand','mPrice','mQty','mMin','mNotes'].forEach(id=>document.getElementById(id).value='');
+  ['mPid','mName','mBrand','mPrice','mQty','mMin','mNotes'].forEach(id=>document.getElementById(id).value='');
+  ['mTireWidth','mTireProfile','mTireRim'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  const tc=document.getElementById('mTireCustom');if(tc)tc.value='';
   document.getElementById('mCat').value='Tires';
   document.getElementById('mUnit').value='pcs';
+  toggleTireSize();
   document.getElementById('prodModal').classList.add('open');
 }
 function openEdit(id){
@@ -1136,10 +1182,23 @@ function openEdit(id){
   document.getElementById('modalTitle').textContent='✏️ Edit Product';
   document.getElementById('modalSaveBtn').textContent='Update Product';
   document.getElementById('mPid').value=p.product_id||'';
-  document.getElementById('mSku').value=p.sku||'';
   document.getElementById('mName').value=p.product_name||'';
   document.getElementById('mBrand').value=p.brand||'';
   document.getElementById('mCat').value=p.category||'Tires';
+  toggleTireSize();
+  // restore tire size
+  const ts=p.tire_size||'';
+  const tCustom=document.getElementById('mTireCustom');
+  const tsMatch=ts.match(/^(\d+)\/(\d+)R(\d+)$/);
+  if(tsMatch){
+    document.getElementById('mTireWidth').value=tsMatch[1];
+    document.getElementById('mTireProfile').value=tsMatch[2];
+    document.getElementById('mTireRim').value=tsMatch[3];
+    if(tCustom)tCustom.value='';
+  } else {
+    ['mTireWidth','mTireProfile','mTireRim'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    if(tCustom)tCustom.value=ts;
+  }
   document.getElementById('mUnit').value=p.unit||'pcs';
   document.getElementById('mPrice').value=p.unit_price||'';
   document.getElementById('mQty').value=p.stock_qty||'';
@@ -1149,16 +1208,30 @@ function openEdit(id){
 }
 async function closeModal(){document.getElementById('prodModal').classList.remove('open');}
 async function saveProduct(){
+  // resolve tire size
+  const cat=document.getElementById('mCat').value;
+  let tireSize='';
+  if(cat==='Tires'){
+    const custom=document.getElementById('mTireCustom').value.trim();
+    if(custom){tireSize=custom;}
+    else{
+      const w=document.getElementById('mTireWidth').value;
+      const pr=document.getElementById('mTireProfile').value;
+      const rm=document.getElementById('mTireRim').value;
+      if(w&&pr&&rm)tireSize=`${w}/${pr}R${rm}`;
+    }
+  }
   const d={
     product_id:document.getElementById('mPid').value.trim(),
     product_name:document.getElementById('mName').value.trim(),
     brand:document.getElementById('mBrand').value.trim(),
-    category:document.getElementById('mCat').value,
+    category:cat,
     unit:document.getElementById('mUnit').value,
     unit_price:parseFloat(document.getElementById('mPrice').value)||0,
     stock_qty:parseInt(document.getElementById('mQty').value)||0,
     min_stock:parseInt(document.getElementById('mMin').value)||0,
     notes:document.getElementById('mNotes').value.trim(),
+    tire_size:tireSize||undefined,
   };
   if(!d.product_name){toast('Product name is required','err');return;}
   const btn=document.getElementById('modalSaveBtn');
@@ -1544,6 +1617,121 @@ document.getElementById('prodModal').addEventListener('click',e=>{
 document.getElementById('expModal').addEventListener('click',e=>{
   if(e.target===document.getElementById('expModal'))closeExpModal();
 });
+
+// ═══════════════════ TIRE SIZE TOGGLE ═══════════════════
+function toggleTireSize(){
+  const cat=document.getElementById('mCat').value;
+  const row=document.getElementById('tireSizeRow');
+  if(row)row.style.display=(cat==='Tires')?'':'none';
+}
+function updateTirePreview(){
+  const w=document.getElementById('mTireWidth').value;
+  const pr=document.getElementById('mTireProfile').value;
+  const rm=document.getElementById('mTireRim').value;
+  const custom=document.getElementById('mTireCustom').value.trim();
+  const prev=document.getElementById('tireSizePreview');
+  if(!prev)return;
+  if(custom){prev.textContent=custom;return;}
+  prev.textContent=(w&&pr&&rm)?`${w}/${pr}R${rm}`:'—';
+}
+
+// ═══════════════════ QTY MODAL ═══════════════════
+let qtyModalProductId=null;
+let qtyMode='add'; // 'add' or 'set'
+
+function openQtyModal(pid){
+  const p=products.find(x=>x.id===pid);if(!p)return;
+  qtyModalProductId=pid;
+  qtyMode='add';
+  document.getElementById('qtyModalProd').textContent=p.product_name+(p.tire_size?` · ${p.tire_size}`:'');
+  document.getElementById('qtyModalMeta').textContent=`Current stock: ${num(p.stock_qty)} ${p.unit||'pcs'}`;
+  document.getElementById('qtyInputVal').value='';
+  document.getElementById('qtyNote').value='';
+  setQtyMode('add');
+  document.getElementById('qtyModal').classList.add('open');
+}
+
+function setQtyMode(mode){
+  qtyMode=mode;
+  const p=products.find(x=>x.id===qtyModalProductId);
+  const addBtn=document.getElementById('qtyModeAdd');
+  const setBtn=document.getElementById('qtyModeSet');
+  const label=document.getElementById('qtyInputLabel');
+  if(mode==='add'){
+    addBtn.style.background='var(--green2)';addBtn.style.color='var(--green)';addBtn.style.borderColor='rgba(16,185,129,.3)';
+    setBtn.style.background='var(--navy3)';setBtn.style.color='var(--gray)';setBtn.style.borderColor='var(--navy4)';
+    label.textContent='Quantity to Add';
+  } else {
+    setBtn.style.background='var(--blue2)';setBtn.style.color='var(--blue)';setBtn.style.borderColor='rgba(59,130,246,.3)';
+    addBtn.style.background='var(--navy3)';addBtn.style.color='var(--gray)';addBtn.style.borderColor='var(--navy4)';
+    label.textContent='Set Exact Quantity';
+  }
+  updateQtyHint();
+}
+
+function updateQtyHint(){
+  const p=products.find(x=>x.id===qtyModalProductId);if(!p)return;
+  const val=parseInt(document.getElementById('qtyInputVal').value)||0;
+  const hint=document.getElementById('qtyResultHint');
+  if(qtyMode==='add'){
+    hint.textContent=val?`New total: ${num(p.stock_qty+val)} ${p.unit||'pcs'}`:'Enter quantity to add';
+  } else {
+    hint.textContent=val!==null?`Will set stock to: ${num(val)} ${p.unit||'pcs'}`:'Enter exact quantity';
+  }
+}
+
+function closeQtyModal(){
+  document.getElementById('qtyModal').classList.remove('open');
+  qtyModalProductId=null;
+}
+
+async function saveQtyUpdate(){
+  const p=products.find(x=>x.id===qtyModalProductId);if(!p)return;
+  const val=parseInt(document.getElementById('qtyInputVal').value);
+  if(isNaN(val)||val<0){toast('Enter a valid quantity','err');return;}
+  const note=document.getElementById('qtyNote').value.trim();
+  const newQty=qtyMode==='add'?p.stock_qty+val:val;
+  const btn=document.getElementById('qtySaveBtn');
+  btn.disabled=true;btn.textContent='Saving…';
+  try{
+    await apiPut('KGProduct',qtyModalProductId,{stock_qty:newQty});
+    const detail=qtyMode==='add'
+      ?`Stock added: +${val} (${p.stock_qty} → ${newQty})${note?' · '+note:''}`
+      :`Stock set to ${newQty}${note?' · '+note:''}`;
+    await logActivity('stock_update', p.product_name, detail);
+    toast(`✅ Stock updated → ${num(newQty)} ${p.unit||'pcs'}`,'ok');
+    closeQtyModal();await loadAll();
+  }catch(e){toast('Failed: '+e.message,'err');}
+  finally{btn.disabled=false;btn.textContent='Update Stock';}
+}
 </script>
+
+<!-- QTY UPDATE MODAL -->
+<div class="overlay" id="qtyModal">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-title">📦 Update Stock</div>
+    <div style="margin-bottom:18px">
+      <div id="qtyModalProd" style="font-size:15px;font-weight:700;color:var(--white);margin-bottom:4px">Product Name</div>
+      <div id="qtyModalMeta" style="font-size:12px;color:var(--gray)">Current stock: 0</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px">
+      <button class="btn" id="qtyModeAdd" onclick="setQtyMode('add')" style="background:var(--green2);color:var(--green);border:1px solid rgba(16,185,129,.3);font-weight:700;padding:12px;font-size:13px">➕ Add Stock</button>
+      <button class="btn" id="qtyModeSet" onclick="setQtyMode('set')" style="background:var(--navy3);color:var(--gray);border:1px solid var(--navy4);font-weight:700;padding:12px;font-size:13px">🔄 Set Exact</button>
+    </div>
+    <div class="fg full" style="margin-bottom:18px">
+      <label class="label" id="qtyInputLabel">Quantity to Add</label>
+      <input class="inp" type="number" id="qtyInputVal" placeholder="0" min="0" oninput="updateQtyHint()" style="font-size:20px;font-weight:800;text-align:center;letter-spacing:-0.5px"/>
+      <div class="inp-hint" id="qtyResultHint" style="margin-top:6px;font-size:13px;color:var(--gold)"></div>
+    </div>
+    <div class="fg full" style="margin-bottom:4px">
+      <label class="label">Note (optional)</label>
+      <input class="inp" id="qtyNote" placeholder="e.g. New delivery, Stock count…"/>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeQtyModal()">Cancel</button>
+      <button class="btn btn-gold" id="qtySaveBtn" onclick="saveQtyUpdate()">Update Stock</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
