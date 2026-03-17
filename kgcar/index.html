@@ -948,6 +948,11 @@ function renderDash(){
   const alerts=low+out;
   const lbl=filterLabel();
 
+  // expenses — must be calculated before kpiGrid
+  const fexp=getFilteredExpensesForDash();
+  const periodExpTot=fexp.reduce((s,e)=>s+(e.amount||0),0);
+  const netProfit=periodRev-periodExpTot;
+
   document.getElementById('kpiGrid').innerHTML=`
     <div class="kpi"><div class="kpi-glow gold"></div><div class="kpi-icon">📦</div>
       <div class="kpi-label">Inventory Value</div><div class="kpi-val gold num">${peso(totVal)}</div>
@@ -986,9 +991,6 @@ function renderDash(){
     ||`<tr><td colspan="5" style="text-align:center;padding:40px;color:var(--gray)">No sales in this period</td></tr>`;
 
   // filtered expenses
-  const fexp=getFilteredExpensesForDash();
-  const periodExpTot=fexp.reduce((s,e)=>s+(e.amount||0),0);
-  const netProfit=periodRev-periodExpTot;
   const expRows=fexp.slice(0,6).map(e=>`
     <tr><td><div class="fw7">${e.description||'—'}</div></td>
     <td><span class="badge b-cat">${e.category||'—'}</span></td>
