@@ -147,6 +147,7 @@ button,input,select,textarea{font-family:inherit}
 .ab-add{background:var(--blue2);color:var(--blue)}
 .ab-edit{background:var(--gold3);color:var(--gold)}
 .ab-delete{background:var(--red2);color:var(--red)}
+.ab-expense{background:rgba(239,68,68,.08);color:#f87171}
 
 /* TABLE */
 .tbl-wrap{overflow-x:auto;border-radius:var(--r);border:1px solid var(--navy3)}
@@ -339,6 +340,9 @@ tbody td{padding:13px 16px;vertical-align:middle}
     <button class="sb-item" data-page="saleslog" onclick="go('saleslog')">
       <span class="sb-item-icon">📋</span>Sales Log
     </button>
+    <button class="sb-item" data-page="expenses" onclick="go('expenses')">
+      <span class="sb-item-icon">💸</span>Expenses
+    </button>
     <button class="sb-item" data-page="actlog" onclick="go('actlog')">
       <span class="sb-item-icon">🕓</span>Activity Log
     </button>
@@ -526,6 +530,40 @@ tbody td{padding:13px 16px;vertical-align:middle}
         </div>
       </div>
 
+      <!-- EXPENSES -->
+      <div id="page-expenses" class="page">
+        <div class="page-hdr">
+          <div class="page-hdr-row">
+            <div><div class="page-title">Expenses</div><div class="page-sub">Track daily business expenses</div></div>
+            <button class="btn btn-gold" onclick="openAddExpense()">+ Add Expense</button>
+          </div>
+        </div>
+        <div class="toolbar">
+          <div class="search"><span style="font-size:15px;color:var(--gray)">🔍</span>
+            <input type="text" id="expQ" placeholder="Search expenses…" oninput="renderExpenses()"/>
+          </div>
+          <select class="sel" id="expCat" onchange="renderExpenses()">
+            <option value="">All Categories</option>
+            <option>Utilities</option><option>Rent</option><option>Supplies</option>
+            <option>Salary</option><option>Transport</option><option>Maintenance</option>
+            <option>Marketing</option><option>Food</option><option>Other</option>
+          </select>
+          <select class="sel" id="expPeriod" onchange="renderExpenses()">
+            <option value="today">Today</option>
+            <option value="week">This Week</option>
+            <option value="month">This Month</option>
+            <option value="all">All Time</option>
+          </select>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Description</th><th>Category</th><th>Amount</th><th>Date</th><th>Recorded By</th><th>Notes</th><th>Actions</th></tr></thead>
+            <tbody id="expBody"></tbody>
+          </table>
+        </div>
+        <div id="expFooter" class="mt16" style="text-align:right;font-size:13px;color:var(--gray)"></div>
+      </div>
+
       <!-- ALERTS -->
       <div id="page-alerts" class="page">
         <div class="page-hdr"><div class="page-title">Stock Alerts</div><div class="page-sub">Products needing immediate attention</div></div>
@@ -543,6 +581,7 @@ tbody td{padding:13px 16px;vertical-align:middle}
     <button class="mob-item" data-page="inventory" onclick="go('inventory')"><span class="mob-item-icon">📦</span>Products</button>
     <button class="mob-item" data-page="sale" onclick="go('sale')"><span class="mob-item-icon">💰</span>Sell</button>
     <button class="mob-item" data-page="saleslog" onclick="go('saleslog')"><span class="mob-item-icon">📋</span>Log</button>
+    <button class="mob-item" data-page="expenses" onclick="go('expenses')"><span class="mob-item-icon">💸</span>Expenses</button>
     <button class="mob-item" data-page="alerts" onclick="go('alerts')"><span class="mob-item-icon">⚠️</span>Alerts</button>
   </div>
 </nav>
@@ -574,6 +613,41 @@ tbody td{padding:13px 16px;vertical-align:middle}
     <div class="modal-foot">
       <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
       <button class="btn btn-gold" id="modalSaveBtn" onclick="saveProduct()">Save Product</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD EXPENSE MODAL -->
+<div class="overlay" id="expModal">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-title">💸 Add Expense</div>
+    <div class="form-grid">
+      <div class="fg full"><label class="label">Description</label>
+        <input class="inp" id="expDesc" placeholder="e.g. Electricity bill, Delivery fee…"/>
+      </div>
+      <div class="fg"><label class="label">Category</label>
+        <select class="sel2" id="expCatModal">
+          <option>Utilities</option><option>Rent</option><option>Supplies</option>
+          <option>Salary</option><option>Transport</option><option>Maintenance</option>
+          <option>Marketing</option><option>Food</option><option>Other</option>
+        </select>
+      </div>
+      <div class="fg"><label class="label">Amount (₱)</label>
+        <input class="inp" type="number" id="expAmount" placeholder="0.00" step="0.01"/>
+      </div>
+      <div class="fg"><label class="label">Date</label>
+        <input class="inp" type="date" id="expDate2"/>
+      </div>
+      <div class="fg"><label class="label">Recorded By</label>
+        <input class="inp" id="expBy" readonly style="color:var(--gold)" value=""/>
+      </div>
+      <div class="fg full"><label class="label">Notes (optional)</label>
+        <textarea class="ta" id="expNote2" placeholder="Receipt #, supplier, etc."></textarea>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeExpModal()">Cancel</button>
+      <button class="btn btn-gold" id="expSaveBtn" onclick="saveExpense()">Save Expense</button>
     </div>
   </div>
 </div>
@@ -614,7 +688,7 @@ const CAT_COLORS = {
 };
 
 // ═══════════════════ STATE ═══════════════════
-let products=[], sales=[], actLogs=[], curPage='dashboard';
+let products=[], sales=[], expenses=[], actLogs=[], curPage='dashboard';
 let editId=null, selProd=null, curFilter='today', filterFrom='', filterTo='';
 let curUser=null, pinEntry='', pinTarget=null;
 
@@ -713,14 +787,15 @@ function genSaleId(){
 // ═══════════════════ LOAD ═══════════════════
 async function loadAll(){
   try {
-    [products, sales] = await Promise.all([apiGet('KGProduct'), apiGet('KGSale')]);
+    [products, sales, expenses] = await Promise.all([apiGet('KGProduct'), apiGet('KGSale'), apiGet('KGExpense').catch(()=>[])]);
     sales.sort((a,b)=>new Date(b.created_date||0)-new Date(a.created_date||0));
+    expenses.sort((a,b)=>new Date(b.created_date||0)-new Date(a.created_date||0));
     alertBadge(); render();
   } catch(e){toast('Failed to load: '+e.message,'err');}
 }
 
 // ═══════════════════ NAVIGATION ═══════════════════
-const TITLES={dashboard:'Dashboard',inventory:'Products & Inventory',sale:'Record Sale',saleslog:'Sales Log',actlog:'Activity Log',alerts:'Stock Alerts'};
+const TITLES={dashboard:'Dashboard',inventory:'Products & Inventory',sale:'Record Sale',saleslog:'Sales Log',expenses:'Expenses',actlog:'Activity Log',alerts:'Stock Alerts'};
 function go(page){
   curPage=page;
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
@@ -751,6 +826,33 @@ function applyCustom(){
   filterFrom=document.getElementById('filterFrom').value;
   filterTo=document.getElementById('filterTo').value;
   if(filterFrom&&filterTo) renderDash();
+}
+function getFilteredExpenses(){
+  const now=new Date();
+  const todayStr=today();
+  const period=document.getElementById('expPeriod')?.value||'today';
+  return expenses.filter(e=>{
+    const d=e.expense_date||e.created_date?.split('T')[0]||'';
+    if(!d) return false;
+    if(period==='today') return d===todayStr;
+    if(period==='week'){const day=new Date(now);day.setDate(day.getDate()-day.getDay());return new Date(d)>=day;}
+    if(period==='month') return d.startsWith(todayStr.slice(0,7));
+    return true;
+  });
+}
+function getFilteredExpensesForDash(){
+  const now=new Date();
+  const todayStr=today();
+  return expenses.filter(e=>{
+    const d=e.expense_date||e.created_date?.split('T')[0]||'';
+    if(!d) return false;
+    if(curFilter==='today') return d===todayStr;
+    if(curFilter==='week'){const day=new Date(now);day.setDate(day.getDate()-day.getDay());return new Date(d)>=day;}
+    if(curFilter==='month') return d.startsWith(todayStr.slice(0,7));
+    if(curFilter==='all') return true;
+    if(curFilter==='custom') return(!filterFrom||d>=filterFrom)&&(!filterTo||d<=filterTo);
+    return true;
+  });
 }
 function getFilteredSales(){
   const now=new Date();
@@ -827,12 +929,42 @@ function renderDash(){
     <td><span class="badge ${s.recorded_by==='Admin'?'b-admin':'b-asst'}">${s.recorded_by||'—'}</span></td></tr>`).join('')
     ||`<tr><td colspan="5" style="text-align:center;padding:40px;color:var(--gray)">No sales in this period</td></tr>`;
 
+  // filtered expenses
+  const fexp=getFilteredExpensesForDash();
+  const periodExpTot=fexp.reduce((s,e)=>s+(e.amount||0),0);
+  const netProfit=periodRev-periodExpTot;
+  const expRows=fexp.slice(0,6).map(e=>`
+    <tr><td><div class="fw7">${e.description||'—'}</div></td>
+    <td><span class="badge b-cat">${e.category||'—'}</span></td>
+    <td class="num text-red fw7">${peso(e.amount)}</td>
+    <td class="fs11 text-gray">${e.expense_date||''}</td>
+    <td><span class="badge ${e.recorded_by==='Admin'?'b-admin':'b-asst'}">${e.recorded_by||'—'}</span></td></tr>`).join('')
+    ||`<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--gray)">No expenses in this period</td></tr>`;
+
   document.getElementById('dashBottom').innerHTML=`
-    <div class="card"><div class="card-hdr"><div><div class="card-title">📦 Inventory by Category</div><div class="card-sub">Current stock value</div></div></div>${catHtml||'<div class="empty"><div class="empty-icon">📦</div><div>No products yet</div></div>'}</div>
-    <div class="card"><div class="card-hdr"><div><div class="card-title">💰 Sales · ${lbl}</div></div><button class="btn btn-ghost btn-xs" onclick="go('saleslog')">View All →</button></div>
-    <div class="tbl-wrap" style="border:none"><table>
-    <thead><tr><th>ID</th><th>Product</th><th>Cat</th><th>Total</th><th>By</th></tr></thead>
-    <tbody>${topRows}</tbody></table></div></div>`;
+    <div style="display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:20px;margin-bottom:20px">
+      <div class="kpi" style="margin:0"><div class="kpi-glow green"></div><div class="kpi-icon">💰</div>
+        <div class="kpi-label">Revenue · ${lbl}</div><div class="kpi-val green num">${peso(periodRev)}</div>
+        <div class="kpi-sub">${periodTx} transactions</div></div>
+      <div class="kpi" style="margin:0"><div class="kpi-glow red"></div><div class="kpi-icon">💸</div>
+        <div class="kpi-label">Expenses · ${lbl}</div><div class="kpi-val red num">${peso(periodExpTot)}</div>
+        <div class="kpi-sub">${fexp.length} entries</div></div>
+      <div class="kpi" style="margin:0;cursor:pointer"><div class="kpi-glow ${netProfit>=0?'gold':'red'}"></div><div class="kpi-icon">${netProfit>=0?'📈':'📉'}</div>
+        <div class="kpi-label">Net Profit · ${lbl}</div><div class="kpi-val ${netProfit>=0?'gold':'red'} num">${peso(netProfit)}</div>
+        <div class="kpi-sub">${netProfit>=0?'▲ Profitable':'▼ At a loss'}</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:20px">
+      <div class="card"><div class="card-hdr"><div><div class="card-title">💰 Sales · ${lbl}</div></div><button class="btn btn-ghost btn-xs" onclick="go('saleslog')">View All →</button></div>
+        <div class="tbl-wrap" style="border:none"><table>
+        <thead><tr><th>ID</th><th>Product</th><th>Cat</th><th>Total</th><th>By</th></tr></thead>
+        <tbody>${topRows}</tbody></table></div></div>
+      <div class="card"><div class="card-hdr"><div><div class="card-title">💸 Expenses · ${lbl}</div></div><button class="btn btn-ghost btn-xs" onclick="go('expenses')">View All →</button></div>
+        <div class="tbl-wrap" style="border:none"><table>
+        <thead><tr><th>Description</th><th>Cat</th><th>Amount</th><th>Date</th><th>By</th></tr></thead>
+        <tbody>${expRows}</tbody></table></div>
+        <button class="btn btn-gold btn-sm" style="width:100%;justify-content:center;margin-top:14px" onclick="openAddExpense()">+ Add Expense</button>
+      </div>
+    </div>`;
 }
 
 // ═══════════════════ INVENTORY ═══════════════════
@@ -955,9 +1087,9 @@ function renderActLog(){
   loadActLogs();
   const who=document.getElementById('actWho').value;
   const list=actLogs.filter(l=>!who||l.performed_by===who);
-  const icons={sale:'💰',add:'➕',edit:'✏️',delete:'🗑️'};
-  const abClass={sale:'ab-sale',add:'ab-add',edit:'ab-edit',delete:'ab-delete'};
-  const labels={sale:'Sale',add:'Added',edit:'Edited',delete:'Deleted'};
+  const icons={sale:'💰',add:'➕',edit:'✏️',delete:'🗑️',expense:'💸'};
+  const abClass={sale:'ab-sale',add:'ab-add',edit:'ab-edit',delete:'ab-delete',expense:'ab-expense'};
+  const labels={sale:'Sale',add:'Added',edit:'Edited',delete:'Deleted',expense:'Expense'};
   if(!list.length){
     document.getElementById('actLogBody').innerHTML=`<div class="empty"><div class="empty-icon">🕓</div><div>No activity recorded yet</div></div>`;
     return;
@@ -1067,6 +1199,38 @@ function renderSL(){
   document.getElementById('slFooter').innerHTML=list.length?`${list.length} transactions · Total: <span class="num text-gold fw7" style="font-size:15px">${peso(tot)}</span>`:'';
 }
 
+// ═══════════════════ EXPENSES ═══════════════════
+function renderExpenses(){
+  const q=(document.getElementById('expQ')?.value||'').toLowerCase();
+  const cat=document.getElementById('expCat')?.value||'';
+  const list=getFilteredExpenses().filter(e=>{
+    const mQ=!q||[e.description||'',e.category||'',e.notes||''].join(' ').toLowerCase().includes(q);
+    return mQ&&(!cat||e.category===cat);
+  });
+  const tot=list.reduce((s,e)=>s+(e.amount||0),0);
+  document.getElementById('expBody').innerHTML=list.map(e=>`
+    <tr>
+      <td><div class="fw7">${e.description||'—'}</div></td>
+      <td><span class="badge b-cat">${e.category||'—'}</span></td>
+      <td class="num text-red fw7">${peso(e.amount)}</td>
+      <td><div class="fw7 fs12">${e.expense_date||''}</div><div class="fs11 text-gray">${e.created_date?phTime(e.created_date):''}</div></td>
+      <td><span class="badge ${e.recorded_by==='Admin'?'b-admin':'b-asst'}">${e.recorded_by||'Admin'}</span></td>
+      <td class="fs11 text-gray">${e.notes||'—'}</td>
+      <td><button class="btn btn-xs" style="background:var(--red2);color:var(--red);border:1px solid rgba(239,68,68,.3)" onclick="deleteExpense('${e.id}','${(e.description||'').replace(/'/g,"\'")}')">🗑️</button></td>
+    </tr>`).join('')||`<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--gray)">No expenses in this period</td></tr>`;
+  document.getElementById('expFooter').innerHTML=list.length?`${list.length} expenses · Total: <span class="num text-red fw7" style="font-size:15px">${peso(tot)}</span>`:'';
+}
+
+let expenseDeleteTarget=null;
+async function deleteExpense(id,desc){
+  if(!confirm(`Delete expense "${desc}"?`)) return;
+  try {
+    await apiDel('KGExpense',id);
+    toast('🗑️ Expense deleted','ok');
+    await loadAll();
+  } catch(e){toast('Failed: '+e.message,'err');}
+}
+
 // ═══════════════════ ALERTS ═══════════════════
 function renderAlerts(){
   const out=products.filter(p=>st(p)==='out');
@@ -1089,6 +1253,41 @@ function renderAlerts(){
   document.getElementById('alertsBody').innerHTML=
     (out.length?tbl(out,'text-red','⛔ Out of Stock'):'')+
     (low.length?tbl(low,'text-yellow','⚠️ Low Stock'):'');
+}
+
+// ═══════════════════ ADD EXPENSE ═══════════════════
+function openAddExpense(){
+  document.getElementById('expModal').classList.add('open');
+  document.getElementById('expBy').value=curUser?.name||'Admin';
+  document.getElementById('expDesc').value='';
+  document.getElementById('expAmount').value='';
+  document.getElementById('expNote2').value='';
+  document.getElementById('expDate2').value=today();
+  document.getElementById('expCatModal').value='Utilities';
+}
+function closeExpModal(){document.getElementById('expModal').classList.remove('open');}
+async function saveExpense(){
+  const desc=document.getElementById('expDesc').value.trim();
+  const amt=parseFloat(document.getElementById('expAmount').value)||0;
+  if(!desc){toast('Description is required','err');return;}
+  if(!amt){toast('Enter a valid amount','err');return;}
+  const btn=document.getElementById('expSaveBtn');
+  btn.disabled=true;btn.textContent='Saving…';
+  try {
+    await apiPost('KGExpense',{
+      description:desc,
+      category:document.getElementById('expCatModal').value,
+      amount:amt,
+      expense_date:document.getElementById('expDate2').value,
+      recorded_by:curUser?.name||'Admin',
+      user_role:curUser?.role||'admin',
+      notes:document.getElementById('expNote2').value.trim(),
+    });
+    await logActivity('expense',desc,`Expense: ${peso(amt)} · ${document.getElementById('expCatModal').value}`);
+    toast(`✅ Expense recorded: ${peso(amt)}`,'ok');
+    closeExpModal(); await loadAll();
+  } catch(e){toast('Failed: '+e.message,'err');}
+  finally{btn.disabled=false;btn.textContent='Save Expense';}
 }
 
 // ═══════════════════ DELETE ═══════════════════
@@ -1121,6 +1320,9 @@ function toast(msg,type='ok'){
 }
 document.getElementById('prodModal').addEventListener('click',e=>{
   if(e.target===document.getElementById('prodModal'))closeModal();
+});
+document.getElementById('expModal').addEventListener('click',e=>{
+  if(e.target===document.getElementById('expModal'))closeExpModal();
 });
 </script>
 </body>
