@@ -1,6 +1,6 @@
 #!/bin/bash
 # Refreshes the KGcar app token in GitHub with the permanent BASE44_SERVICE_TOKEN
-# This token never expires - just keeps it current
+# Handles both `const TOK` (old) and `let TOK` (new) patterns
 
 source /app/.agents/.env
 
@@ -15,12 +15,15 @@ d=json.load(sys.stdin)
 print(base64.b64decode(d['content'].replace('\n','')).decode('utf-8'))
 ")
 
-# Replace token with permanent service token
+# Replace token - supports both const TOK and let TOK patterns
 NEW_CONTENT=$(echo "$CONTENT" | python3 -c "
 import sys, re, os
 content = sys.stdin.read()
 token = os.environ['BASE44_SERVICE_TOKEN']
-new = re.sub(r\"const TOK = '[^']*'\", f\"const TOK = '{token}'\", content)
+# Try let TOK first (new format), then fall back to const TOK (old format)
+new = re.sub(r\"let TOK = '[^']*'\", f\"let TOK = '{token}'\", content)
+if new == content:
+    new = re.sub(r\"const TOK = '[^']*'\", f\"const TOK = '{token}'\", content)
 print(new)
 ")
 
