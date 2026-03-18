@@ -7,7 +7,7 @@ const CORS = {
   'Access-Control-Allow-Headers': 'Content-Type, X-Pin, X-Session',
 };
 
-const VALID_ENTITIES = ['KGProduct', 'KGSale', 'KGExpense'];
+const VALID_ENTITIES = ['KGProduct', 'KGSale', 'KGExpense', 'KGActivity'];
 
 const PINS: Record<string, string> = {
   '070726': 'admin',
@@ -33,8 +33,7 @@ Deno.serve(async (req) => {
 
   try {
     const url = new URL(req.url);
-    const path = url.pathname; // e.g. /functions/kgcarApi or just /
-    
+
     // Parse body once
     let body: any = {};
     if (req.method === 'POST' || req.method === 'PUT') {
@@ -49,18 +48,22 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Unauthorized - invalid PIN' }, { status: 401, headers: CORS });
     }
 
-    // Entity and ID from query params
+    // Entity and ID from query params or body
     const entity = url.searchParams.get('entity') || body._entity;
     const id = url.searchParams.get('id') || body._id;
+    const limit = url.searchParams.get('limit') || '500';
+    const sort = url.searchParams.get('sort') || '-created_date';
 
     if (!entity || !VALID_ENTITIES.includes(entity)) {
-      return Response.json({ error: 'Invalid entity' }, { status: 400, headers: CORS });
+      return Response.json({ error: `Invalid entity: ${entity}. Allowed: ${VALID_ENTITIES.join(', ')}` }, { status: 400, headers: CORS });
     }
 
     // Build upstream URL
     let apiUrl = `${BASE_URL}/${entity}`;
     if (id) apiUrl += `/${id}`;
-    if (req.method === 'GET') apiUrl += `?limit=500`;
+    if (req.method === 'GET') {
+      apiUrl += `?limit=${limit}&sort=${sort}`;
+    }
 
     // Remove internal params from body
     const { _pin, _entity, _id, ...cleanBody } = body;
