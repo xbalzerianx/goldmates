@@ -1,28 +1,31 @@
-import { createClient } from "@base44/sdk";
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
-const base44 = createClient({
-  appId: process.env.BASE44_APP_ID!,
-  token: process.env.BASE44_SERVICE_TOKEN!,
-  serverUrl: process.env.BASE44_API_URL!,
-});
+const ALLOWED_ORIGINS = [
+  "https://cairspa.com",
+  "https://www.cairspa.com",
+];
 
-export default async function handler(req: Request): Promise<Response> {
-  const headers = {
-    "Content-Type": "application/json",
-    "Access-Control-Allow-Origin": "https://www.cairspa.com",
+Deno.serve(async (req) => {
+  const origin = req.headers.get("origin") || "";
+  const corsOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+
+  const corsHeaders = {
+    "Access-Control-Allow-Origin": corsOrigin,
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type",
+    "Vary": "Origin",
   };
 
   if (req.method === "OPTIONS") {
-    return new Response(null, { status: 200, headers });
+    return new Response(null, { status: 200, headers: corsHeaders });
   }
 
   if (req.method !== "POST") {
-    return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405, headers });
+    return Response.json({ error: "Method not allowed" }, { status: 405, headers: corsHeaders });
   }
 
   try {
+    const base44 = createClientFromRequest(req);
     const body = await req.json();
     const { type, ...data } = body;
 
@@ -38,7 +41,7 @@ export default async function handler(req: Request): Promise<Response> {
         status: "Pending",
         source: "Website Form",
       });
-      return new Response(JSON.stringify({ success: true, id: record.id }), { status: 200, headers });
+      return Response.json({ success: true, id: record.id }, { headers: corsHeaders });
     }
 
     if (type === "lead" || type === "contact") {
@@ -48,15 +51,15 @@ export default async function handler(req: Request): Promise<Response> {
         phone: data.phone || "",
         service_interest: data.service || data.service_interest || "",
         message: data.message || "",
-        form_type: data.form_type || "Contact",
+        form_type: data.form_type || "Hero Callback",
         status: "New",
       });
-      return new Response(JSON.stringify({ success: true, id: record.id }), { status: 200, headers });
+      return Response.json({ success: true, id: record.id }, { headers: corsHeaders });
     }
 
-    return new Response(JSON.stringify({ error: "Unknown form type" }), { status: 400, headers });
-  } catch (err: any) {
+    return Response.json({ error: "Unknown form type" }, { status: 400, headers: corsHeaders });
+  } catch (err) {
     console.error("Form submission error:", err);
-    return new Response(JSON.stringify({ error: err.message }), { status: 500, headers });
+    return Response.json({ error: err.message }, { status: 500, headers: corsHeaders });
   }
-}
+});
