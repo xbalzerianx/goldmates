@@ -518,7 +518,12 @@ tbody td{padding:13px 16px;vertical-align:middle}
   .wop-sig-row{display:flex;justify-content:space-between;margin-top:50px}
   .wop-sig-box{text-align:center;width:200px}
   .wop-sig-line{border-top:1px solid #aaa;padding-top:6px;font-size:11px;color:#777}
-  .wop-footer{text-align:center;margin-top:20px;font-size:10px;color:#bbb;border-top:1px solid #eee;padding-top:10px}
+.wop-footer{text-align:center;margin-top:20px;font-size:10px;color:#bbb;border-top:1px solid #eee;padding-top:10px}
+  /* Force dark text inside WO preview — overrides body color:var(--white) */
+  #woPrintContent, #woPrintContent div, #woPrintContent td, #woPrintContent th, #woPrintContent span, #woPrintContent p { color: #1a1a1a !important; }
+  #woPrintContent th { background: #f5f5f5 !important; }
+  #woPrintContent .grand-row { background: #1a1a1a !important; }
+  #woPrintContent .grand-row span { color: #c8a84b !important; }
 }
 @media(max-width:700px){
   .wo-header{grid-template-columns:1fr}
@@ -2711,14 +2716,6 @@ function openWOPrint(id) {
   const statusLabel = {open:'Open',inprogress:'In Progress',completed:'Completed',cancelled:'Cancelled'}[wo.status] || wo.status;
 
   const html = `
-  <style>
-    #woPrintContent, #woPrintContent * { color: #1a1a1a !important; background: transparent; }
-    #woPrintContent table { background: #fff !important; }
-    #woPrintContent th { background: #f5f5f5 !important; color: #555 !important; }
-    #woPrintContent tr:nth-child(even) td { background: #fafafa !important; }
-    #woPrintContent .grand-row { background: #1a1a1a !important; }
-    #woPrintContent .grand-row span { color: #c8a84b !important; }
-  </style>
   <div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#1a1a1a;background:#fff;padding:0">
 
     <!-- HEADER -->
