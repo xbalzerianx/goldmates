@@ -59,7 +59,7 @@ button,input,select,textarea{font-family:inherit}
 .sidebar{width:240px;min-width:240px;background:var(--navy2);display:flex;flex-direction:column;border-right:1px solid var(--navy3);overflow-y:auto}
 .content{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
 .topbar{height:58px;min-height:58px;background:var(--navy2);border-bottom:1px solid var(--navy3);display:flex;align-items:center;justify-content:space-between;padding:0 24px;gap:16px}
-.main{flex:1;overflow-y:auto;padding:20px 28px}
+.main{flex:1;overflow:hidden;display:flex;flex-direction:column}
 
 /* SIDEBAR */
 .sb-logo{padding:24px 20px 20px;border-bottom:1px solid var(--navy3)}
@@ -94,7 +94,7 @@ button,input,select,textarea{font-family:inherit}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 
 /* PAGES */
-.page{display:none}.page.active{display:block}
+.page{display:none}.page.active{display:block;height:100%;overflow-y:auto;padding:20px 28px;box-sizing:border-box}
 .page-hdr{margin-bottom:20px}
 .page-hdr-row{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}
 .page-title{font-size:26px;font-weight:800;letter-spacing:-.5px}
@@ -303,7 +303,7 @@ tbody td{padding:13px 16px;vertical-align:middle}
   .sidebar{display:none!important}
   .mob-nav.show{display:block}
   .desktop-only{display:none}
-  .main{padding:14px 12px 80px}
+  .page.active{padding:14px 12px 80px}
   .topbar{padding:0 14px;height:54px;min-height:54px}
   .tb-live{display:none}
   .tb-title{font-size:16px}
@@ -348,7 +348,7 @@ tbody td{padding:13px 16px;vertical-align:middle}
   .user-card{padding:12px}
   .pin-pad{gap:8px}
   .pin-btn{height:52px;font-size:18px}
-  .main{padding:12px 10px 76px}
+  .page.active{padding:12px 10px 76px}
   .topbar{padding:0 12px;height:50px;min-height:50px}
   .tb-title{font-size:15px}
   .tb-right{gap:6px}
@@ -488,8 +488,8 @@ tbody td{padding:13px 16px;vertical-align:middle}
 /* print */
 @media print {
   .sidebar,.mob-nav,.topbar,.no-print{display:none!important}
-  .main{margin:0!important;padding:0!important}
-  .page{display:none!important}.page.active{display:block!important}
+  .main{margin:0!important;padding:0!important;height:auto!important}
+  .page{display:none!important}.page.active{display:block!important;height:auto!important;overflow:visible!important;padding:0!important}
   body{background:#fff;color:#000}
   .wo-print-wrap{max-width:800px;margin:0 auto;padding:20px;font-family:Arial,sans-serif}
   .wo-print-header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #d4a843;padding-bottom:16px;margin-bottom:16px}
@@ -1346,9 +1346,11 @@ async function go(page){
   curPage=page;
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-'+page).classList.add('active');
-  // Reset scroll after browser repaints
-  const mainEl = document.querySelector('.main');
-  requestAnimationFrame(()=>{ if(mainEl) mainEl.scrollTop = 0; });
+  // Reset active page scroll
+  requestAnimationFrame(()=>{
+    const p = document.getElementById('page-'+page);
+    if(p) p.scrollTop = 0;
+  });
   document.querySelectorAll('.sb-item,.mob-item').forEach(b=>b.classList.toggle('active',b.dataset.page===page));
   document.getElementById('tbTitle').textContent=TITLES[page]||'';
   if(page==='sale')resetSale();
