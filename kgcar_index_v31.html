@@ -2751,72 +2751,71 @@ function openWOPrint(id) {
   const wo = workOrders.find(w => w.id === id);
   if (!wo) return;
   const services = JSON.parse(wo.services_json || '[]');
-  const parts = JSON.parse(wo.parts_json || '[]');
-  const labor = wo.labor_total || 0;
-  const partsTotal = wo.parts_total || 0;
-  const sub = wo.subtotal || 0;
-  const vat = wo.vat_amount || 0;
-  const grand = wo.grand_total || 0;
-  const statusLabel = {open:'Open',inprogress:'In Progress',completed:'Completed',cancelled:'Cancelled'}[wo.status] || wo.status;
+  const parts    = JSON.parse(wo.parts_json    || '[]');
+  const labor      = wo.labor_total  || 0;
+  const partsTotal = wo.parts_total  || 0;
+  const sub        = wo.subtotal     || 0;
+  const vat        = wo.vat_amount   || 0;
+  const grand      = wo.grand_total  || 0;
 
-  const html = `
-  <div class="wop-header">
-    <div>
-      <div class="wop-logo">KGCAR</div>
-      <div class="wop-logo-sub">Car Service Work Order</div>
-    </div>
-    <div>
-      <div class="wop-wo-num">${wo.wo_number || '—'}</div>
-      <div class="wop-wo-date">${wo.work_date || '—'}${wo.work_time ? ' &nbsp;·&nbsp; '+wo.work_time : ''}</div>
-    </div>
-  </div>
+  // Build services rows
+  var svcRows = '';
+  for (var i = 0; i < services.length; i++) {
+    svcRows += '<tr><td>' + services[i].name + '</td><td class="charge">' + peso(services[i].price) + '</td></tr>';
+  }
+  var svcBlock = '';
+  if (services.length) {
+    svcBlock = '<div class="wop-section"><div class="wop-section-title">Services / Labor</div>' +
+      '<table class="wop-table"><thead><tr><th>Description</th><th style="text-align:right;width:140px">Charge</th></tr></thead>' +
+      '<tbody>' + svcRows + '</tbody></table></div>';
+  }
 
-  <div class="wop-info">
-    <div class="wop-info-row"><div class="wop-info-label">Customer Name</div><div class="wop-info-val">${wo.customer_name || '—'}</div></div>
-    <div class="wop-info-row"><div class="wop-info-label">Phone Number</div><div class="wop-info-val">${wo.customer_phone || '—'}</div></div>
-    <div class="wop-info-row"><div class="wop-info-label">Plate Number</div><div class="wop-info-val">${wo.plate_number || '—'}${wo.vehicle ? ' &nbsp;<span style="color:#888;font-weight:400">'+wo.vehicle+'</span>' : ''}</div></div>
-    <div class="wop-info-row"><div class="wop-info-label">Mechanic</div><div class="wop-info-val">${wo.mechanic || '—'}</div></div>
-  </div>
+  // Build parts rows
+  var partsRows = '';
+  for (var j = 0; j < parts.length; j++) {
+    partsRows += '<tr><td>' + parts[j].name + '</td><td style="text-align:center">' + parts[j].qty + '</td><td class="charge">' + peso(parts[j].price) + '</td></tr>';
+  }
+  var partsBlock = '';
+  if (parts.length) {
+    partsBlock = '<div class="wop-section"><div class="wop-section-title">Parts Used</div>' +
+      '<table class="wop-table"><thead><tr><th>Part / Product</th><th style="text-align:center;width:60px">Qty</th><th style="text-align:right;width:120px">Unit Price</th></tr></thead>' +
+      '<tbody>' + partsRows + '</tbody></table></div>';
+  }
 
-  ${services.length ? \`
-  <div class="wop-section">
-    <div class="wop-section-title">Services / Labor</div>
-    <table class="wop-table">
-      <thead><tr><th>Description</th><th style="text-align:right;width:140px">Charge</th></tr></thead>
-      <tbody>
-        \${services.map(s=>\`<tr><td>\${s.name}</td><td class="charge">\${peso(s.price)}</td></tr>\`).join('')}
-      </tbody>
-    </table>
-  </div>\` : ''}
+  // Build totals
+  var totRows = '';
+  if (labor > 0)      totRows += '<div class="wop-tot-row"><span>Services / Labor</span><span>' + peso(labor) + '</span></div>';
+  if (partsTotal > 0) totRows += '<div class="wop-tot-row"><span>Parts</span><span>' + peso(partsTotal) + '</span></div>';
+  totRows += '<div class="wop-tot-row"><span>Subtotal</span><span>' + peso(sub) + '</span></div>';
+  if (vat > 0)        totRows += '<div class="wop-tot-row"><span>VAT</span><span>' + peso(vat) + '</span></div>';
+  totRows += '<div class="wop-tot-row grand"><span>GRAND TOTAL</span><span>' + peso(grand) + '</span></div>';
 
-  ${parts.length ? \`
-  <div class="wop-section">
-    <div class="wop-section-title">Parts Used</div>
-    <table class="wop-table">
-      <thead><tr><th>Part / Product</th><th style="text-align:center;width:60px">Qty</th><th style="text-align:right;width:120px">Unit Price</th></tr></thead>
-      <tbody>
-        \${parts.map(p=>\`<tr><td>\${p.name}</td><td style="text-align:center">\${p.qty}</td><td class="charge">\${peso(p.price)}</td></tr>\`).join('')}
-      </tbody>
-    </table>
-  </div>\` : ''}
+  // Notes
+  var notesBlock = wo.notes ? '<div class="wop-notes" style="margin-top:20px"><strong>Notes:</strong> ' + wo.notes + '</div>' : '';
 
-  <div class="wop-totals">
-    ${labor > 0 ? \`<div class="wop-tot-row"><span>Services / Labor</span><span>\${peso(labor)}</span></div>\` : ''}
-    ${partsTotal > 0 ? \`<div class="wop-tot-row"><span>Parts</span><span>\${peso(partsTotal)}</span></div>\` : ''}
-    <div class="wop-tot-row"><span>Subtotal</span><span>\${peso(sub)}</span></div>
-    ${vat > 0 ? \`<div class="wop-tot-row"><span>VAT</span><span>\${peso(vat)}</span></div>\` : ''}
-    <div class="wop-tot-row grand"><span>GRAND TOTAL</span><span>\${peso(grand)}</span></div>
-  </div>
+  // Vehicle span
+  var vehicleSpan = wo.vehicle ? ' &nbsp;<span style="color:#888;font-weight:400">' + wo.vehicle + '</span>' : '';
+  var timeSpan = wo.work_time ? ' &nbsp;&middot;&nbsp; ' + wo.work_time : '';
 
-  ${wo.notes ? \`<div class="wop-notes" style="margin-top:20px"><strong>Notes:</strong> \${wo.notes}</div>\` : ''}
+  var html =
+    '<div class="wop-header">' +
+      '<div><div class="wop-logo">KGCAR</div><div class="wop-logo-sub">Car Service Work Order</div></div>' +
+      '<div><div class="wop-wo-num">' + (wo.wo_number || '—') + '</div><div class="wop-wo-date">' + (wo.work_date || '—') + timeSpan + '</div></div>' +
+    '</div>' +
+    '<div class="wop-info">' +
+      '<div class="wop-info-row"><div class="wop-info-label">Customer Name</div><div class="wop-info-val">' + (wo.customer_name || '—') + '</div></div>' +
+      '<div class="wop-info-row"><div class="wop-info-label">Phone Number</div><div class="wop-info-val">' + (wo.customer_phone || '—') + '</div></div>' +
+      '<div class="wop-info-row"><div class="wop-info-label">Plate Number</div><div class="wop-info-val">' + (wo.plate_number || '—') + vehicleSpan + '</div></div>' +
+      '<div class="wop-info-row"><div class="wop-info-label">Mechanic</div><div class="wop-info-val">' + (wo.mechanic || '—') + '</div></div>' +
+    '</div>' +
+    svcBlock +
+    partsBlock +
+    '<div class="wop-totals">' + totRows + '</div>' +
+    notesBlock +
+    '<div class="wop-sig-row"><div class="wop-sig-box"><div class="wop-sig-line">Customer Signature</div></div><div class="wop-sig-box"><div class="wop-sig-line">Authorized by</div></div></div>' +
+    '<div class="wop-footer">Thank you for choosing KGCAR &middot; ' + (wo.wo_number || '') + '</div>';
 
-  <div class="wop-sig-row">
-    <div class="wop-sig-box"><div class="wop-sig-line">Customer Signature</div></div>
-    <div class="wop-sig-box"><div class="wop-sig-line">Authorized by</div></div>
-  </div>
-  <div class="wop-footer">Thank you for choosing KGCAR · \${wo.wo_number}</div>
-`;  document.getElementById('woPrintContent').innerHTML = html;
-
+  document.getElementById('woPrintContent').innerHTML = html;
   document.getElementById('woPrintModal').style.display = 'flex';
 }
 function closeWOPrint() {
