@@ -879,12 +879,8 @@ tbody td{padding:13px 16px;vertical-align:middle}
 
       <!-- ===== WORK ORDERS PAGE ===== -->
       <div id="page-workorders" class="page">
-        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:20px">
-          <div>
-            <h1 style="font-size:22px;font-weight:700;color:#e8e0d5;margin:0 0 4px">🔧 Work Orders</h1>
-            <p style="font-size:13px;color:#8a8fa8;margin:0">Manage job orders and car service records.</p>
-          </div>
-          <button class="btn btn-primary no-print" onclick="openNewWO()">+ New Work Order</button>
+        <div style="display:flex;justify-content:flex-end;margin-bottom:14px" class="no-print">
+          <button class="btn btn-primary" onclick="openNewWO()">+ New Work Order</button>
         </div>
         <!-- filters -->
         <div class="wo-filter-row no-print" id="woFilterRow">
@@ -903,12 +899,8 @@ tbody td{padding:13px 16px;vertical-align:middle}
 
       <!-- ===== WO TEMPLATES PAGE ===== -->
       <div id="page-wotemplates" class="page">
-        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:20px">
-          <div>
-            <h1 style="font-size:22px;font-weight:700;color:#e8e0d5;margin:0 0 4px">📋 Work Order Templates</h1>
-            <p style="font-size:13px;color:#8a8fa8;margin:0">Create reusable job order templates (e.g. PMS, Brake Job, Change Oil).</p>
-          </div>
-          <button class="btn btn-primary no-print" onclick="openNewTpl()">+ New Template</button>
+        <div style="display:flex;justify-content:flex-end;margin-bottom:14px" class="no-print">
+          <button class="btn btn-primary" onclick="openNewTpl()">+ New Template</button>
         </div>
         <div id="tplListWrap">
           <div style="text-align:center;padding:40px;color:#8a8fa8">Loading templates…</div>
