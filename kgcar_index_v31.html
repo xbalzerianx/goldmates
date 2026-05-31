@@ -486,6 +486,13 @@ tbody td{padding:13px 16px;vertical-align:middle}
 @media(max-width:768px){.wo-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:480px){.wo-grid{grid-template-columns:1fr}}
 /* print */
+/* ===== WO PRINT MODAL LAYOUT ===== */
+#woPrintModal{overflow-x:hidden !important}
+#woPrintModal > div{max-width:780px !important;width:calc(100% - 0px) !important;margin:0 auto}
+#woPrintContent{width:100%;box-sizing:border-box;overflow-x:hidden}
+#woPrintContent table{width:100% !important;max-width:100% !important;table-layout:fixed !important;word-wrap:break-word}
+#woPrintContent td, #woPrintContent th{word-break:break-word;max-width:0;overflow:hidden;text-overflow:ellipsis}
+
 /* ===== WO PREVIEW — screen styles (mirrors @media print classes) ===== */
 #woPrintContent{font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#1a1a1a;background:#fff}
 #woPrintContent *{color:#1a1a1a;box-sizing:border-box}
@@ -3166,8 +3173,8 @@ document.addEventListener('click', function(e) {
 </div>
 
 <!-- ===== WO PRINT / VIEW MODAL ===== -->
-<div class="overlay" id="woPrintModal" style="display:none;align-items:flex-start;padding:20px 16px">
-  <div style="max-width:860px;width:100%;border-radius:12px;overflow:visible;box-shadow:0 20px 60px rgba(0,0,0,.6)">
+<div class="overlay" id="woPrintModal" style="display:none;align-items:flex-start;padding:16px;overflow-x:hidden;box-sizing:border-box">
+  <div style="max-width:820px;width:100%;border-radius:12px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.6);box-sizing:border-box">
     <!-- Modal toolbar (dark) -->
     <div class="no-print" style="background:#1e2535;border-bottom:1px solid #2a3347;display:flex;justify-content:space-between;align-items:center;padding:14px 20px">
       <span style="font-size:14px;font-weight:700;color:#e8e0d5;letter-spacing:.01em">📄 Work Order Preview</span>
@@ -3178,7 +3185,7 @@ document.addEventListener('click', function(e) {
       </div>
     </div>
     <!-- White document area -->
-    <div style="background:#fff;max-height:80vh;overflow-y:auto;overflow-x:hidden;padding:32px 40px;color:#1a1a1a;border-radius:0 0 12px 12px">
+    <div style="background:#fff;max-height:80vh;overflow-y:auto;overflow-x:hidden;padding:24px 28px;color:#1a1a1a;border-radius:0 0 12px 12px;box-sizing:border-box">
       <div id="woPrintContent" style="color:#1a1a1a"></div>
     </div>
   </div>
