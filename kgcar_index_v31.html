@@ -2830,6 +2830,14 @@ function openWOPrint(id) {
 
   </div>`;
   document.getElementById('woPrintContent').innerHTML = html;
+  // Force all text dark — overrides body color:var(--white) cascade
+  document.getElementById('woPrintContent').querySelectorAll('*').forEach(el => {
+    el.style.setProperty('color', el.style.color || '#1a1a1a', 'important');
+  });
+  // Gold on grand total row
+  document.getElementById('woPrintContent').querySelectorAll('.grand-row, .grand-row span').forEach(el => {
+    el.style.setProperty('color', '#c8a84b', 'important');
+  });
   document.getElementById('woPrintModal').style.display = 'flex';
 }
 function closeWOPrint() {
