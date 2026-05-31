@@ -600,9 +600,8 @@ tbody td{padding:13px 16px;vertical-align:middle}
     <button class="sb-item" data-page="workorders" onclick="go('workorders')" id="sbWOBtn">
       <span class="sb-item-icon">🔧</span>Work Orders
     </button>
-    <button class="sb-item" data-page="wotemplates" onclick="go('wotemplates')" id="sbWOTplBtn" style="display:none">
-      <span class="sb-item-icon">📋</span>WO Templates
-    </button>
+    <!-- WO Templates merged into WO modal — no longer a separate page -->
+    <div id="sbWOTplBtn" style="display:none"></div>
     <div class="sb-footer">
       <div id="sbChangePinBtn" style="display:none;margin-bottom:10px">
         <button class="btn btn-ghost btn-sm" style="width:100%;justify-content:center" onclick="openChangePin()">🔑 Change PINs</button>
@@ -878,40 +877,24 @@ tbody td{padding:13px 16px;vertical-align:middle}
       </div>
 
       <!-- ===== WORK ORDERS PAGE ===== -->
-      <div id="page-workorders" class="page" style="padding-top:0">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px" class="no-print">
+      <div id="page-workorders" class="page">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px" class="no-print">
           <div style="display:flex;gap:8px;flex-wrap:wrap" id="woFilterRow">
-            <button class="wo-filter-btn active" onclick="setWOFilter('all',this)">All</button>
-            <button class="wo-filter-btn" onclick="setWOFilter('open',this)">Open</button>
-            <button class="wo-filter-btn" onclick="setWOFilter('inprogress',this)">In Progress</button>
-            <button class="wo-filter-btn" onclick="setWOFilter('completed',this)">Completed</button>
+            <button class="wo-filter-btn active" data-filter="active" onclick="setWOFilter('active',this)">🔧 Active</button>
+            <button class="wo-filter-btn" data-filter="open" onclick="setWOFilter('open',this)">Open</button>
+            <button class="wo-filter-btn" data-filter="inprogress" onclick="setWOFilter('inprogress',this)">In Progress</button>
+            <button class="wo-filter-btn" data-filter="completed" onclick="setWOFilter('completed',this)">Completed</button>
+            <button class="wo-filter-btn" data-filter="all" onclick="setWOFilter('all',this)">All</button>
           </div>
           <button class="btn btn-primary" onclick="openNewWO()">+ New Work Order</button>
-        </div>
-        <!-- search -->
-          <button class="wo-filter-btn active" onclick="setWOFilter('all',this)">All</button>
-          <button class="wo-filter-btn" onclick="setWOFilter('open',this)">Open</button>
-          <button class="wo-filter-btn" onclick="setWOFilter('inprogress',this)">In Progress</button>
-          <button class="wo-filter-btn" onclick="setWOFilter('completed',this)">Completed</button>
-        </div>
-        <div class="wo-search-box no-print">
-          <input id="woSearchQ" placeholder="🔍  Search by customer, plate, WO #…" oninput="renderWOList()"/>
         </div>
         <div id="woListWrap">
           <div style="text-align:center;padding:40px;color:#8a8fa8">Loading work orders…</div>
         </div>
       </div>
 
-      <!-- ===== WO TEMPLATES PAGE ===== -->
-      <div id="page-wotemplates" class="page">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px" class="no-print">
-          <div style="font-size:13px;color:#8a8fa8">Reusable templates for common car services</div>
-          <button class="btn btn-primary" onclick="openNewTpl()">+ New Template</button>
-        </div>
-        <div id="tplListWrap">
-          <div style="text-align:center;padding:40px;color:#8a8fa8">Loading templates…</div>
-        </div>
-      </div>
+      <!-- WO TEMPLATES — kept in DOM but hidden, used by modal dropdown -->
+      <div id="page-wotemplates" class="page" style="display:none!important"></div>
 
     </div>
   </div>
@@ -1187,8 +1170,7 @@ async function launchApp() {
     <div style="flex:1"><div class="sb-user-name">${curUser.name}</div><div class="sb-user-role">${curUser.role==='admin'?'Administrator':'Staff'}</div></div>
     <button class="sb-logout" onclick="logout()" title="Logout">⏻</button>`;
   document.getElementById('saleBy').value = curUser.name;
-  const woTplBtn=document.getElementById('sbWOTplBtn');
-  if(woTplBtn) woTplBtn.style.display = (curUser?.role==='admin') ? '' : 'none';
+  // WO Templates are merged into modal — no sidebar button needed
   const cpBtn=document.getElementById('sbChangePinBtn');
   if(cpBtn) cpBtn.style.display=curUser.role==='admin'?'block':'none';
   const catMgrBtn=document.getElementById('sbCatMgrBtn');
@@ -1354,7 +1336,7 @@ async function loadAll(){
 }
 
 // ═══════════════════ NAVIGATION ═══════════════════
-const TITLES={dashboard:'Dashboard',inventory:'Products & Inventory',sale:'Record Sale',saleslog:'Sales Log',expenses:'Expenses',actlog:'Activity Log',alerts:'Stock Alerts',catmgr:'Category Manager',workorders:'Work Orders',wotemplates:'WO Templates'};
+const TITLES={dashboard:'Dashboard',inventory:'Products & Inventory',sale:'Record Sale',saleslog:'Sales Log',expenses:'Expenses',actlog:'Activity Log',alerts:'Stock Alerts',catmgr:'Category Manager',workorders:'Work Orders'};
 async function go(page){
   curPage=page;
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
@@ -1363,8 +1345,14 @@ async function go(page){
   document.querySelectorAll('.sb-item,.mob-item').forEach(b=>b.classList.toggle('active',b.dataset.page===page));
   document.getElementById('tbTitle').textContent=TITLES[page]||'';
   if(page==='sale')resetSale();
-  if(page==='workorders'){loadWorkOrders().then(()=>renderWOList());}
-  if(page==='wotemplates'){loadWorkOrders().then(()=>renderTplList());}
+  if(page==='workorders'){
+    loadWorkOrders().then(()=>{
+      woFilter='active';
+      setWOFilter('active');
+      renderWOList();
+    });
+  }
+  // wotemplates page removed — templates accessed from WO modal
   if(page==='catmgr'){
     if(categories.length===0){
       apiGet('KGCategory').then(cats=>{ categories=cats; renderCatMgr(); }).catch(()=>renderCatMgr());
@@ -2364,7 +2352,7 @@ TBL.KGWOTemplate = 'kg_wo_templates';
 let workOrders = [];
 let woTemplates = [];
 let currentWOId = null;
-let woFilter = 'all';
+let woFilter = 'active';
 let woServices = [];   // [{name, price}]
 let woParts = [];      // [{id, product_name, qty, unit_price}]
 let tplServices = [];
@@ -2395,15 +2383,18 @@ function setWOFilter(f, btn) {
   woFilter = f;
   document.querySelectorAll('#woFilterRow .wo-filter-btn').forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
+  else {
+    const match = document.querySelector('#woFilterRow [data-filter="' + f + '"]');
+    if (match) match.classList.add('active');
+  }
   renderWOList();
 }
 
 // ---- Render WO List ----
 function renderWOList() {
-  const q = (document.getElementById('woSearchQ')?.value || '').toLowerCase().trim();
   let list = workOrders;
-  if (woFilter !== 'all') list = list.filter(w => w.status === woFilter);
-  if (q) list = list.filter(w => [w.wo_number, w.customer_name, w.plate_number, w.vehicle].join(' ').toLowerCase().includes(q));
+  if (woFilter === 'active') list = list.filter(w => w.status === 'open' || w.status === 'inprogress');
+  else if (woFilter !== 'all') list = list.filter(w => w.status === woFilter);
   const wrap = document.getElementById('woListWrap');
   if (!wrap) return;
   if (!list.length) {
@@ -2444,8 +2435,12 @@ function openNewWO() {
   document.getElementById('woNum').value = genWONum();
   document.getElementById('woStatus').value = 'open';
   const now = new Date();
-  document.getElementById('woDate').value = now.toISOString().split('T')[0];
-  document.getElementById('woTime').value = now.toTimeString().slice(0,5);
+  // Always use PH time for date/time
+  const ph = new Date(now.toLocaleString('en-US', {timeZone:'Asia/Manila'}));
+  const phDate = ph.getFullYear() + '-' + String(ph.getMonth()+1).padStart(2,'0') + '-' + String(ph.getDate()).padStart(2,'0');
+  const phTime = String(ph.getHours()).padStart(2,'0') + ':' + String(ph.getMinutes()).padStart(2,'0');
+  document.getElementById('woDate').value = phDate;
+  document.getElementById('woTime').value = phTime;
   document.getElementById('woCustName').value = '';
   document.getElementById('woCustPhone').value = '';
   document.getElementById('woPlate').value = '';
@@ -2637,7 +2632,7 @@ async function saveWO() {
     subtotal: t.sub,
     vat_amount: t.vat,
     grand_total: t.grand,
-    recorded_by: currentUser?.name || 'Admin'
+    recorded_by: curUser?.name || 'Admin'
   };
   const btn = document.getElementById('woSaveBtn');
   btn.disabled = true; btn.textContent = 'Saving…';
