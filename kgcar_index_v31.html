@@ -486,6 +486,37 @@ tbody td{padding:13px 16px;vertical-align:middle}
 @media(max-width:768px){.wo-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:480px){.wo-grid{grid-template-columns:1fr}}
 /* print */
+/* ===== WO PREVIEW — screen styles (mirrors @media print classes) ===== */
+#woPrintContent{font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#1a1a1a;background:#fff}
+#woPrintContent *{color:#1a1a1a;box-sizing:border-box}
+.wop-header{border-bottom:3px solid #c8a84b;padding-bottom:16px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:flex-start}
+.wop-logo{font-size:22px;font-weight:900;color:#1a1a1a;letter-spacing:-1px}
+.wop-logo-sub{font-size:11px;color:#888;margin-top:2px}
+.wop-wo-num{font-size:18px;font-weight:900;color:#1a1a1a;text-align:right;letter-spacing:.02em}
+.wop-wo-date{font-size:12px;color:#666;text-align:right;margin-top:2px}
+.wop-info{margin-bottom:20px}
+.wop-info-row{display:flex;gap:0;border-bottom:1px solid #ebebeb;padding:9px 0}
+.wop-info-row:first-child{border-top:1px solid #ebebeb}
+.wop-info-label{width:150px;font-size:11px;font-weight:700;color:#888 !important;text-transform:uppercase;letter-spacing:.05em;flex-shrink:0;padding-right:12px}
+.wop-info-val{font-size:13px;font-weight:600;color:#1a1a1a !important;flex:1}
+.wop-section{margin-bottom:20px}
+.wop-section-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#888 !important;margin-bottom:8px;padding-bottom:5px;border-bottom:2px solid #f0f0f0}
+.wop-table{width:100%;border-collapse:collapse;font-size:12px;color:#1a1a1a}
+.wop-table th{background:#f5f5f5 !important;padding:8px 12px;border:1px solid #e5e5e5;font-size:11px;font-weight:700;color:#555 !important;text-transform:uppercase;letter-spacing:.04em;text-align:left}
+.wop-table td{padding:8px 12px;border:1px solid #ebebeb;color:#1a1a1a !important;vertical-align:middle}
+.wop-table td.charge{text-align:right;font-weight:600;color:#1a1a1a !important}
+.wop-table tr:nth-child(even) td{background:#fafafa}
+.wop-totals{margin-left:auto;width:280px;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden;margin-top:4px}
+.wop-tot-row{display:flex;justify-content:space-between;padding:9px 16px;font-size:12px;border-bottom:1px solid #ebebeb;color:#444 !important}
+.wop-tot-row span{color:#444 !important}
+.wop-tot-row.grand{background:#1a1a1a !important;font-size:14px;font-weight:800;border-bottom:none;padding:11px 16px}
+.wop-tot-row.grand,.wop-tot-row.grand span{color:#c8a84b !important}
+.wop-notes{background:#fffdf0;border:1px solid #e8e0c0;border-radius:6px;padding:10px 14px;font-size:12px;color:#555 !important;margin-bottom:20px}
+.wop-sig-row{display:flex;justify-content:space-between;margin-top:50px}
+.wop-sig-box{text-align:center;width:200px}
+.wop-sig-line{border-top:1px solid #aaa;padding-top:6px;font-size:11px;color:#777 !important}
+.wop-footer{text-align:center;margin-top:20px;font-size:10px;color:#bbb !important;border-top:1px solid #eee;padding-top:10px}
+
 @media print {
   .sidebar,.mob-nav,.topbar,.no-print{display:none!important}
   .main{margin:0!important;padding:0!important;height:auto!important}
@@ -2729,115 +2760,63 @@ function openWOPrint(id) {
   const statusLabel = {open:'Open',inprogress:'In Progress',completed:'Completed',cancelled:'Cancelled'}[wo.status] || wo.status;
 
   const html = `
-  <div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#1a1a1a;background:#fff;padding:0">
-
-    <!-- HEADER -->
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #c8a84b;padding-bottom:16px;margin-bottom:24px">
-      <div>
-        <div style="font-size:22px;font-weight:900;color:#1a1a1a;letter-spacing:-1px;line-height:1.1">KGCAR</div>
-        <div style="font-size:11px;color:#888;margin-top:3px">Car Service Work Order</div>
-      </div>
-      <div style="text-align:right">
-        <div style="font-size:19px;font-weight:900;color:#1a1a1a;letter-spacing:.02em">${wo.wo_number || '—'}</div>
-        <div style="font-size:12px;color:#666;margin-top:3px">${wo.work_date || '—'}${wo.work_time ? ' &nbsp;·&nbsp; '+wo.work_time : ''}</div>
-      </div>
+  <div class="wop-header">
+    <div>
+      <div class="wop-logo">KGCAR</div>
+      <div class="wop-logo-sub">Car Service Work Order</div>
     </div>
-
-    <!-- CLIENT INFO ROWS -->
-    <div style="margin-bottom:24px">
-      <div style="display:flex;border-top:1px solid #e8e8e8;padding:10px 0">
-        <div style="width:160px;font-size:11px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.06em;flex-shrink:0">Customer Name</div>
-        <div style="font-size:13px;font-weight:700;color:#1a1a1a">${wo.customer_name || '—'}</div>
-      </div>
-      <div style="display:flex;border-top:1px solid #e8e8e8;padding:10px 0">
-        <div style="width:160px;font-size:11px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.06em;flex-shrink:0">Phone Number</div>
-        <div style="font-size:13px;color:#1a1a1a">${wo.customer_phone || '—'}</div>
-      </div>
-      <div style="display:flex;border-top:1px solid #e8e8e8;padding:10px 0">
-        <div style="width:160px;font-size:11px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.06em;flex-shrink:0">Plate Number</div>
-        <div style="font-size:13px;color:#1a1a1a">${wo.plate_number || '—'}${wo.vehicle ? ' &nbsp;<span style="color:#888;font-weight:400">'+wo.vehicle+'</span>' : ''}</div>
-      </div>
-      <div style="display:flex;border-top:1px solid #e8e8e8;border-bottom:1px solid #e8e8e8;padding:10px 0">
-        <div style="width:160px;font-size:11px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.06em;flex-shrink:0">Mechanic</div>
-        <div style="font-size:13px;color:#1a1a1a">${wo.mechanic || '—'}</div>
-      </div>
+    <div>
+      <div class="wop-wo-num">${wo.wo_number || '—'}</div>
+      <div class="wop-wo-date">${wo.work_date || '—'}${wo.work_time ? ' &nbsp;·&nbsp; '+wo.work_time : ''}</div>
     </div>
+  </div>
 
-    <!-- SERVICES / LABOR -->
-    ${services.length ? `
-    <div style="margin-bottom:24px">
-      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#999;margin-bottom:8px;padding-bottom:6px;border-bottom:2px solid #f0f0f0">Services / Labor</div>
-      <table style="width:100%;border-collapse:collapse;font-size:12px;color:#1a1a1a">
-        <thead>
-          <tr>
-            <th style="background:#f5f5f5;padding:8px 12px;border:1px solid #e5e5e5;font-size:11px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.04em;text-align:left">Description</th>
-            <th style="background:#f5f5f5;padding:8px 12px;border:1px solid #e5e5e5;font-size:11px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.04em;text-align:right;width:140px">Charge</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${services.map((s,i)=>`<tr style="background:${i%2===1?'#fafafa':'#fff'}"><td style="padding:8px 12px;border:1px solid #ebebeb;color:#222">${s.name}</td><td style="padding:8px 12px;border:1px solid #ebebeb;color:#1a1a1a;font-weight:600;text-align:right">${peso(s.price)}</td></tr>`).join('')}
-        </tbody>
-      </table>
-    </div>` : ''}
+  <div class="wop-info">
+    <div class="wop-info-row"><div class="wop-info-label">Customer Name</div><div class="wop-info-val">${wo.customer_name || '—'}</div></div>
+    <div class="wop-info-row"><div class="wop-info-label">Phone Number</div><div class="wop-info-val">${wo.customer_phone || '—'}</div></div>
+    <div class="wop-info-row"><div class="wop-info-label">Plate Number</div><div class="wop-info-val">${wo.plate_number || '—'}${wo.vehicle ? ' &nbsp;<span style="color:#888;font-weight:400">'+wo.vehicle+'</span>' : ''}</div></div>
+    <div class="wop-info-row"><div class="wop-info-label">Mechanic</div><div class="wop-info-val">${wo.mechanic || '—'}</div></div>
+  </div>
 
-    <!-- PARTS USED -->
-    ${parts.length ? `
-    <div style="margin-bottom:24px">
-      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#999;margin-bottom:8px;padding-bottom:6px;border-bottom:2px solid #f0f0f0">Parts Used</div>
-      <table style="width:100%;border-collapse:collapse;font-size:12px;color:#1a1a1a">
-        <thead>
-          <tr>
-            <th style="background:#f5f5f5;padding:8px 12px;border:1px solid #e5e5e5;font-size:11px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.04em;text-align:left">Part / Product</th>
-            <th style="background:#f5f5f5;padding:8px 12px;border:1px solid #e5e5e5;font-size:11px;font-weight:700;color:#555;text-transform:uppercase;text-align:center;width:55px">Qty</th>
-            <th style="background:#f5f5f5;padding:8px 12px;border:1px solid #e5e5e5;font-size:11px;font-weight:700;color:#555;text-transform:uppercase;text-align:right;width:115px">Unit Price</th>
-            <th style="background:#f5f5f5;padding:8px 12px;border:1px solid #e5e5e5;font-size:11px;font-weight:700;color:#555;text-transform:uppercase;text-align:right;width:115px">Amount</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${parts.map((p,i)=>`<tr style="background:${i%2===1?'#fafafa':'#fff'}"><td style="padding:8px 12px;border:1px solid #ebebeb;color:#222">${p.product_name}</td><td style="padding:8px 12px;border:1px solid #ebebeb;color:#222;text-align:center">${p.qty}</td><td style="padding:8px 12px;border:1px solid #ebebeb;color:#222;text-align:right">${peso(p.unit_price)}</td><td style="padding:8px 12px;border:1px solid #ebebeb;color:#1a1a1a;font-weight:600;text-align:right">${peso(p.unit_price*p.qty)}</td></tr>`).join('')}
-        </tbody>
-      </table>
-    </div>` : ''}
+  ${services.length ? \`
+  <div class="wop-section">
+    <div class="wop-section-title">Services / Labor</div>
+    <table class="wop-table">
+      <thead><tr><th>Description</th><th style="text-align:right;width:140px">Charge</th></tr></thead>
+      <tbody>
+        \${services.map(s=>\`<tr><td>\${s.name}</td><td class="charge">\${peso(s.price)}</td></tr>\`).join('')}
+      </tbody>
+    </table>
+  </div>\` : ''}
 
-    <!-- NOTES -->
-    ${wo.notes ? `<div style="background:#fffdf0;border:1px solid #e8e0c0;border-radius:6px;padding:10px 14px;font-size:12px;color:#555;margin-bottom:20px"><strong style="color:#1a1a1a">Notes:</strong> ${wo.notes}</div>` : ''}
+  ${parts.length ? \`
+  <div class="wop-section">
+    <div class="wop-section-title">Parts Used</div>
+    <table class="wop-table">
+      <thead><tr><th>Part / Product</th><th style="text-align:center;width:60px">Qty</th><th style="text-align:right;width:120px">Unit Price</th></tr></thead>
+      <tbody>
+        \${parts.map(p=>\`<tr><td>\${p.name}</td><td style="text-align:center">\${p.qty}</td><td class="charge">\${peso(p.price)}</td></tr>\`).join('')}
+      </tbody>
+    </table>
+  </div>\` : ''}
 
-    <!-- TOTALS -->
-    <div style="margin-left:auto;width:280px;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden;margin-top:8px">
-      <div style="display:flex;justify-content:space-between;padding:9px 16px;font-size:12px;color:#444;border-bottom:1px solid #ebebeb"><span>Services / Labor</span><span>${peso(labor)}</span></div>
-      <div style="display:flex;justify-content:space-between;padding:9px 16px;font-size:12px;color:#444;border-bottom:1px solid #ebebeb"><span>Parts</span><span>${peso(partsTotal)}</span></div>
-      <div style="display:flex;justify-content:space-between;padding:9px 16px;font-size:12px;color:#444;border-bottom:1px solid #ccc;border-top:1px solid #ccc"><span>Subtotal</span><span>${peso(sub)}</span></div>
-      <div style="display:flex;justify-content:space-between;padding:9px 16px;font-size:12px;color:#444;border-bottom:1px solid #ebebeb"><span>VAT (12%)</span><span>${peso(vat)}</span></div>
-      <div class="grand-row" style="display:flex;justify-content:space-between;padding:11px 16px;font-size:14px;font-weight:800;background:#1a1a1a !important"><span style="color:#c8a84b !important">GRAND TOTAL</span><span style="color:#c8a84b !important">${peso(grand)}</span></div>
-    </div>
+  <div class="wop-totals">
+    ${labor > 0 ? \`<div class="wop-tot-row"><span>Services / Labor</span><span>\${peso(labor)}</span></div>\` : ''}
+    ${partsTotal > 0 ? \`<div class="wop-tot-row"><span>Parts</span><span>\${peso(partsTotal)}</span></div>\` : ''}
+    <div class="wop-tot-row"><span>Subtotal</span><span>\${peso(sub)}</span></div>
+    ${vat > 0 ? \`<div class="wop-tot-row"><span>VAT</span><span>\${peso(vat)}</span></div>\` : ''}
+    <div class="wop-tot-row grand"><span>GRAND TOTAL</span><span>\${peso(grand)}</span></div>
+  </div>
 
-    <!-- SIGNATURES -->
-    <div style="display:flex;justify-content:space-between;margin-top:52px">
-      <div style="text-align:center;width:200px">
-        <div style="height:48px"></div>
-        <div style="border-top:1px solid #aaa;padding-top:6px;font-size:11px;color:#777">Customer Signature</div>
-      </div>
-      <div style="text-align:center;width:200px">
-        <div style="height:48px"></div>
-        <div style="border-top:1px solid #aaa;padding-top:6px;font-size:11px;color:#777">Authorized By</div>
-      </div>
-    </div>
+  ${wo.notes ? \`<div class="wop-notes" style="margin-top:20px"><strong>Notes:</strong> \${wo.notes}</div>\` : ''}
 
-    <!-- FOOTER -->
-    <div style="text-align:center;margin-top:20px;font-size:10px;color:#bbb;border-top:1px solid #eee;padding-top:10px">
-      Printed: ${new Date().toLocaleString('en-PH')} &nbsp;·&nbsp; Thank you for trusting KGCAR!
-    </div>
+  <div class="wop-sig-row">
+    <div class="wop-sig-box"><div class="wop-sig-line">Customer Signature</div></div>
+    <div class="wop-sig-box"><div class="wop-sig-line">Authorized by</div></div>
+  </div>
+  <div class="wop-footer">Thank you for choosing KGCAR · \${wo.wo_number}</div>
+`;  document.getElementById('woPrintContent').innerHTML = html;
 
-  </div>`;
-  document.getElementById('woPrintContent').innerHTML = html;
-  // Force ALL elements inside preview to dark text — no conditions, always wins
-  document.getElementById('woPrintContent').querySelectorAll('*').forEach(el => {
-    el.style.setProperty('color', '#1a1a1a', 'important');
-  });
-  // Gold override for grand total row only
-  document.getElementById('woPrintContent').querySelectorAll('.grand-row td, .grand-row span, .grand-row div').forEach(el => {
-    el.style.setProperty('color', '#c8a84b', 'important');
-  });
   document.getElementById('woPrintModal').style.display = 'flex';
 }
 function closeWOPrint() {
