@@ -519,11 +519,6 @@ tbody td{padding:13px 16px;vertical-align:middle}
   .wop-sig-box{text-align:center;width:200px}
   .wop-sig-line{border-top:1px solid #aaa;padding-top:6px;font-size:11px;color:#777}
 .wop-footer{text-align:center;margin-top:20px;font-size:10px;color:#bbb;border-top:1px solid #eee;padding-top:10px}
-  /* Force dark text inside WO preview — overrides body color:var(--white) */
-  #woPrintContent, #woPrintContent div, #woPrintContent td, #woPrintContent th, #woPrintContent span, #woPrintContent p { color: #1a1a1a !important; }
-  #woPrintContent th { background: #f5f5f5 !important; }
-  #woPrintContent .grand-row { background: #1a1a1a !important; }
-  #woPrintContent .grand-row span { color: #c8a84b !important; }
 }
 @media(max-width:700px){
   .wo-header{grid-template-columns:1fr}
@@ -531,6 +526,24 @@ tbody td{padding:13px 16px;vertical-align:middle}
   .wo-add-item-row .inp,.wo-add-item-row .sel2{min-width:100%}
   .tpl-list{grid-template-columns:1fr}
 }
+
+/* WO Preview — force dark text on screen, overrides body { color: var(--white) } */
+#woPrintContent, #woPrintContent div, #woPrintContent td,
+#woPrintContent th, #woPrintContent span, #woPrintContent p {
+  color: #1a1a1a !important;
+}
+#woPrintContent th { background: #f5f5f5 !important; }
+#woPrintContent .grand-row { background: #1a1a1a !important; }
+#woPrintContent .grand-row span { color: #c8a84b !important; }
+
+/* WO Preview — force dark text on screen, overrides body { color: var(--white) } */
+#woPrintContent, #woPrintContent div, #woPrintContent td,
+#woPrintContent th, #woPrintContent span, #woPrintContent p {
+  color: #1a1a1a !important;
+}
+#woPrintContent th { background: #f5f5f5 !important; }
+#woPrintContent .grand-row { background: #1a1a1a !important; }
+#woPrintContent .grand-row span { color: #c8a84b !important; }
 
 </style>
 </head>
