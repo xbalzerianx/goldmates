@@ -17,7 +17,7 @@
   --r:14px;--r2:10px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;overflow-x:hidden;font-family:'Inter',system-ui,sans-serif;background:var(--navy);color:var(--white);-webkit-font-smoothing:antialiased}
+html,body{height:100%;overflow:hidden;font-family:'Inter',system-ui,sans-serif;background:var(--navy);color:var(--white);-webkit-font-smoothing:antialiased}
 button,input,select,textarea{font-family:inherit}
 ::-webkit-scrollbar{width:5px;height:5px}
 ::-webkit-scrollbar-track{background:var(--navy2)}
@@ -59,7 +59,7 @@ button,input,select,textarea{font-family:inherit}
 .sidebar{width:240px;min-width:240px;background:var(--navy2);display:flex;flex-direction:column;border-right:1px solid var(--navy3);overflow-y:auto}
 .content{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
 .topbar{height:58px;min-height:58px;background:var(--navy2);border-bottom:1px solid var(--navy3);display:flex;align-items:center;justify-content:space-between;padding:0 24px;gap:16px}
-.main{flex:1;overflow-y:auto;padding:20px 24px}
+.main{flex:1;overflow-y:auto;padding:20px 24px;overscroll-behavior:contain}
 
 /* SIDEBAR */
 .sb-logo{padding:24px 20px 20px;border-bottom:1px solid var(--navy3)}
@@ -352,7 +352,7 @@ tbody td{padding:13px 16px;vertical-align:middle}
   .topbar{padding:0 12px;height:50px;min-height:50px}
   .tb-title{font-size:15px}
   .tb-right{gap:6px}
-  .page-title{font-size:18px}
+  .wo-grid{grid-template-columns:1fr;gap:10px}.page-title{font-size:18px}
   .page-sub{font-size:12px}
   .kpi-grid{grid-template-columns:1fr 1fr;gap:8px}
   .kpi{padding:12px}
@@ -453,19 +453,21 @@ tbody td{padding:13px 16px;vertical-align:middle}
 .wo-status-inprogress{background:rgba(59,130,246,.18);color:#60a5fa}
 .wo-status-completed{background:rgba(34,197,94,.18);color:#4ade80}
 .wo-status-cancelled{background:rgba(239,68,68,.18);color:#f87171}
-.wo-list-item{background:#1e2535;border:1px solid #2a3347;border-radius:10px;padding:14px 16px;margin-bottom:10px;cursor:pointer;transition:border-color .15s}
-.wo-list-item:hover{border-color:#d4a843}
-.wo-list-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px}
-.wo-list-num{font-size:13px;font-weight:700;color:#d4a843}
-.wo-list-customer{font-size:14px;font-weight:600;color:#e8e0d5}
-.wo-list-sub{font-size:12px;color:#8a8fa8}
-.wo-list-total{font-size:14px;font-weight:700;color:#4ade80;white-space:nowrap}
-.wo-search-box{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap}
-.wo-search-box input,.wo-search-box select{background:#1e2535;border:1px solid #2a3347;border-radius:8px;padding:9px 13px;font-size:14px;color:#e8e0d5;outline:none;font-size:16px}
-.wo-search-box input{flex:1;min-width:180px}
-.wo-filter-row{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
-.wo-filter-btn{padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;border:1px solid #2a3347;background:#1e2535;color:#8a8fa8;cursor:pointer;transition:all .15s}
-.wo-filter-btn.active{background:#d4a843;color:#1a1a1a;border-color:#d4a843}
+.wo-filter-row{display:flex;gap:8px;flex-wrap:wrap}
+.wo-filter-btn{padding:6px 16px;border-radius:20px;font-size:12px;font-weight:600;border:1px solid #2a3347;background:#1e2535;color:#8a8fa8;cursor:pointer;transition:all .15s}
+.wo-filter-btn.active{background:#d4a843;color:#1a1a1a;border-color:#d4a843;font-weight:700}
+.wo-filter-btn:hover:not(.active){border-color:#d4a843;color:#e8e0d5}
+.wo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;align-items:start}
+.wo-card{background:#1e2535;border:1px solid #2a3347;border-radius:12px;padding:16px;cursor:pointer;transition:border-color .15s,transform .1s;display:flex;flex-direction:column;gap:6px;min-height:155px}
+.wo-card:hover{border-color:#d4a843;transform:translateY(-2px)}
+.wo-card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.wo-card-num{font-size:11px;font-weight:700;color:#d4a843;letter-spacing:.04em;margin-bottom:4px}
+.wo-card-total{font-size:15px;font-weight:800;color:#4ade80;white-space:nowrap;flex-shrink:0}
+.wo-card-customer{font-size:14px;font-weight:700;color:#e8e0d5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wo-card-vehicle{font-size:12px;color:#8a8fa8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wo-card-meta{font-size:11px;color:#8a8fa8}
+.wo-card-footer{display:flex;justify-content:space-between;align-items:center;margin-top:auto;padding-top:10px;border-top:1px solid #2a3347}
+.wo-card-actions{display:flex;gap:4px}
 .wo-add-item-row{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-bottom:10px}
 .wo-add-item-row .inp,.wo-add-item-row .sel2{flex:1;min-width:120px}
 .wo-service-list{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
@@ -473,18 +475,19 @@ tbody td{padding:13px 16px;vertical-align:middle}
 .wo-service-item-name{flex:1;font-size:13px;color:#e8e0d5}
 .wo-service-item-price{font-size:13px;color:#d4a843;font-weight:600;white-space:nowrap}
 .wo-service-item-del{background:none;border:none;color:#f87171;cursor:pointer;font-size:16px;padding:0 4px}
-/* templates */
-.tpl-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-bottom:16px}
+/* templates (used in modal only) */
 .tpl-card{background:#1e2535;border:1px solid #2a3347;border-radius:10px;padding:14px;cursor:pointer;transition:border-color .15s}
 .tpl-card:hover{border-color:#d4a843}
 .tpl-card-name{font-size:14px;font-weight:700;color:#e8e0d5;margin-bottom:4px}
 .tpl-card-sub{font-size:12px;color:#8a8fa8}
 .tpl-card-actions{display:flex;gap:6px;margin-top:10px}
+@media(max-width:768px){.wo-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:480px){.wo-grid{grid-template-columns:1fr}}
 /* print */
 @media print {
   .sidebar,.mob-nav,.topbar,.no-print{display:none!important}
   .main{margin:0!important;padding:0!important}
-  .page{display:block!important}
+  .page{display:none!important}.page.active{display:block!important}
   body{background:#fff;color:#000}
   .wo-print-wrap{max-width:800px;margin:0 auto;padding:20px;font-family:Arial,sans-serif}
   .wo-print-header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #d4a843;padding-bottom:16px;margin-bottom:16px}
@@ -1341,7 +1344,10 @@ async function go(page){
   curPage=page;
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-'+page).classList.add('active');
-  const mainEl=document.querySelector('.main'); if(mainEl) mainEl.scrollTop=0; window.scrollTo(0,0);
+  const mainEl=document.querySelector('.main'); 
+  if(mainEl) mainEl.scrollTop=0; 
+  document.body.scrollTop=0; 
+  document.documentElement.scrollTop=0;
   document.querySelectorAll('.sb-item,.mob-item').forEach(b=>b.classList.toggle('active',b.dataset.page===page));
   document.getElementById('tbTitle').textContent=TITLES[page]||'';
   if(page==='sale')resetSale();
@@ -2398,33 +2404,40 @@ function renderWOList() {
   const wrap = document.getElementById('woListWrap');
   if (!wrap) return;
   if (!list.length) {
-    wrap.innerHTML = '<div style="text-align:center;padding:40px;color:#8a8fa8">No work orders found.</div>';
+    const msg = woFilter === 'active' ? 'No active work orders — all clear! 🎉' : 'No work orders found.';
+    wrap.innerHTML = '<div style="text-align:center;padding:60px 20px;color:#8a8fa8;font-size:14px">' + msg + '</div>';
     return;
   }
-  wrap.innerHTML = list.map(w => {
-    const statusClass = {open:'wo-status-open',inprogress:'wo-status-inprogress',completed:'wo-status-completed',cancelled:'wo-status-cancelled'}[w.status] || 'wo-status-open';
-    const statusLabel = {open:'Open',inprogress:'In Progress',completed:'Completed',cancelled:'Cancelled'}[w.status] || w.status;
+  const SC = {open:'wo-status-open',inprogress:'wo-status-inprogress',completed:'wo-status-completed',cancelled:'wo-status-cancelled'};
+  const SL = {open:'Open',inprogress:'In Progress',completed:'Completed',cancelled:'Cancelled'};
+  wrap.innerHTML = '<div class="wo-grid">' + list.map(w => {
+    const sc = SC[w.status] || 'wo-status-open';
+    const sl = SL[w.status] || w.status;
     const svcCount = JSON.parse(w.services_json || '[]').length;
     const partsCount = JSON.parse(w.parts_json || '[]').length;
-    return `<div class="wo-list-item" onclick="viewWO('${w.id}')">
-      <div class="wo-list-top">
+    const plateLine = [w.plate_number, w.vehicle].filter(Boolean).join(' · ');
+    const mechLine = w.mechanic ? '🔧 ' + w.mechanic : '';
+    return `<div class="wo-card" onclick="viewWO('${w.id}')">
+      <div class="wo-card-top">
         <div>
-          <div class="wo-list-num">${w.wo_number || '—'} &nbsp;<span class="wo-status-badge ${statusClass}">${statusLabel}</span></div>
-          <div class="wo-list-customer">${w.customer_name || '—'}</div>
-          <div class="wo-list-sub">${w.plate_number ? w.plate_number + ' · ' : ''}${w.vehicle || ''} ${w.mechanic ? '· 🔧 ' + w.mechanic : ''}</div>
-          <div class="wo-list-sub">${w.work_date || ''} ${w.work_time || ''} · ${svcCount} service(s) · ${partsCount} part(s)</div>
+          <div class="wo-card-num">${w.wo_number || '—'}</div>
+          <span class="wo-status-badge ${sc}">${sl}</span>
         </div>
-        <div style="text-align:right">
-          <div class="wo-list-total">${peso(w.grand_total || 0)}</div>
-          <div style="display:flex;gap:6px;margin-top:8px;justify-content:flex-end">
-            <button class="btn btn-ghost btn-sm no-print" onclick="event.stopPropagation();openEditWO('${w.id}')">✏️</button>
-            <button class="btn btn-ghost btn-sm no-print" onclick="event.stopPropagation();openWOPrint('${w.id}')">🖨️</button>
-            <button class="btn btn-ghost btn-sm no-print" onclick="event.stopPropagation();deleteWO('${w.id}')" style="color:#f87171">🗑️</button>
-          </div>
+        <div class="wo-card-total">${peso(w.grand_total || 0)}</div>
+      </div>
+      <div class="wo-card-customer">${w.customer_name || '—'}</div>
+      <div class="wo-card-vehicle">${plateLine || '—'}</div>
+      ${mechLine ? `<div class="wo-card-meta">${mechLine}</div>` : ''}
+      <div class="wo-card-meta">${w.work_date || ''}${w.work_time ? ' · '+w.work_time : ''} · ${svcCount} svc · ${partsCount} part(s)</div>
+      <div class="wo-card-footer">
+        <div class="wo-card-actions">
+          <button class="btn btn-ghost btn-sm no-print" title="Edit" onclick="event.stopPropagation();openEditWO('${w.id}')">✏️</button>
+          <button class="btn btn-ghost btn-sm no-print" title="Print" onclick="event.stopPropagation();openWOPrint('${w.id}')">🖨️</button>
+          <button class="btn btn-ghost btn-sm no-print" title="Delete" onclick="event.stopPropagation();deleteWO('${w.id}')" style="color:#f87171">🗑️</button>
         </div>
       </div>
     </div>`;
-  }).join('');
+  }).join('') + '</div>';
 }
 
 // ---- Open New WO ----
