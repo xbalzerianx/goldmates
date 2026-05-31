@@ -878,13 +878,17 @@ tbody td{padding:13px 16px;vertical-align:middle}
       </div>
 
       <!-- ===== WORK ORDERS PAGE ===== -->
-      <div id="page-workorders" class="page">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px" class="no-print">
-          <div style="font-size:13px;color:#8a8fa8">Car service job orders · saved to database</div>
+      <div id="page-workorders" class="page" style="padding-top:0">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px" class="no-print">
+          <div style="display:flex;gap:8px;flex-wrap:wrap" id="woFilterRow">
+            <button class="wo-filter-btn active" onclick="setWOFilter('all',this)">All</button>
+            <button class="wo-filter-btn" onclick="setWOFilter('open',this)">Open</button>
+            <button class="wo-filter-btn" onclick="setWOFilter('inprogress',this)">In Progress</button>
+            <button class="wo-filter-btn" onclick="setWOFilter('completed',this)">Completed</button>
+          </div>
           <button class="btn btn-primary" onclick="openNewWO()">+ New Work Order</button>
         </div>
-        <!-- filters -->
-        <div class="wo-filter-row no-print" id="woFilterRow">
+        <!-- search -->
           <button class="wo-filter-btn active" onclick="setWOFilter('all',this)">All</button>
           <button class="wo-filter-btn" onclick="setWOFilter('open',this)">Open</button>
           <button class="wo-filter-btn" onclick="setWOFilter('inprogress',this)">In Progress</button>
@@ -1078,7 +1082,7 @@ tbody td{padding:13px 16px;vertical-align:middle}
 const SB_URL = 'https://stigramvmyckdmyipvnj.supabase.co/rest/v1';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN0aWdyYW12bXlja2RteWlwdm5qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4MDQ3MjksImV4cCI6MjA4OTM4MDcyOX0.UuOy28Y_TXU_uJ3qPRaGyPXu23LWrS37FG38asyUOn8';
 const SB_HDR = {'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY};
-const TBL = {KGProduct:'kg_products',KGSale:'kg_sales',KGExpense:'kg_expenses',KGActivity:'kg_activity',KGCategory:'kg_categories'};
+const TBL = {KGProduct:'kg_products',KGSale:'kg_sales',KGExpense:'kg_expenses',KGActivity:'kg_activity',KGCategory:'kg_categories',KGWorkOrder:'kg_work_orders',KGWOTemplate:'kg_wo_templates'};
 
 // ═══════════════════ API (Supabase) ═══════════════════
 async function apiGet(e,id=''){
@@ -1184,7 +1188,7 @@ async function launchApp() {
     <button class="sb-logout" onclick="logout()" title="Logout">⏻</button>`;
   document.getElementById('saleBy').value = curUser.name;
   const woTplBtn=document.getElementById('sbWOTplBtn');
-  if(woTplBtn) woTplBtn.style.display = (currentUser?.role==='admin') ? '' : 'none';
+  if(woTplBtn) woTplBtn.style.display = (curUser?.role==='admin') ? '' : 'none';
   const cpBtn=document.getElementById('sbChangePinBtn');
   if(cpBtn) cpBtn.style.display=curUser.role==='admin'?'block':'none';
   const catMgrBtn=document.getElementById('sbCatMgrBtn');
@@ -1201,6 +1205,24 @@ function logout() {
   document.getElementById('mobNav') && document.getElementById('mobNav').classList.remove('show');
   document.getElementById('loginWrap').style.display='flex';
   cancelLogin();
+}
+
+// Load PINs from Supabase kg_settings table
+async function loadPinsFromSupabase() {
+  try {
+    const r = await fetch(SB_URL + '/kg_settings?select=key,value&limit=50', {headers: SB_HDR});
+    if (!r.ok) return;
+    const rows = await r.json();
+    if (!rows.length) return;
+    const pins = {...DEFAULT_PINS};
+    rows.forEach(row => {
+      if (row.key === 'pin_admin' && row.value) pins.admin = row.value;
+      if (row.key === 'pin_asst' && row.value) pins.asst = row.value;
+    });
+    savePins(pins);
+  } catch(e) {
+    console.warn('Could not load PINs from Supabase, using local:', e);
+  }
 }
 
 // auto-login if remembered
@@ -1337,7 +1359,7 @@ async function go(page){
   curPage=page;
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-'+page).classList.add('active');
-  const mainEl=document.querySelector('.main'); if(mainEl) mainEl.scrollTop=0;
+  const mainEl=document.querySelector('.main'); if(mainEl) mainEl.scrollTop=0; window.scrollTo(0,0);
   document.querySelectorAll('.sb-item,.mob-item').forEach(b=>b.classList.toggle('active',b.dataset.page===page));
   document.getElementById('tbTitle').textContent=TITLES[page]||'';
   if(page==='sale')resetSale();
