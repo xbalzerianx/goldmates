@@ -879,7 +879,8 @@ tbody td{padding:13px 16px;vertical-align:middle}
 
       <!-- ===== WORK ORDERS PAGE ===== -->
       <div id="page-workorders" class="page">
-        <div style="display:flex;justify-content:flex-end;margin-bottom:14px" class="no-print">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px" class="no-print">
+          <div style="font-size:13px;color:#8a8fa8">Car service job orders · saved to database</div>
           <button class="btn btn-primary" onclick="openNewWO()">+ New Work Order</button>
         </div>
         <!-- filters -->
@@ -899,7 +900,8 @@ tbody td{padding:13px 16px;vertical-align:middle}
 
       <!-- ===== WO TEMPLATES PAGE ===== -->
       <div id="page-wotemplates" class="page">
-        <div style="display:flex;justify-content:flex-end;margin-bottom:14px" class="no-print">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px" class="no-print">
+          <div style="font-size:13px;color:#8a8fa8">Reusable templates for common car services</div>
           <button class="btn btn-primary" onclick="openNewTpl()">+ New Template</button>
         </div>
         <div id="tplListWrap">
@@ -2493,17 +2495,36 @@ function renderWOServices() {
 }
 
 // ---- Parts search ----
+function positionDropdown(inputId, dropId) {
+  const inp = document.getElementById(inputId);
+  const drop = document.getElementById(dropId);
+  if (!inp || !drop) return;
+  const rect = inp.getBoundingClientRect();
+  drop.style.position = 'fixed';
+  drop.style.top = (rect.bottom) + 'px';
+  drop.style.left = rect.left + 'px';
+  drop.style.width = rect.width + 'px';
+  drop.style.zIndex = '9999';
+}
 function woPartSearch() {
   const q = document.getElementById('woPartQ').value.toLowerCase().trim();
   const res = document.getElementById('woPartResults');
-  if (!q) { res.style.display = 'none'; return; }
-  const matches = products.filter(p => [p.product_name, p.brand || '', p.category || ''].join(' ').toLowerCase().includes(q)).slice(0, 8);
-  if (!matches.length) { res.style.display = 'none'; return; }
+  if (!q || products.length === 0) { res.style.display = 'none'; return; }
+  const matches = products.filter(p => [p.product_name, p.brand || '', p.category || '', p.product_id || ''].join(' ').toLowerCase().includes(q)).slice(0, 10);
+  if (!matches.length) {
+    res.style.display = 'block';
+    positionDropdown('woPartQ','woPartResults');
+    res.innerHTML = '<div style="padding:12px 16px;color:#8a8fa8;font-size:13px">No products found for "' + q + '"</div>';
+    return;
+  }
   res.style.display = 'block';
+  positionDropdown('woPartQ','woPartResults');
   res.innerHTML = matches.map(p => `
     <div class="prod-item" onclick="pickWOPart('${p.id}')">
-      <div><div class="prod-item-name">${p.product_name}</div>
-      <div class="prod-item-sub">${p.category || ''} · SRP ${peso(p.unit_price || 0)} · Stock: ${p.stock_qty || 0}</div></div>
+      <div>
+        <div class="prod-item-name">${p.product_name}</div>
+        <div class="prod-item-sub">${p.category || ''} · SRP ${peso(p.unit_price || 0)} · Stock: ${p.stock_qty || 0}</div>
+      </div>
     </div>`).join('');
 }
 function pickWOPart(pid) {
@@ -2648,70 +2669,63 @@ function openWOPrint(id) {
         <div class="wo-print-logo">🔧 KGCAR</div>
         <div class="wo-print-sub">Car Service Work Order</div>
       </div>
-      <div class="wo-print-info" style="text-align:right">
+      <div class="wo-print-info">
         <div><strong>${wo.wo_number || '—'}</strong></div>
         <div>Date: ${wo.work_date || '—'} ${wo.work_time || ''}</div>
         <div>Status: <strong>${statusLabel}</strong></div>
       </div>
     </div>
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:16px;font-size:12px">
+    <div class="info-grid">
       <div>
-        <div style="font-weight:700;margin-bottom:4px;color:#555">CUSTOMER</div>
-        <div><strong>${wo.customer_name || '—'}</strong></div>
-        <div>${wo.customer_phone || ''}</div>
+        <div class="info-block-label">Customer</div>
+        <div class="info-block-val">${wo.customer_name || '—'}</div>
+        <div class="info-block-sub">${wo.customer_phone || ''}</div>
       </div>
       <div>
-        <div style="font-weight:700;margin-bottom:4px;color:#555">VEHICLE</div>
-        <div>${wo.plate_number || '—'}</div>
-        <div>${wo.vehicle || ''}</div>
+        <div class="info-block-label">Vehicle</div>
+        <div class="info-block-val">${wo.plate_number || '—'}</div>
+        <div class="info-block-sub">${wo.vehicle || ''}</div>
       </div>
       <div>
-        <div style="font-weight:700;margin-bottom:4px;color:#555">MECHANIC</div>
-        <div>${wo.mechanic || '—'}</div>
+        <div class="info-block-label">Mechanic</div>
+        <div class="info-block-val">${wo.mechanic || '—'}</div>
       </div>
       <div>
-        <div style="font-weight:700;margin-bottom:4px;color:#555">RECORDED BY</div>
-        <div>${wo.recorded_by || '—'}</div>
+        <div class="info-block-label">Recorded By</div>
+        <div class="info-block-val">${wo.recorded_by || '—'}</div>
       </div>
     </div>
 
     ${services.length ? `
-    <div style="font-weight:700;font-size:13px;margin-bottom:6px">Services / Labor</div>
-    <table class="wo-print-table">
-      <thead><tr><th>Service Description</th><th style="text-align:right">Charge</th></tr></thead>
+    <div class="section-title">Services / Labor</div>
+    <table>
+      <thead><tr><th>Service Description</th><th style="text-align:right;width:130px">Labor Charge</th></tr></thead>
       <tbody>${services.map(s => `<tr><td>${s.name}</td><td style="text-align:right">${peso(s.price)}</td></tr>`).join('')}</tbody>
     </table>` : ''}
 
     ${parts.length ? `
-    <div style="font-weight:700;font-size:13px;margin:12px 0 6px">Parts Used</div>
-    <table class="wo-print-table">
-      <thead><tr><th>Part / Product</th><th style="text-align:right">Qty</th><th style="text-align:right">Unit Price</th><th style="text-align:right">Amount</th></tr></thead>
+    <div class="section-title">Parts Used</div>
+    <table>
+      <thead><tr><th>Part / Product</th><th style="text-align:right;width:60px">Qty</th><th style="text-align:right;width:110px">Unit Price</th><th style="text-align:right;width:110px">Amount</th></tr></thead>
       <tbody>${parts.map(p => `<tr><td>${p.product_name}</td><td style="text-align:right">${p.qty}</td><td style="text-align:right">${peso(p.unit_price)}</td><td style="text-align:right">${peso(p.unit_price * p.qty)}</td></tr>`).join('')}</tbody>
     </table>` : ''}
 
-    ${wo.notes ? `<div style="margin:12px 0;font-size:12px"><strong>Notes:</strong> ${wo.notes}</div>` : ''}
+    ${wo.notes ? `<div class="notes-box"><strong>Notes:</strong> ${wo.notes}</div>` : ''}
 
-    <div class="wo-print-totals">
-      <div class="wo-print-total-row"><span>Services / Labor</span><span>${peso(labor)}</span></div>
-      <div class="wo-print-total-row"><span>Parts</span><span>${peso(partsTotal)}</span></div>
-      <div class="wo-print-total-row"><span>Subtotal</span><span>${peso(sub)}</span></div>
-      <div class="wo-print-total-row"><span>VAT (12%)</span><span>${peso(vat)}</span></div>
-      <div class="wo-print-total-row grand"><span>GRAND TOTAL</span><span>${peso(grand)}</span></div>
+    <div class="totals-box">
+      <div class="tot-row"><span>Services / Labor</span><span>${peso(labor)}</span></div>
+      <div class="tot-row"><span>Parts</span><span>${peso(partsTotal)}</span></div>
+      <div class="tot-row"><span>Subtotal</span><span>${peso(sub)}</span></div>
+      <div class="tot-row"><span>VAT (12%)</span><span>${peso(vat)}</span></div>
+      <div class="tot-row grand"><span>GRAND TOTAL</span><span>${peso(grand)}</span></div>
     </div>
 
-    <div class="wo-print-footer">
-      <div>
-        <div class="wo-print-sig">Customer Signature</div>
-      </div>
-      <div>
-        <div class="wo-print-sig">Authorized by</div>
-      </div>
-      <div style="font-size:10px;color:#888;align-self:flex-end">
-        Printed: ${new Date().toLocaleString('en-PH')}<br>
-        Thank you for trusting KGCAR!
-      </div>
+    <div class="sig-row">
+      <div class="sig-line"><div style="height:40px"></div><div class="sig-line-bar">Customer Signature</div></div>
+      <div class="sig-line"><div style="height:40px"></div><div class="sig-line-bar">Authorized by</div></div>
     </div>
+    <div class="footer-note">Printed: ${new Date().toLocaleString('en-PH')} · Thank you for trusting KGCAR!</div>
   </div>`;
 
   document.getElementById('woPrintContent').innerHTML = html;
@@ -2771,10 +2785,16 @@ function renderTplServices() {
 function tplPartSearch() {
   const q = document.getElementById('tplPartQ').value.toLowerCase().trim();
   const res = document.getElementById('tplPartResults');
-  if (!q) { res.style.display = 'none'; return; }
-  const matches = products.filter(p => [p.product_name, p.brand || ''].join(' ').toLowerCase().includes(q)).slice(0, 8);
-  if (!matches.length) { res.style.display = 'none'; return; }
+  if (!q || products.length === 0) { res.style.display = 'none'; return; }
+  const matches = products.filter(p => [p.product_name, p.brand || '', p.category || ''].join(' ').toLowerCase().includes(q)).slice(0, 10);
+  if (!matches.length) {
+    res.style.display = 'block';
+    positionDropdown('tplPartQ','tplPartResults');
+    res.innerHTML = '<div style="padding:12px 16px;color:#8a8fa8;font-size:13px">No products found.</div>';
+    return;
+  }
   res.style.display = 'block';
+  positionDropdown('tplPartQ','tplPartResults');
   res.innerHTML = matches.map(p => `<div class="prod-item" onclick="pickTplPart('${p.id}')"><div class="prod-item-name">${p.product_name}</div><div class="prod-item-sub">${p.category || ''} · ${peso(p.unit_price || 0)}</div></div>`).join('');
 }
 function pickTplPart(pid) {
@@ -2850,6 +2870,76 @@ function renderTplList() {
   }).join('') + '</div>';
 }
 
+
+
+// Download WO as a clean printable HTML file
+function downloadWOHtml() {
+  const printDiv = document.getElementById('woPrintContent');
+  if (!printDiv) return;
+  const innerHtml = printDiv.innerHTML;
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>Work Order</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#111;background:#fff;padding:30px}
+  .wo-print-wrap{max-width:740px;margin:0 auto}
+  .wo-print-header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #c8a84b;padding-bottom:16px;margin-bottom:20px}
+  .wo-print-logo{font-size:26px;font-weight:900;color:#1a1a1a;letter-spacing:-1px}
+  .wo-print-sub{font-size:11px;color:#666;margin-top:2px}
+  .wo-print-info{text-align:right;font-size:12px;color:#333;line-height:1.7}
+  .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px;background:#f9f9f9;border:1px solid #e5e5e5;border-radius:6px;padding:14px}
+  .info-block-label{font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#888;margin-bottom:3px}
+  .info-block-val{font-size:13px;color:#111;font-weight:600}
+  .info-block-sub{font-size:12px;color:#555}
+  .section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#888;margin:16px 0 8px;border-bottom:1px solid #eee;padding-bottom:4px}
+  table{width:100%;border-collapse:collapse;margin-bottom:10px}
+  th{background:#f5f5f5;padding:8px 10px;border:1px solid #ddd;font-size:11px;text-align:left;font-weight:700}
+  td{padding:8px 10px;border:1px solid #e8e8e8;font-size:12px;vertical-align:middle}
+  tr:nth-child(even) td{background:#fafafa}
+  .totals-box{margin-left:auto;width:280px;margin-top:14px;border:1px solid #e5e5e5;border-radius:6px;overflow:hidden}
+  .tot-row{display:flex;justify-content:space-between;padding:7px 14px;font-size:12px;border-bottom:1px solid #eee}
+  .tot-row:last-child{border-bottom:none}
+  .tot-row.grand{font-size:15px;font-weight:700;background:#1a1a1a;color:#c8a84b;padding:10px 14px}
+  .notes-box{background:#fffdf0;border:1px solid #e5e5e5;border-radius:6px;padding:10px 14px;font-size:12px;margin-top:14px}
+  .sig-row{display:flex;justify-content:space-between;margin-top:50px}
+  .sig-line{text-align:center;width:200px}
+  .sig-line-bar{border-top:1px solid #333;padding-top:5px;font-size:11px;color:#555;margin-top:0}
+  .footer-note{text-align:center;margin-top:20px;font-size:10px;color:#aaa;border-top:1px solid #eee;padding-top:10px}
+  @media print{body{padding:10px}button{display:none}}
+</style>
+</head>
+<body>
+${innerHtml}
+<script>window.onload=function(){window.print();}<\/script>
+</body>
+</html>`;
+  const blob = new Blob([html], {type:'text/html'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  // Get WO number from the print content for filename
+  const woNumEl = document.querySelector('#woPrintContent .wo-print-info strong');
+  const woNum = woNumEl ? woNumEl.textContent.replace(/[^A-Za-z0-9-]/g,'') : 'WorkOrder';
+  a.download = woNum + '_WorkOrder.html';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast('Downloaded! Open the file in your browser then press Ctrl+P to print.', 'success');
+}
+
+// Close WO part dropdowns when clicking outside
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('#woPartQ') && !e.target.closest('#woPartResults')) {
+    const r = document.getElementById('woPartResults');
+    if (r) r.style.display = 'none';
+  }
+  if (!e.target.closest('#tplPartQ') && !e.target.closest('#tplPartResults')) {
+    const r = document.getElementById('tplPartResults');
+    if (r) r.style.display = 'none';
+  }
+});
+
 // ===================== END WORK ORDERS JS =====================
 
 </script>
@@ -2918,9 +3008,9 @@ function renderTplList() {
     <!-- Parts Used -->
     <div class="wo-section">
       <div class="wo-section-title">Parts Used (from Inventory)</div>
-      <div style="position:relative;margin-bottom:12px">
-        <input class="inp" id="woPartQ" placeholder="🔍 Search product…" oninput="woPartSearch()" autocomplete="off" style="width:100%;font-size:16px"/>
-        <div id="woPartResults" style="display:none;position:absolute;top:100%;left:0;right:0;background:#1e2535;border:1px solid #2a3347;border-radius:0 0 8px 8px;z-index:200;max-height:200px;overflow-y:auto"></div>
+      <div style="margin-bottom:12px">
+        <input class="inp" id="woPartQ" placeholder="🔍 Search product… (type 2+ letters)" oninput="woPartSearch()" autocomplete="off" style="width:100%;font-size:16px"/>
+        <div id="woPartResults" style="display:none;background:#1e2535;border:1px solid #2a3347;border-radius:8px;max-height:220px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,.5)"></div>
       </div>
       <div id="woPartList" class="wo-service-list"></div>
     </div>
@@ -2975,7 +3065,7 @@ function renderTplList() {
       <div class="wo-section-title">Preset Parts (optional)</div>
       <div style="position:relative;margin-bottom:12px">
         <input class="inp" id="tplPartQ" placeholder="🔍 Search product…" oninput="tplPartSearch()" autocomplete="off" style="width:100%;font-size:16px"/>
-        <div id="tplPartResults" style="display:none;position:absolute;top:100%;left:0;right:0;background:#1e2535;border:1px solid #2a3347;border-radius:0 0 8px 8px;z-index:200;max-height:180px;overflow-y:auto"></div>
+        <div id="tplPartResults" style="display:none;background:#1e2535;border:1px solid #2a3347;border-radius:8px;max-height:200px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,.5)"></div>
       </div>
       <div id="tplPartList" class="wo-service-list"></div>
     </div>
@@ -2989,11 +3079,12 @@ function renderTplList() {
 
 <!-- ===== WO PRINT / VIEW MODAL ===== -->
 <div class="overlay" id="woPrintModal" style="display:none;align-items:flex-start;padding-top:16px">
-  <div class="modal" style="max-width:780px;width:98%;max-height:94vh;overflow-y:auto;background:#fff;color:#111">
+  <div class="modal" style="max-width:780px;width:98%;max-height:94vh;overflow-y:auto;background:#fff;color:#111;font-family:Arial,Helvetica,sans-serif">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px" class="no-print">
       <span style="font-size:15px;font-weight:700;color:#1a1a1a">Work Order Preview</span>
       <div style="display:flex;gap:8px">
         <button onclick="window.print()" style="background:#d4a843;color:#1a1a1a;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer">🖨️ Print</button>
+        <button onclick="downloadWOHtml()" style="background:#2a3347;color:#e8e0d5;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer">⬇️ Download</button>
         <button onclick="closeWOPrint()" style="background:#eee;color:#333;border:none;border-radius:8px;padding:8px 14px;font-size:13px;cursor:pointer">Close</button>
       </div>
     </div>
