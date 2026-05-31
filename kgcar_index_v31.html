@@ -2761,24 +2761,25 @@ function openWOPrint(id) {
   // Build services rows
   var svcRows = '';
   for (var i = 0; i < services.length; i++) {
-    svcRows += '<tr><td>' + services[i].name + '</td><td class="charge">' + peso(services[i].price) + '</td></tr>';
+    svcRows += '<tr><td style="color:#1a1a1a">' + services[i].name + '</td><td class="charge" style="color:#1a1a1a;font-weight:600;text-align:right">' + peso(services[i].price) + '</td></tr>';
   }
   var svcBlock = '';
   if (services.length) {
     svcBlock = '<div class="wop-section"><div class="wop-section-title">Services / Labor</div>' +
-      '<table class="wop-table"><thead><tr><th>Description</th><th style="text-align:right;width:140px">Charge</th></tr></thead>' +
+      '<table class="wop-table"><thead><tr><th style="color:#555">Description</th><th style="text-align:right;width:140px;color:#555">Charge</th></tr></thead>' +
       '<tbody>' + svcRows + '</tbody></table></div>';
   }
 
   // Build parts rows
   var partsRows = '';
   for (var j = 0; j < parts.length; j++) {
-    partsRows += '<tr><td>' + parts[j].name + '</td><td style="text-align:center">' + parts[j].qty + '</td><td class="charge">' + peso(parts[j].price) + '</td></tr>';
+    var pname = parts[j].product_name || parts[j].name || '—'; var pprice = parts[j].unit_price || parts[j].price || 0; var pqty = parts[j].qty || 1;
+    partsRows += '<tr><td style="color:#1a1a1a">' + pname + '</td><td style="text-align:center;color:#1a1a1a">' + pqty + '</td><td class="charge" style="color:#1a1a1a;font-weight:600;text-align:right">' + peso(pprice) + '</td></tr>';
   }
   var partsBlock = '';
   if (parts.length) {
     partsBlock = '<div class="wop-section"><div class="wop-section-title">Parts Used</div>' +
-      '<table class="wop-table"><thead><tr><th>Part / Product</th><th style="text-align:center;width:60px">Qty</th><th style="text-align:right;width:120px">Unit Price</th></tr></thead>' +
+      '<table class="wop-table"><thead><tr><th style="color:#555">Part / Product</th><th style="text-align:center;width:60px;color:#555">Qty</th><th style="text-align:right;width:120px;color:#555">Unit Price</th></tr></thead>' +
       '<tbody>' + partsRows + '</tbody></table></div>';
   }
 
