@@ -2123,11 +2123,14 @@ async function doSale(){
   try {
     const saleId=genSaleId();
     const saleData={
-      sale_id:saleId,product_id:selProd.product_id,product_name:selProd.product_name,
-      category:selProd.category,qty_sold:qty,unit_price:selProd.unit_price,
+      sale_id:saleId,
+      product_id:selProd.product_id,
+      product_name:selProd.product_name,
+      category:selProd.category,
+      qty_sold:qty,
+      unit_price:selProd.unit_price,
       sale_total:qty*selProd.unit_price,
       recorded_by:curUser?.name||'Admin',
-      user_role:curUser?.role||'admin',
       notes:document.getElementById('saleNote').value,
       sale_date:document.getElementById('saleDate').value,
     };
@@ -2135,7 +2138,11 @@ async function doSale(){
     await apiPost('KGSale',saleData);
     await logActivity('sale', selProd.product_name, `Sold ${qty}x @ ${peso(selProd.unit_price)} = ${peso(qty*selProd.unit_price)}`);
     toast(`✅ ${qty}x ${selProd.product_name} — ${peso(qty*selProd.unit_price)}`,'ok');
-    await loadAll(); go('saleslog');
+    // Refresh sales data and navigate to sales log
+    sales = await apiGet('KGSale').catch(()=>sales);
+    sales.forEach(s=>{ if(s.created_date&&s.created_date.includes('T')&&!s.created_date.endsWith('Z')&&!s.created_date.includes('+')) s.created_date+='Z'; });
+    sales.sort((a,b)=>new Date(b.created_date||0)-new Date(a.created_date||0));
+    go('saleslog');
   } catch(e){toast('Failed: '+e.message,'err');}
   finally{btn.disabled=false;btn.textContent='💰 Confirm Sale & Update Stock';}
 }
