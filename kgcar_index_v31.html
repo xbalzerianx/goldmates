@@ -1220,7 +1220,7 @@ const CAT_COLORS = {
 };
 
 // ═══════════════════ STATE ═══════════════════
-let products=[], sales=[], expenses=[], actLogs=[], categories=[], curPage='dashboard';
+let products=[], sales=[], expenses=[], actLogs=[], categories=[], employees=[], curPage='dashboard';
 let editId=null, selProd=null, curFilter='today', filterFrom='', filterTo='';
 let curUser=null, pinEntry='', pinTarget=null, actFilter='all';
 
@@ -2134,11 +2134,16 @@ async function doSale(){
       notes:document.getElementById('saleNote').value,
       sale_date:document.getElementById('saleDate').value,
     };
-    await apiPut('KGProduct',selProd.id,{stock_qty:selProd.stock_qty-qty});
-    await apiPost('KGSale',saleData);
+    const newStock = selProd.stock_qty - qty;
+    await apiPut('KGProduct', selProd.id, {stock_qty: newStock});
+    await apiPost('KGSale', saleData);
     await logActivity('sale', selProd.product_name, `Sold ${qty}x @ ${peso(selProd.unit_price)} = ${peso(qty*selProd.unit_price)}`);
     toast(`✅ ${qty}x ${selProd.product_name} — ${peso(qty*selProd.unit_price)}`,'ok');
-    // Refresh sales data and navigate to sales log
+    // Update local products array immediately so inventory reflects new stock
+    const pIdx = products.findIndex(p => p.id === selProd.id);
+    if (pIdx > -1) products[pIdx].stock_qty = newStock;
+    selProd.stock_qty = newStock;
+    // Refresh sales data fresh from DB and navigate to sales log
     sales = await apiGet('KGSale').catch(()=>sales);
     sales.forEach(s=>{ if(s.created_date&&s.created_date.includes('T')&&!s.created_date.endsWith('Z')&&!s.created_date.includes('+')) s.created_date+='Z'; });
     sales.sort((a,b)=>new Date(b.created_date||0)-new Date(a.created_date||0));
@@ -3253,7 +3258,6 @@ document.addEventListener('click', function(e) {
 // ===================== END WORK ORDERS JS =====================
 
 // ═══════════════════ EMPLOYEES ═══════════════════
-let employees = [];
 let editEmpId = null;
 let empPhotoBase64 = '';
 
