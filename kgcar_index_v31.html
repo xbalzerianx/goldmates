@@ -997,6 +997,26 @@ tbody td{padding:13px 16px;vertical-align:middle}
 
       <!-- WO TEMPLATES — kept in DOM but hidden, used by modal dropdown -->
       <div id="page-wotemplates" class="page" style="display:none!important"></div>
+<!-- ===== EMPLOYEES PAGE ===== -->
+<div id="page-employees" class="page">
+  <div class="page-hdr">
+    <div class="page-hdr-row">
+      <div>
+        <div class="page-title">Employees</div>
+        <div class="page-sub">Staff profiles, commissions and assignments</div>
+      </div>
+      <button class="btn btn-gold" onclick="openEmpModal()">+ Add Employee</button>
+    </div>
+  </div>
+
+  <!-- Employee Cards Grid -->
+  <div id="empGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:18px;padding:4px 0"></div>
+  <div id="empEmpty" style="display:none;text-align:center;padding:60px 20px;color:var(--gray)">
+    <div style="font-size:48px;margin-bottom:12px">👥</div>
+    <div style="font-size:16px;font-weight:600">No employees yet</div>
+    <div style="font-size:13px;margin-top:6px">Add your first employee to get started</div>
+  </div>
+</div>
 
     </div>
   </div>
@@ -3153,26 +3173,6 @@ function downloadWOHtml() {
 ${innerHtml}
 <script>window.onload=function(){window.print();}<\/script>
 
-<!-- ===== EMPLOYEES PAGE ===== -->
-<div id="page-employees" class="page">
-  <div class="page-hdr">
-    <div class="page-hdr-row">
-      <div>
-        <div class="page-title">Employees</div>
-        <div class="page-sub">Staff profiles, commissions and assignments</div>
-      </div>
-      <button class="btn btn-gold" onclick="openEmpModal()">+ Add Employee</button>
-    </div>
-  </div>
-
-  <!-- Employee Cards Grid -->
-  <div id="empGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:18px;padding:4px 0"></div>
-  <div id="empEmpty" style="display:none;text-align:center;padding:60px 20px;color:var(--gray)">
-    <div style="font-size:48px;margin-bottom:12px">👥</div>
-    <div style="font-size:16px;font-weight:600">No employees yet</div>
-    <div style="font-size:13px;margin-top:6px">Add your first employee to get started</div>
-  </div>
-</div>
 
 <!-- ===== EMPLOYEE MODAL ===== -->
 <div class="overlay" id="empModal" style="display:none">
