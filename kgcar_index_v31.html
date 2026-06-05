@@ -3167,6 +3167,96 @@ function downloadWOHtml() {
     body{padding:20px 30px}
     button{display:none}
   }
+
+/* ── EMPLOYEE MODAL ─────────────────────────── */
+.modal-card{
+  background:var(--navy2);
+  border-radius:18px;
+  border:1px solid var(--navy3);
+  width:100%;
+  max-width:480px;
+  box-shadow:0 24px 60px rgba(0,0,0,.55);
+  overflow:hidden;
+  margin:auto;
+}
+.modal-hdr{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:20px 24px 16px;
+  border-bottom:1px solid var(--navy3);
+}
+.modal-hdr span{
+  font-size:17px;
+  font-weight:800;
+  color:var(--white);
+  letter-spacing:-.3px;
+}
+.modal-close{
+  width:32px;height:32px;
+  border-radius:50%;
+  background:var(--navy3);
+  border:none;
+  color:var(--gray);
+  font-size:16px;
+  cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .15s,color .15s;
+}
+.modal-close:hover{background:#c0392b;color:#fff}
+.modal-body{
+  padding:24px;
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+  max-height:70vh;
+  overflow-y:auto;
+}
+.modal-footer{
+  padding:16px 24px 20px;
+  border-top:1px solid var(--navy3);
+  display:flex;
+  gap:10px;
+  justify-content:flex-end;
+}
+.modal-field{display:flex;flex-direction:column;gap:6px}
+.modal-field .label{margin-bottom:0}
+.modal-field-hint{font-size:11px;color:var(--gray);margin-top:3px;line-height:1.4}
+.emp-photo-wrap{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:8px;
+  padding:4px 0 8px;
+}
+.emp-photo-circle{
+  width:88px;height:88px;
+  border-radius:50%;
+  background:var(--navy3);
+  display:flex;align-items:center;justify-content:center;
+  font-size:34px;
+  cursor:pointer;
+  overflow:hidden;
+  border:3px solid var(--gold);
+  transition:border-color .2s,transform .15s;
+  box-shadow:0 4px 16px rgba(212,168,67,.2);
+}
+.emp-photo-circle:hover{border-color:var(--gold2);transform:scale(1.04)}
+.emp-photo-label{font-size:11px;color:var(--gray);font-weight:500}
+.comm-row{display:flex;align-items:center;gap:10px}
+.comm-row .inp{flex:1}
+.comm-pct{font-size:15px;font-weight:700;color:var(--gold);min-width:20px;text-align:center}
+.status-row{display:flex;align-items:center;gap:12px}
+.status-row .label{margin-bottom:0;white-space:nowrap}
+.inp:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(212,168,67,.12)}
+@media(max-width:600px){
+  .modal-card{border-radius:14px 14px 0 0;max-width:100%;margin:0}
+  .overlay{align-items:flex-end!important;padding:0!important}
+  .modal-body{max-height:65vh;padding:18px 16px}
+  .modal-hdr{padding:16px 18px 14px}
+  .modal-footer{padding:14px 16px 28px;flex-direction:column}
+  .modal-footer .btn{width:100%;justify-content:center;padding:13px}
+}
 </style>
 </head>
 <body>
@@ -3557,60 +3647,67 @@ function showWOCommission(laborTotal) {
 
 <!-- ===== EMPLOYEE MODAL ===== -->
 <div class="overlay" id="empModal" style="display:none">
-  <div class="modal-card" style="max-width:480px;width:100%">
+  <div class="modal-card">
     <div class="modal-hdr">
       <span id="empModalTitle">Add Employee</span>
       <button class="modal-close" onclick="closeEmpModal()">✕</button>
     </div>
-    <div class="modal-body" style="display:flex;flex-direction:column;gap:14px">
+    <div class="modal-body">
 
-      <!-- Photo upload area -->
-      <div style="text-align:center">
-        <div id="empPhotoPreview" onclick="document.getElementById('empPhotoInput').click()" style="width:90px;height:90px;border-radius:50%;background:#2a3347;display:flex;align-items:center;justify-content:center;font-size:36px;cursor:pointer;margin:0 auto 8px;overflow:hidden;border:3px solid #d4a843">
-          <span id="empPhotoIcon">👤</span>
+      <!-- Avatar -->
+      <div class="emp-photo-wrap">
+        <div id="empPhotoPreview" class="emp-photo-circle" onclick="document.getElementById('empPhotoInput').click()">
+          <span id="empPhotoIcon" style="line-height:1">👤</span>
           <img id="empPhotoImg" src="" style="display:none;width:100%;height:100%;object-fit:cover;border-radius:50%"/>
         </div>
-        <div style="font-size:12px;color:var(--gray)">Click to upload photo</div>
+        <div class="emp-photo-label">Tap to upload photo</div>
         <input type="file" id="empPhotoInput" accept="image/*" style="display:none" onchange="previewEmpPhoto(this)"/>
       </div>
 
-      <div>
-        <label class="label">Full Name *</label>
-        <input class="inp" id="empName" placeholder="e.g. Juan dela Cruz" style="font-size:16px"/>
-      </div>
-      <div>
-        <label class="label">Phone Number</label>
-        <input class="inp" id="empPhone" placeholder="e.g. 09171234567" type="tel" style="font-size:16px"/>
-      </div>
-      <div>
-        <label class="label">Role / Position</label>
-        <input class="inp" id="empRole" placeholder="e.g. Mechanic, Service Advisor" style="font-size:16px"/>
-      </div>
-      <div>
-        <label class="label">Commission Rate (% of labor charge)</label>
-        <div style="display:flex;align-items:center;gap:8px">
-          <input class="inp" id="empCommission" type="number" min="0" max="100" step="0.5" placeholder="0" style="font-size:16px;flex:1"/>
-          <span style="color:var(--gray);font-weight:700;font-size:16px">%</span>
+      <!-- Name + Phone side by side on desktop -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="modal-field">
+          <label class="label">Full Name <span style="color:var(--gold)">*</span></label>
+          <input class="inp" id="empName" placeholder="e.g. Juan dela Cruz" autocomplete="off" style="font-size:16px"/>
         </div>
-        <div style="font-size:11px;color:var(--gray);margin-top:4px">Commission is deducted from labor charges only, not from parts/products.</div>
+        <div class="modal-field">
+          <label class="label">Phone Number</label>
+          <input class="inp" id="empPhone" placeholder="09171234567" type="tel" autocomplete="off" style="font-size:16px"/>
+        </div>
       </div>
-      <div>
+
+      <!-- Role + Commission side by side -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="modal-field">
+          <label class="label">Role / Position</label>
+          <input class="inp" id="empRole" placeholder="e.g. Mechanic" autocomplete="off" style="font-size:16px"/>
+        </div>
+        <div class="modal-field">
+          <label class="label">Commission Rate</label>
+          <div class="comm-row">
+            <input class="inp" id="empCommission" type="number" min="0" max="100" step="0.5" placeholder="0" style="font-size:16px"/>
+            <span class="comm-pct">%</span>
+          </div>
+          <div class="modal-field-hint">Labor charges only</div>
+        </div>
+      </div>
+
+      <!-- Status -->
+      <div class="modal-field">
         <label class="label">Status</label>
-        <select class="sel" id="empStatus" style="font-size:16px">
-          <option value="active">Active</option>
-          <option value="inactive">Inactive</option>
+        <select class="sel" id="empStatus" style="font-size:16px;width:100%;padding:10px 14px;border-radius:var(--r2);color:var(--white);outline:none;border:1px solid var(--navy4);background:var(--navy3)">
+          <option value="active">✅ Active</option>
+          <option value="inactive">⛔ Inactive</option>
         </select>
       </div>
 
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeEmpModal()">Cancel</button>
-      <button class="btn btn-gold" id="empSaveBtn" onclick="saveEmployee()">💾 Save Employee</button>
+      <button class="btn btn-gold" id="empSaveBtn" onclick="saveEmployee()">Save Employee</button>
     </div>
   </div>
 </div>
 
-</body>
-</html>
 </body>
 </html>
