@@ -201,7 +201,7 @@ tbody td{padding:13px 16px;vertical-align:middle}
 .sel option{background:var(--navy2)}
 
 /* MODAL */
-.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:900;align-items:flex-start;justify-content:center;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px;backdrop-filter:blur(4px)}
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:10000;align-items:center;justify-content:center;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px;backdrop-filter:blur(4px)}
 .overlay.open{display:flex;align-items:flex-start}
 .modal{background:var(--navy2);border:1px solid var(--navy3);border-radius:var(--r);padding:24px;width:100%;max-width:540px;margin:auto;box-shadow:0 30px 80px rgba(0,0,0,.6);animation:mIn .2s ease;box-sizing:border-box}
 @keyframes mIn{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
@@ -3212,18 +3212,12 @@ async function loadEmployees() {
   } catch(e) { employees = []; }
 }
 
-function renderEmployees() {
+async function renderEmployees() {
   const grid = document.getElementById('empGrid');
-  const empty = document.getElementById('empEmpty');
   if (!grid) return;
-  if (!employees.length) {
-    // Try loading first
-    apiGet('KGEmployee').then(list => {
-      employees = list;
-      _renderEmpGrid();
-    }).catch(() => _renderEmpGrid());
-    return;
-  }
+  try {
+    employees = await apiGet('KGEmployee');
+  } catch(e) { /* keep existing */ }
   _renderEmpGrid();
 }
 
