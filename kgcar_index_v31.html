@@ -1189,11 +1189,13 @@ const SB_URL = 'https://stigramvmyckdmyipvnj.supabase.co/rest/v1';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN0aWdyYW12bXlja2RteWlwdm5qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4MDQ3MjksImV4cCI6MjA4OTM4MDcyOX0.UuOy28Y_TXU_uJ3qPRaGyPXu23LWrS37FG38asyUOn8';
 const SB_HDR = {'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY};
 const TBL = {KGProduct:'kg_products',KGSale:'kg_sales',KGExpense:'kg_expenses',KGActivity:'kg_activity',KGCategory:'kg_categories',KGWorkOrder:'kg_work_orders',KGWOTemplate:'kg_wo_templates',KGEmployee:'kg_employees'};
+const TBL_ORDER = {KGEmployee:'created_at'};
 
 // ═══════════════════ API (Supabase) ═══════════════════
 async function apiGet(e,id=''){
   const tbl=TBL[e]||e;
-  const url=id?`${SB_URL}/${tbl}?id=eq.${id}&select=*`:`${SB_URL}/${tbl}?select=*&limit=1000&order=created_date.desc`;
+  const orderCol=(TBL_ORDER&&TBL_ORDER[e])||'created_date';
+  const url=id?`${SB_URL}/${tbl}?id=eq.${id}&select=*`:`${SB_URL}/${tbl}?select=*&limit=1000&order=${orderCol}.desc`;
   const r=await fetch(url,{headers:SB_HDR});
   if(!r.ok)throw new Error(await r.text());
   const d=await r.json();
