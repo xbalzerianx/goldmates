@@ -699,6 +699,9 @@ tbody td{padding:13px 16px;vertical-align:middle}
     <button class="sb-item" data-page="workorders" onclick="go('workorders')" id="sbWOBtn">
       <span class="sb-item-icon">🔧</span>Work Orders
     </button>
+    <button class="sb-item" data-page="employees" onclick="go('employees')">
+      <span class="sb-item-icon">👥</span>Employees
+    </button>
     <!-- WO Templates merged into WO modal — no longer a separate page -->
     <div id="sbWOTplBtn" style="display:none"></div>
     <div class="sb-footer">
@@ -1010,6 +1013,7 @@ tbody td{padding:13px 16px;vertical-align:middle}
 <button class="mob-item" data-page="actlog" onclick="go('actlog')"><span class="mob-item-icon">🕓</span>Logs</button>
     <button class="mob-item" data-page="catmgr" onclick="go('catmgr')" id="mobCatMgrBtn" style="display:none"><span class="mob-item-icon">🗂️</span>Categories</button>
     <button class="mob-item" data-page="workorders" onclick="go('workorders')" id="mobWOBtn"><span class="mob-item-icon">🔧</span>Work Orders</button>
+    <button class="mob-item" data-page="employees" onclick="go('employees')"><span class="mob-item-icon">👥</span>Staff</button>
     <button class="mob-item" data-page="alerts" onclick="go('alerts')"><span class="mob-item-icon">⚠️</span>Alerts</button>
   </div>
 </nav>
@@ -1164,7 +1168,7 @@ tbody td{padding:13px 16px;vertical-align:middle}
 const SB_URL = 'https://stigramvmyckdmyipvnj.supabase.co/rest/v1';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN0aWdyYW12bXlja2RteWlwdm5qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4MDQ3MjksImV4cCI6MjA4OTM4MDcyOX0.UuOy28Y_TXU_uJ3qPRaGyPXu23LWrS37FG38asyUOn8';
 const SB_HDR = {'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY};
-const TBL = {KGProduct:'kg_products',KGSale:'kg_sales',KGExpense:'kg_expenses',KGActivity:'kg_activity',KGCategory:'kg_categories',KGWorkOrder:'kg_work_orders',KGWOTemplate:'kg_wo_templates'};
+const TBL = {KGProduct:'kg_products',KGSale:'kg_sales',KGExpense:'kg_expenses',KGActivity:'kg_activity',KGCategory:'kg_categories',KGWorkOrder:'kg_work_orders',KGWOTemplate:'kg_wo_templates',KGEmployee:'kg_employees'};
 
 // ═══════════════════ API (Supabase) ═══════════════════
 async function apiGet(e,id=''){
@@ -1395,12 +1399,13 @@ function genSaleId(){
 // ═══════════════════ LOAD ═══════════════════
 async function loadAll(){
   try {
-    [products, sales, expenses, actLogs, categories] = await Promise.all([
+    [products, sales, expenses, actLogs, categories, employees] = await Promise.all([
       apiGet('KGProduct'),
       apiGet('KGSale'),
       apiGet('KGExpense').catch(()=>[]),
       apiGet('KGActivity').catch(()=>[]),
       apiGet('KGCategory').catch(()=>[]),
+      apiGet('KGEmployee').catch(()=>[]),
     ]);
     sales.forEach(s=>{ if(s.created_date&&s.created_date.includes('T')&&!s.created_date.endsWith('Z')&&!s.created_date.includes('+')) s.created_date+='Z'; });
     sales.sort((a,b)=>new Date(b.created_date||0)-new Date(a.created_date||0));
@@ -1432,10 +1437,12 @@ async function loadAll(){
     // Auto-retry once after 2s
     setTimeout(()=>loadAll(),2000);
   }
+  // Always refresh mechanic dropdown after data loads
+  setTimeout(()=>populateWOMechanic(), 100);
 }
 
 // ═══════════════════ NAVIGATION ═══════════════════
-const TITLES={dashboard:'Dashboard',inventory:'Products & Inventory',sale:'Record Sale',saleslog:'Sales Log',expenses:'Expenses',actlog:'Activity Log',alerts:'Stock Alerts',catmgr:'Category Manager',workorders:'Work Orders'};
+const TITLES={dashboard:'Dashboard',inventory:'Products & Inventory',sale:'Record Sale',saleslog:'Sales Log',expenses:'Expenses',actlog:'Activity Log',alerts:'Stock Alerts',catmgr:'Category Manager',workorders:'Work Orders',employees:'Employees'};
 async function go(page){
   curPage=page;
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
@@ -1456,12 +1463,24 @@ async function go(page){
     });
   }
   // wotemplates page removed — templates accessed from WO modal
+  if(page==='saleslog'){
+    // Refresh sales data when navigating to sales log
+    apiGet('KGSale').then(fresh=>{
+      fresh.forEach(s=>{ if(s.created_date&&s.created_date.includes('T')&&!s.created_date.endsWith('Z')&&!s.created_date.includes('+')) s.created_date+='Z'; });
+      fresh.sort((a,b)=>new Date(b.created_date||0)-new Date(a.created_date||0));
+      sales=fresh;
+      renderSL();
+    }).catch(()=>renderSL());
+  }
   if(page==='catmgr'){
     if(categories.length===0){
       apiGet('KGCategory').then(cats=>{ categories=cats; renderCatMgr(); }).catch(()=>renderCatMgr());
     } else {
       renderCatMgr();
     }
+  }
+  if(page==='employees'){
+    renderEmployees();
   }
   // Refresh ALL data when navigating to activity log
   if(page==='actlog'){
@@ -2699,6 +2718,7 @@ function calcWOTotals() {
   document.getElementById('woTtlSub').textContent = peso(sub);
   document.getElementById('woTtlVat').textContent = peso(vat);
   document.getElementById('woTtlGrand').textContent = peso(grand);
+  showWOCommission(labor);
   return { labor, parts, sub, vat, grand };
 }
 
@@ -3120,6 +3140,83 @@ function downloadWOHtml() {
 <body>
 ${innerHtml}
 <script>window.onload=function(){window.print();}<\/script>
+
+<!-- ===== EMPLOYEES PAGE ===== -->
+<div id="page-employees" class="page">
+  <div class="page-hdr">
+    <div class="page-hdr-row">
+      <div>
+        <div class="page-title">Employees</div>
+        <div class="page-sub">Staff profiles, commissions and assignments</div>
+      </div>
+      <button class="btn btn-gold" onclick="openEmpModal()">+ Add Employee</button>
+    </div>
+  </div>
+
+  <!-- Employee Cards Grid -->
+  <div id="empGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:18px;padding:4px 0"></div>
+  <div id="empEmpty" style="display:none;text-align:center;padding:60px 20px;color:var(--gray)">
+    <div style="font-size:48px;margin-bottom:12px">👥</div>
+    <div style="font-size:16px;font-weight:600">No employees yet</div>
+    <div style="font-size:13px;margin-top:6px">Add your first employee to get started</div>
+  </div>
+</div>
+
+<!-- ===== EMPLOYEE MODAL ===== -->
+<div class="overlay" id="empModal" style="display:none">
+  <div class="modal-card" style="max-width:480px;width:100%">
+    <div class="modal-hdr">
+      <span id="empModalTitle">Add Employee</span>
+      <button class="modal-close" onclick="closeEmpModal()">✕</button>
+    </div>
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:14px">
+
+      <!-- Photo upload area -->
+      <div style="text-align:center">
+        <div id="empPhotoPreview" onclick="document.getElementById('empPhotoInput').click()" style="width:90px;height:90px;border-radius:50%;background:#2a3347;display:flex;align-items:center;justify-content:center;font-size:36px;cursor:pointer;margin:0 auto 8px;overflow:hidden;border:3px solid #d4a843">
+          <span id="empPhotoIcon">👤</span>
+          <img id="empPhotoImg" src="" style="display:none;width:100%;height:100%;object-fit:cover;border-radius:50%"/>
+        </div>
+        <div style="font-size:12px;color:var(--gray)">Click to upload photo</div>
+        <input type="file" id="empPhotoInput" accept="image/*" style="display:none" onchange="previewEmpPhoto(this)"/>
+      </div>
+
+      <div>
+        <label class="label">Full Name *</label>
+        <input class="inp" id="empName" placeholder="e.g. Juan dela Cruz" style="font-size:16px"/>
+      </div>
+      <div>
+        <label class="label">Phone Number</label>
+        <input class="inp" id="empPhone" placeholder="e.g. 09171234567" type="tel" style="font-size:16px"/>
+      </div>
+      <div>
+        <label class="label">Role / Position</label>
+        <input class="inp" id="empRole" placeholder="e.g. Mechanic, Service Advisor" style="font-size:16px"/>
+      </div>
+      <div>
+        <label class="label">Commission Rate (% of labor charge)</label>
+        <div style="display:flex;align-items:center;gap:8px">
+          <input class="inp" id="empCommission" type="number" min="0" max="100" step="0.5" placeholder="0" style="font-size:16px;flex:1"/>
+          <span style="color:var(--gray);font-weight:700;font-size:16px">%</span>
+        </div>
+        <div style="font-size:11px;color:var(--gray);margin-top:4px">Commission is deducted from labor charges only, not from parts/products.</div>
+      </div>
+      <div>
+        <label class="label">Status</label>
+        <select class="sel" id="empStatus" style="font-size:16px">
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+        </select>
+      </div>
+
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeEmpModal()">Cancel</button>
+      <button class="btn btn-gold" id="empSaveBtn" onclick="saveEmployee()">💾 Save Employee</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>`;
   const blob = new Blob([html], {type:'text/html'});
@@ -3147,6 +3244,207 @@ document.addEventListener('click', function(e) {
 });
 
 // ===================== END WORK ORDERS JS =====================
+
+// ═══════════════════ EMPLOYEES ═══════════════════
+let employees = [];
+let editEmpId = null;
+let empPhotoBase64 = '';
+
+async function loadEmployees() {
+  try {
+    employees = await apiGet('KGEmployee').catch(() => []);
+  } catch(e) { employees = []; }
+}
+
+function renderEmployees() {
+  const grid = document.getElementById('empGrid');
+  const empty = document.getElementById('empEmpty');
+  if (!grid) return;
+  if (!employees.length) {
+    // Try loading first
+    apiGet('KGEmployee').then(list => {
+      employees = list;
+      _renderEmpGrid();
+    }).catch(() => _renderEmpGrid());
+    return;
+  }
+  _renderEmpGrid();
+}
+
+function _renderEmpGrid() {
+  const grid = document.getElementById('empGrid');
+  const empty = document.getElementById('empEmpty');
+  if (!grid) return;
+  const active = employees.filter(e => e.status !== 'inactive');
+  const inactive = employees.filter(e => e.status === 'inactive');
+  const all = [...active, ...inactive];
+  if (!all.length) {
+    grid.innerHTML = '';
+    if (empty) empty.style.display = 'block';
+    return;
+  }
+  if (empty) empty.style.display = 'none';
+  grid.innerHTML = all.map(emp => {
+    const isInactive = emp.status === 'inactive';
+    const photoHtml = emp.photo_url
+      ? `<img src="${emp.photo_url}" style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:3px solid #d4a843"/>`
+      : `<div style="width:64px;height:64px;border-radius:50%;background:#2a3347;display:flex;align-items:center;justify-content:center;font-size:28px;border:3px solid #d4a843">👤</div>`;
+    return `<div style="background:var(--card);border-radius:14px;padding:20px;border:1px solid var(--border);opacity:${isInactive?0.6:1}">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px">
+        ${photoHtml}
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:800;font-size:15px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${emp.name||'—'}</div>
+          <div style="font-size:12px;color:var(--gold);margin-top:2px">${emp.role||'Staff'}</div>
+          ${isInactive ? '<span style="font-size:10px;background:#444;color:#aaa;padding:2px 7px;border-radius:20px;margin-top:3px;display:inline-block">Inactive</span>' : '<span style="font-size:10px;background:#1a3a2a;color:#4caf50;padding:2px 7px;border-radius:20px;margin-top:3px;display:inline-block">Active</span>'}
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
+        <div style="background:var(--bg);border-radius:8px;padding:8px 12px">
+          <div style="font-size:10px;color:var(--gray);font-weight:700;text-transform:uppercase;letter-spacing:.06em">Phone</div>
+          <div style="font-size:13px;color:var(--text);font-weight:600;margin-top:2px">${emp.phone||'—'}</div>
+        </div>
+        <div style="background:var(--bg);border-radius:8px;padding:8px 12px">
+          <div style="font-size:10px;color:var(--gray);font-weight:700;text-transform:uppercase;letter-spacing:.06em">Commission</div>
+          <div style="font-size:13px;color:var(--gold);font-weight:800;margin-top:2px">${emp.commission_rate||0}%</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost btn-sm" style="flex:1" onclick="openEmpModal('${emp.id}')">✏️ Edit</button>
+        <button class="btn btn-ghost btn-sm" style="flex:1;color:#e05555" onclick="deleteEmployee('${emp.id}','${(emp.name||'').replace(/'/g,'\\u0027')}')">🗑️ Delete</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openEmpModal(id) {
+  editEmpId = id || null;
+  empPhotoBase64 = '';
+  document.getElementById('empModalTitle').textContent = id ? 'Edit Employee' : 'Add Employee';
+  document.getElementById('empName').value = '';
+  document.getElementById('empPhone').value = '';
+  document.getElementById('empRole').value = '';
+  document.getElementById('empCommission').value = '';
+  document.getElementById('empStatus').value = 'active';
+  document.getElementById('empPhotoIcon').style.display = 'flex';
+  document.getElementById('empPhotoImg').style.display = 'none';
+  document.getElementById('empPhotoImg').src = '';
+  if (id) {
+    const emp = employees.find(e => e.id === id);
+    if (emp) {
+      document.getElementById('empName').value = emp.name || '';
+      document.getElementById('empPhone').value = emp.phone || '';
+      document.getElementById('empRole').value = emp.role || '';
+      document.getElementById('empCommission').value = emp.commission_rate || 0;
+      document.getElementById('empStatus').value = emp.status || 'active';
+      if (emp.photo_url) {
+        document.getElementById('empPhotoImg').src = emp.photo_url;
+        document.getElementById('empPhotoImg').style.display = 'block';
+        document.getElementById('empPhotoIcon').style.display = 'none';
+      }
+    }
+  }
+  document.getElementById('empModal').style.display = 'flex';
+}
+
+function closeEmpModal() {
+  document.getElementById('empModal').style.display = 'none';
+  editEmpId = null;
+  empPhotoBase64 = '';
+}
+
+function previewEmpPhoto(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 2 * 1024 * 1024) { toast('Image must be under 2MB', 'error'); return; }
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    empPhotoBase64 = e.target.result;
+    document.getElementById('empPhotoImg').src = empPhotoBase64;
+    document.getElementById('empPhotoImg').style.display = 'block';
+    document.getElementById('empPhotoIcon').style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+}
+
+async function saveEmployee() {
+  const name = document.getElementById('empName').value.trim();
+  if (!name) { toast('Employee name is required', 'error'); return; }
+  const btn = document.getElementById('empSaveBtn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const payload = {
+      name,
+      phone: document.getElementById('empPhone').value.trim(),
+      role: document.getElementById('empRole').value.trim(),
+      commission_rate: parseFloat(document.getElementById('empCommission').value) || 0,
+      status: document.getElementById('empStatus').value,
+    };
+    if (empPhotoBase64) payload.photo_url = empPhotoBase64;
+    if (editEmpId) {
+      await apiPut('KGEmployee', editEmpId, payload);
+      const idx = employees.findIndex(e => e.id === editEmpId);
+      if (idx > -1) employees[idx] = { ...employees[idx], ...payload };
+      toast('Employee updated!', 'success');
+    } else {
+      const saved = await apiPost('KGEmployee', payload);
+      employees.unshift(saved);
+      toast('Employee added!', 'success');
+    }
+    closeEmpModal();
+    _renderEmpGrid();
+    populateWOMechanic(); // refresh WO mechanic dropdown
+  } catch(e) {
+    toast('Error: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = '💾 Save Employee';
+  }
+}
+
+async function deleteEmployee(id, name) {
+  if (!confirm(`Delete employee "${name}"? This cannot be undone.`)) return;
+  try {
+    await apiDel('KGEmployee', id);
+    employees = employees.filter(e => e.id !== id);
+    _renderEmpGrid();
+    populateWOMechanic();
+    toast('Employee deleted.', 'success');
+  } catch(e) {
+    toast('Error: ' + e.message, 'error');
+  }
+}
+
+// Populate mechanic dropdown in WO modal with employees
+function populateWOMechanic() {
+  const sel = document.getElementById('woMechanic');
+  if (!sel) return;
+  const currentVal = sel.value;
+  // Keep it as a text input — just provide a datalist
+  let dl = document.getElementById('mechanicList');
+  if (!dl) {
+    dl = document.createElement('datalist');
+    dl.id = 'mechanicList';
+    document.body.appendChild(dl);
+    sel.setAttribute('list', 'mechanicList');
+  }
+  dl.innerHTML = employees.filter(e => e.status === 'active').map(e =>
+    `<option value="${e.name}">${e.name}${e.role ? ' — ' + e.role : ''}</option>`
+  ).join('');
+}
+
+// Show commission breakdown in WO modal (not in print)
+function showWOCommission(laborTotal) {
+  const mechanicName = document.getElementById('woMechanic')?.value?.trim();
+  const emp = employees.find(e => e.name === mechanicName && e.status === 'active');
+  const commDiv = document.getElementById('woCommissionInfo');
+  if (!commDiv) return;
+  if (emp && emp.commission_rate > 0 && laborTotal > 0) {
+    const comm = (laborTotal * emp.commission_rate / 100);
+    commDiv.style.display = 'flex';
+    commDiv.innerHTML = `<span style="font-size:12px;color:var(--gold)">👷 <strong>${emp.name}</strong> commission: <strong>${emp.commission_rate}%</strong> of labor = <strong>${peso(comm)}</strong></span>`;
+  } else {
+    commDiv.style.display = 'none';
+  }
+}
 
 </script>
 
@@ -3187,7 +3485,7 @@ document.addEventListener('click', function(e) {
     <!-- Mechanic / Worker -->
     <div class="wo-section">
       <div class="wo-section-title">Assigned Mechanic</div>
-      <div class="fg"><input class="inp" id="woMechanic" placeholder="e.g. Ramon Cruz" style="font-size:16px"/></div>
+      <div class="fg"><input class="inp" id="woMechanic" placeholder="e.g. Ramon Cruz" list="mechanicList" style="font-size:16px" oninput="calcWOTotals()" onchange="calcWOTotals()"/></div>
     </div>
 
     <!-- Load Template -->
@@ -3235,6 +3533,8 @@ document.addEventListener('click', function(e) {
       <div class="wo-total-row"><span>VAT (12%)</span><span id="woTtlVat">₱0.00</span></div>
       <div class="wo-total-row grand"><span>TOTAL</span><span id="woTtlGrand">₱0.00</span></div>
     </div>
+    <!-- Commission info (app only, not printed) -->
+    <div id="woCommissionInfo" style="display:none;background:#1a2a1a;border:1px solid #2a4a2a;border-radius:8px;padding:10px 14px;margin-top:10px"></div>
 
     <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
       <button class="btn btn-ghost" onclick="closeWOModal()">Cancel</button>
