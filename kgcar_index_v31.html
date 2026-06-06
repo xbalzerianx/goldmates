@@ -1010,6 +1010,19 @@ tbody td{padding:13px 16px;vertical-align:middle}
   </div>
 
   <!-- Employee Cards Grid -->
+  <!-- Commission Summary Banner -->
+  <div id="empCommSummary" style="display:none;margin-bottom:18px;background:#111827;border:1px solid #1f2937;border-radius:14px;overflow:hidden">
+    <div style="padding:14px 18px;border-bottom:1px solid #1f2937;display:flex;align-items:center;justify-content:space-between">
+      <span style="font-size:13px;font-weight:700;color:#f9fafb">💰 Commission Summary</span>
+      <select id="commPeriodSel" onchange="renderEmpCommissions()" style="background:#1f2937;border:1px solid #374151;border-radius:8px;color:#f9fafb;padding:5px 10px;font-size:12px;outline:none">
+        <option value="all">All Time</option>
+        <option value="month">This Month</option>
+        <option value="week">This Week</option>
+      </select>
+    </div>
+    <div id="empCommList" style="padding:12px 18px;display:flex;flex-direction:column;gap:8px"></div>
+  </div>
+
   <div id="empGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:18px;padding:4px 0"></div>
   <div id="empEmpty" style="display:none;text-align:center;padding:60px 20px;color:var(--gray)">
     <div style="font-size:48px;margin-bottom:12px">👥</div>
@@ -2634,7 +2647,7 @@ function openEditWO(id) {
   document.getElementById('woCustPhone').value = wo.customer_phone || '';
   document.getElementById('woPlate').value = wo.plate_number || '';
   document.getElementById('woVehicle').value = wo.vehicle || '';
-  document.getElementById('woMechanic').value = wo.mechanic || '';
+  document.getElementById('woMechanic').value = (wo.mechanic || '').split('||')[0];
   document.getElementById('woNotes').value = wo.notes || '';
   document.getElementById('woPartQ').value = '';
   document.getElementById('woPartResults').style.display = 'none';
@@ -2974,7 +2987,7 @@ function openWOPrint(id) {
         infoRow('Customer Name', wo.customer_name || '—') +
         infoRow('Phone Number', wo.customer_phone || '—') +
         infoRow('Plate Number', (wo.plate_number || '—') + vehicleSpan) +
-        infoRow('Mechanic', wo.mechanic || '—') +
+        infoRow('Mechanic', (wo.mechanic || '—').split('||')[0]) +
       '</tbody>' +
     '</table>' +
     svcBlock +
@@ -3258,6 +3271,66 @@ async function renderEmployees() {
     employees = await apiGet('KGEmployee');
   } catch(e) { console.error('Employee fetch error:', e); }
   _renderEmpGrid();
+  renderEmpCommissions();
+}
+
+
+// ── Employee Commission Summary ────────────────────────────────────────────
+async function renderEmpCommissions() {
+  const wrap = document.getElementById('empCommSummary');
+  const list  = document.getElementById('empCommList');
+  if (!wrap || !list) return;
+
+  // Fetch all work orders fresh
+  let wos = [];
+  try { wos = await apiGet('KGWorkOrder'); } catch(e) { wos = []; }
+
+  // Filter by period
+  const period = document.getElementById('commPeriodSel')?.value || 'all';
+  const now = new Date();
+  wos = wos.filter(w => {
+    if (period === 'all') return true;
+    const d = new Date(w.created_date || w.work_date);
+    if (period === 'month') return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+    if (period === 'week') { const diff = (now - d) / 86400000; return diff <= 7; }
+    return true;
+  });
+
+  // Build commission map: employee_id → { name, rate, laborTotal, commission, jobs }
+  const map = {};
+  wos.forEach(w => {
+    if (!w.mechanic || !w.mechanic.includes('||')) return;
+    const [name, empId, rateStr] = w.mechanic.split('||');
+    const rate = parseFloat(rateStr) || 0;
+    const labor = parseFloat(w.labor_total) || 0;
+    if (!empId) return;
+    if (!map[empId]) map[empId] = { name, rate, laborTotal: 0, commission: 0, jobs: 0 };
+    map[empId].laborTotal += labor;
+    map[empId].commission += labor * rate / 100;
+    map[empId].jobs++;
+  });
+
+  const entries = Object.values(map).sort((a, b) => b.commission - a.commission);
+
+  if (!entries.length) {
+    wrap.style.display = 'none';
+    return;
+  }
+
+  wrap.style.display = 'block';
+  list.innerHTML = entries.map(e => `
+    <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #1f2937">
+      <div style="width:36px;height:36px;border-radius:50%;background:#1f2937;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#d4a843;border:2px solid #d4a843;flex-shrink:0">${e.name[0].toUpperCase()}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:700;color:#f9fafb">${e.name}</div>
+        <div style="font-size:11px;color:#9ca3af;margin-top:1px">${e.jobs} job${e.jobs!==1?'s':''} · Labor: ${peso(e.laborTotal)}</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        <div style="font-size:16px;font-weight:800;color:#d4a843">${peso(e.commission)}</div>
+        <div style="font-size:10px;color:#9ca3af;margin-top:1px">${e.rate}% commission</div>
+      </div>
+    </div>
+  `).join('');
 }
 
 function _renderEmpGrid() {
