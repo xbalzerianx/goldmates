@@ -1336,8 +1336,8 @@ async function loadPinsFromSupabase() {
     if (!rows.length) return;
     const pins = {...DEFAULT_PINS};
     rows.forEach(row => {
-      if (row.key === 'pin_admin' && row.value) pins.admin = row.value;
-      if (row.key === 'pin_asst' && row.value) pins.asst = row.value;
+      if ((row.key === 'pin_admin' || row.key === 'admin_pin') && row.value) pins.admin = row.value;
+      if ((row.key === 'pin_asst' || row.key === 'asst_pin') && row.value) pins.asst = row.value;
     });
     savePins(pins);
   } catch(e) {
