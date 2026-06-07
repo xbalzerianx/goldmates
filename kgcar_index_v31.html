@@ -1432,7 +1432,7 @@ function genSaleId(){
 }
 
 // ═══════════════════ LOAD ═══════════════════
-async async function loadAll(){
+async function loadAll(){
   try {
     [products, sales, expenses, actLogs, categories, employees] = await Promise.all([
       apiGet('KGProduct'),
