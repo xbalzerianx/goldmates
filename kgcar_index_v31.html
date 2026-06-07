@@ -3425,8 +3425,8 @@ function _renderEmpGrid(commMap) {
     const isInactive = emp.status === 'inactive';
     const initial = (emp.name || '?')[0].toUpperCase();
     const photoHtml = emp.photo_url
-      ? `<img src="${emp.photo_url}" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:2.5px solid #d4a843;flex-shrink:0"/>`
-      : `<div style="width:56px;height:56px;border-radius:50%;background:#1f2937;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:#d4a843;border:2.5px solid #d4a843;flex-shrink:0">${initial}</div>`;
+      ? `<img src="${emp.photo_url}" style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:2.5px solid var(--gold);flex-shrink:0"/>`
+      : `<div style="width:64px;height:64px;border-radius:50%;background:var(--navy3);display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;color:var(--gold);border:2.5px solid var(--gold);flex-shrink:0">${initial}</div>`;
 
     const key = (emp.name || '').toLowerCase().trim();
     const cm = commMap[key];
@@ -3435,44 +3435,46 @@ function _renderEmpGrid(commMap) {
     const commLabor  = cm ? cm.laborTotal : 0;
 
     const earnedBadge = cm
-      ? `<div style="margin-top:2px;background:#0d1f10;border:1px solid #1e4d20;border-radius:10px;padding:10px 12px">
-           <div style="font-size:10px;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">💰 Commission Earned</div>
-           <div style="display:flex;align-items:center;justify-content:space-between">
-             <div style="font-size:22px;font-weight:800;color:#4ade80">${peso(commEarned)}</div>
-             <div style="text-align:right">
-               <div style="font-size:11px;color:#9ca3af">${commJobs} job${commJobs!==1?'s':''}</div>
-               <div style="font-size:11px;color:#9ca3af">Labor: ${peso(commLabor)}</div>
+      ? `<div style="background:rgba(74,222,128,.07);border:1px solid rgba(74,222,128,.2);border-radius:10px;padding:12px 14px">
+           <div style="font-size:10px;color:var(--gray);font-weight:700;text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px">💰 Commission Earned</div>
+           <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+             <div style="font-size:20px;font-weight:800;color:#4ade80">${peso(commEarned)}</div>
+             <div style="text-align:right;flex-shrink:0">
+               <div style="font-size:11px;color:var(--gray);font-weight:600">${commJobs} job${commJobs!==1?'s':''}</div>
+               <div style="font-size:11px;color:var(--gray)">Labor: ${peso(commLabor)}</div>
              </div>
            </div>
          </div>`
-      : `<div style="margin-top:2px;background:#0b1120;border:1px dashed #1f2937;border-radius:10px;padding:10px 12px;text-align:center">
-           <div style="font-size:11px;color:#4b5563">No completed work orders yet</div>
+      : `<div style="background:var(--navy3);border:1px dashed var(--navy4);border-radius:10px;padding:12px 14px;text-align:center">
+           <div style="font-size:12px;color:var(--gray)">No work orders yet</div>
          </div>`;
 
     return `
-    <div style="background:#111827;border-radius:14px;border:1px solid #1f2937;padding:18px;display:flex;flex-direction:column;gap:12px;opacity:${isInactive ? 0.55 : 1}">
-      <div style="display:flex;align-items:center;gap:14px">
+    <div style="background:var(--navy2);border-radius:16px;border:1px solid var(--navy3);overflow:hidden;display:flex;flex-direction:column;opacity:${isInactive ? 0.6 : 1}">
+      <div style="background:var(--navy3);padding:18px 18px 14px;display:flex;align-items:center;gap:14px;border-bottom:1px solid var(--navy4)">
         ${photoHtml}
         <div style="flex:1;min-width:0">
-          <div style="font-weight:700;font-size:15px;color:#f9fafb;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${emp.name || '—'}</div>
-          <div style="font-size:12px;color:#d4a843;margin-top:3px">${emp.role || 'Staff'}</div>
-          <span style="display:inline-block;margin-top:5px;font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;background:${isInactive ? '#2a2a2a' : '#0d2a1a'};color:${isInactive ? '#888' : '#4caf50'}">${isInactive ? 'Inactive' : 'Active'}</span>
+          <div style="font-weight:700;font-size:15px;color:var(--white);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${emp.name || '—'}</div>
+          <div style="font-size:12px;color:var(--gold);margin-top:2px;font-weight:600">${emp.role || 'Staff'}</div>
+          <span style="display:inline-block;margin-top:6px;font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;letter-spacing:.04em;background:${isInactive ? 'rgba(100,100,100,.15)' : 'rgba(74,222,128,.12)'};color:${isInactive ? '#888' : '#4ade80'};border:1px solid ${isInactive ? 'rgba(100,100,100,.3)' : 'rgba(74,222,128,.25)'}">${isInactive ? '⛔ Inactive' : '✅ Active'}</span>
         </div>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-        <div style="background:#0b1120;border-radius:8px;padding:10px 12px">
-          <div style="font-size:10px;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">Phone</div>
-          <div style="font-size:13px;color:#f9fafb;font-weight:600">${emp.phone || '—'}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--navy4)">
+        <div style="padding:12px 14px;border-right:1px solid var(--navy4)">
+          <div style="font-size:10px;color:var(--gray);font-weight:700;text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">📞 Phone</div>
+          <div style="font-size:13px;color:var(--white);font-weight:600">${emp.phone || '—'}</div>
         </div>
-        <div style="background:#0b1120;border-radius:8px;padding:10px 12px">
-          <div style="font-size:10px;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">Rate</div>
-          <div style="font-size:15px;color:#d4a843;font-weight:800">${emp.commission_rate || 0}%</div>
+        <div style="padding:12px 14px">
+          <div style="font-size:10px;color:var(--gray);font-weight:700;text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">📊 Rate</div>
+          <div style="font-size:18px;color:var(--gold);font-weight:800">${emp.commission_rate || 0}%</div>
         </div>
       </div>
-      ${earnedBadge}
-      <div style="display:flex;gap:8px">
-        <button onclick="openEmpModal('${emp.id}')" style="flex:1;padding:9px;border-radius:8px;background:#1f2937;color:#f9fafb;border:1px solid #374151;font-size:12px;font-weight:600;cursor:pointer">✏️ Edit</button>
-        <button onclick="deleteEmployee('${emp.id}','${(emp.name||'').replace(/'/g,'\u0027')}')" style="flex:1;padding:9px;border-radius:8px;background:#1f2937;color:#ef4444;border:1px solid #374151;font-size:12px;font-weight:600;cursor:pointer">🗑️ Remove</button>
+      <div style="padding:14px">
+        ${earnedBadge}
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--navy4)">
+        <button onclick="openEmpModal('${emp.id}')" style="padding:11px;background:transparent;color:var(--gray);border:none;border-right:1px solid var(--navy4);font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px" onmouseover="this.style.color='var(--gold)'" onmouseout="this.style.color='var(--gray)'">✏️ Edit</button>
+        <button onclick="deleteEmployee('${emp.id}','${(emp.name||'').replace(/'/g,''')}')" style="padding:11px;background:transparent;color:var(--gray);border:none;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='var(--gray)'">🗑️ Remove</button>
       </div>
     </div>`;
   }).join('');
@@ -3790,60 +3792,73 @@ function showWOCommission(laborTotal) {
 
 <!-- ===== EMPLOYEE MODAL ===== -->
 <div class="overlay" id="empModal" style="display:none">
-  <div class="modal-card">
+  <div class="modal-card" style="max-width:480px;width:100%">
     <div class="modal-hdr">
-      <span id="empModalTitle">Add Employee</span>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:32px;height:32px;border-radius:8px;background:var(--gold3);display:flex;align-items:center;justify-content:center;font-size:16px">🧑‍🔧</div>
+        <span id="empModalTitle" style="font-size:16px;font-weight:700;color:var(--white)">Add Employee</span>
+      </div>
       <button class="modal-close" onclick="closeEmpModal()">✕</button>
     </div>
-    <div class="modal-body">
+    <div class="modal-body" style="padding:24px 24px 8px">
 
-      <div class="emp-avatar-wrap">
-        <div class="emp-avatar" id="empPhotoPreview" onclick="document.getElementById('empPhotoInput').click()">
-          <span id="empPhotoIcon">👤</span>
-          <img id="empPhotoImg" src="" style="display:none;width:100%;height:100%;object-fit:cover"/>
+      <!-- Photo Upload Row -->
+      <div style="display:flex;align-items:center;gap:18px;margin-bottom:22px;padding:16px;background:var(--navy3);border-radius:12px;border:1px solid var(--navy4)">
+        <div id="empPhotoPreview" onclick="document.getElementById('empPhotoInput').click()"
+             style="width:72px;height:72px;border-radius:50%;background:var(--navy);border:2.5px solid var(--gold);display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;flex-shrink:0;position:relative">
+          <span id="empPhotoIcon" style="font-size:28px">👤</span>
+          <img id="empPhotoImg" src="" style="display:none;width:100%;height:100%;object-fit:cover;position:absolute;inset:0"/>
         </div>
-        <div class="emp-avatar-hint">Tap to upload photo</div>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:var(--white);margin-bottom:3px">Profile Photo</div>
+          <div style="font-size:12px;color:var(--gray);margin-bottom:10px">Optional · JPG or PNG</div>
+          <button onclick="document.getElementById('empPhotoInput').click()"
+                  style="padding:6px 14px;border-radius:8px;background:var(--navy);border:1px solid var(--navy4);color:var(--gold);font-size:12px;font-weight:600;cursor:pointer">📷 Upload Photo</button>
+        </div>
         <input type="file" id="empPhotoInput" accept="image/*" style="display:none" onchange="previewEmpPhoto(this)"/>
       </div>
 
-      <div class="modal-2col">
+      <!-- Full Name + Phone -->
+      <div class="modal-2col" style="margin-bottom:14px">
         <div class="modal-field">
-          <label class="label">Full Name <span style="color:var(--gold)">*</span></label>
+          <label class="label" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--gray);margin-bottom:6px;display:block">Full Name <span style="color:var(--gold)">*</span></label>
           <input class="inp" id="empName" placeholder="Juan dela Cruz" style="font-size:16px"/>
         </div>
         <div class="modal-field">
-          <label class="label">Phone Number</label>
+          <label class="label" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--gray);margin-bottom:6px;display:block">Phone Number</label>
           <input class="inp" id="empPhone" placeholder="09171234567" type="tel" style="font-size:16px"/>
         </div>
       </div>
 
-      <div class="modal-2col">
+      <!-- Role + Commission -->
+      <div class="modal-2col" style="margin-bottom:14px">
         <div class="modal-field">
-          <label class="label">Role / Position</label>
+          <label class="label" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--gray);margin-bottom:6px;display:block">Role / Position</label>
           <input class="inp" id="empRole" placeholder="Mechanic" style="font-size:16px"/>
         </div>
         <div class="modal-field">
-          <label class="label">Commission Rate</label>
-          <div class="comm-wrap">
-            <input class="inp" id="empCommission" type="number" min="0" max="100" step="0.5" placeholder="0" style="font-size:16px"/>
-            <span class="comm-pct">%</span>
+          <label class="label" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--gray);margin-bottom:6px;display:block">Commission Rate</label>
+          <div style="position:relative">
+            <input class="inp" id="empCommission" type="number" min="0" max="100" step="0.5" placeholder="0" style="font-size:16px;padding-right:36px"/>
+            <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:14px;font-weight:700;color:var(--gold)">%</span>
           </div>
-          <div style="font-size:11px;color:var(--gray);margin-top:2px">Labor charges only</div>
+          <div style="font-size:11px;color:var(--gray);margin-top:5px">Applied on labor charges only</div>
         </div>
       </div>
 
-      <div class="modal-field">
-        <label class="label">Status</label>
-        <select class="sel" id="empStatus" style="font-size:16px;width:100%;padding:10px 14px;border-radius:var(--r2);color:var(--white);background:var(--navy3);border:1px solid var(--navy4);outline:none">
-          <option value="active">Active</option>
-          <option value="inactive">Inactive</option>
+      <!-- Status -->
+      <div class="modal-field" style="margin-bottom:4px">
+        <label class="label" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--gray);margin-bottom:6px;display:block">Status</label>
+        <select class="sel" id="empStatus" style="font-size:16px;width:100%;padding:10px 14px;border-radius:var(--r2);color:var(--white);background:var(--navy3);border:1px solid var(--navy4);outline:none;cursor:pointer">
+          <option value="active">✅ Active</option>
+          <option value="inactive">⛔ Inactive</option>
         </select>
       </div>
 
     </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeEmpModal()">Cancel</button>
-      <button class="btn btn-gold" id="empSaveBtn" onclick="saveEmployee()">Save Employee</button>
+    <div class="modal-footer" style="padding:16px 24px 20px;border-top:1px solid var(--navy3);gap:10px">
+      <button class="btn btn-ghost" onclick="closeEmpModal()" style="flex:1">Cancel</button>
+      <button class="btn btn-gold" id="empSaveBtn" onclick="saveEmployee()" style="flex:2">💾 Save Employee</button>
     </div>
   </div>
 </div>
