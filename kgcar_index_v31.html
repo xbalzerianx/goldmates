@@ -850,7 +850,8 @@ tbody td{padding:13px 16px;vertical-align:middle}
               <select class="sel" id="exportPeriod" style="font-size:12px;padding:7px 12px" onchange="onPeriodChange()">
                 <option value="all">All Time</option>
                 <option value="today">Today</option>
-                <option value="week">This Week</option>
+                <option value="yesterday">Yesterday</option>
+                <option value="week">Last 7 Days</option>
                 <option value="month">This Month</option>
                 <option value="custom">Custom Range</option>
               </select>
@@ -2203,10 +2204,12 @@ function exportCSV(type) {
 
   function inRange(d) {
     if (!d) return false;
-    if (period==='today')  return d === todayStr;
-    if (period==='week')   { const s=new Date(now); s.setDate(s.getDate()-s.getDay()); return new Date(d)>=s; }
-    if (period==='month')  return d.startsWith(todayStr.slice(0,7));
-    if (period==='custom') return (!from||d>=from) && (!to||d<=to);
+    const ds=d.substring(0,10);
+    if (period==='today') return ds===todayStr;
+    if (period==='yesterday'){const y=new Date(now);y.setDate(y.getDate()-1);return ds===y.toISOString().substring(0,10);}
+    if (period==='week'){const s=new Date(now);s.setDate(s.getDate()-6);return ds>=s.toISOString().substring(0,10)&&ds<=todayStr;}
+    if (period==='month')  return ds.startsWith(todayStr.slice(0,7));
+    if (period==='custom') return (!from||ds>=from) && (!to||ds<=to);
     return true; // all
   }
 
@@ -2277,7 +2280,16 @@ function renderSL(){
     if(!d) return false;
     const ds=d.substring(0,10);
     if(period==='today') return ds===todayStr;
-    if(period==='week'){const s=new Date(now);s.setDate(s.getDate()-6);return new Date(ds)>=s;}
+    if(period==='yesterday'){
+      const y=new Date(now);y.setDate(y.getDate()-1);
+      const ys=y.toISOString().substring(0,10);
+      return ds===ys;
+    }
+    if(period==='week'){
+      const s=new Date(now);s.setDate(s.getDate()-6);
+      const ss=s.toISOString().substring(0,10);
+      return ds>=ss&&ds<=todayStr;
+    }
     if(period==='month') return ds.startsWith(todayStr.slice(0,7));
     if(period==='custom') return (!from||ds>=from)&&(!to||ds<=to);
     return true;
