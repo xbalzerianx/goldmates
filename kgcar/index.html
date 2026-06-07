@@ -738,6 +738,7 @@ tbody td{padding:13px 16px;vertical-align:middle}
         <div class="filter-bar">
           <span class="filter-bar-label">Sales Period:</span>
           <button class="filter-btn active" id="fb-today" onclick="setFilter('today')">Today</button>
+          <button class="filter-btn" id="fb-yesterday" onclick="setFilter('yesterday')">Yesterday</button>
           <button class="filter-btn" id="fb-week" onclick="setFilter('week')">This Week</button>
           <button class="filter-btn" id="fb-month" onclick="setFilter('month')">This Month</button>
           <button class="filter-btn" id="fb-all" onclick="setFilter('all')">All Time</button>
@@ -751,6 +752,34 @@ tbody td{padding:13px 16px;vertical-align:middle}
         </div>
 
         <div class="kpi-grid" id="kpiGrid"><div class="loader" style="grid-column:1/-1"><div class="spin"></div>Loading…</div></div>
+        <!-- YESTERDAY SUMMARY ROW -->
+        <div id="yesterdaySummaryRow" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin:16px 0">
+          <div class="kpi" style="border:1px solid rgba(212,168,67,.3);flex-direction:row;align-items:center;gap:14px;padding:16px 20px">
+            <span style="font-size:26px">📅</span>
+            <div style="min-width:0">
+              <div class="kpi-label" style="margin-bottom:4px">Yesterday's Revenue</div>
+              <div class="kpi-val gold num" id="ydRevVal" style="font-size:20px">—</div>
+              <div class="kpi-sub" id="ydRevSub"></div>
+            </div>
+          </div>
+          <div class="kpi" style="border:1px solid rgba(239,68,68,.2);flex-direction:row;align-items:center;gap:14px;padding:16px 20px">
+            <span style="font-size:26px">💸</span>
+            <div style="min-width:0">
+              <div class="kpi-label" style="margin-bottom:4px">Yesterday's Expenses</div>
+              <div class="kpi-val red num" id="ydExpVal" style="font-size:20px">—</div>
+              <div class="kpi-sub" id="ydExpSub"></div>
+            </div>
+          </div>
+          <div class="kpi" id="ydProfitCard" style="flex-direction:row;align-items:center;gap:14px;padding:16px 20px">
+            <span style="font-size:26px" id="ydProfitIcon">📊</span>
+            <div style="min-width:0">
+              <div class="kpi-label" style="margin-bottom:4px">Yesterday's Net Profit</div>
+              <div class="kpi-val num" id="ydProfitVal" style="font-size:20px">—</div>
+              <div class="kpi-sub" id="ydProfitSub"></div>
+            </div>
+          </div>
+        </div>
+
         <div id="dashBottom"></div>
       </div>
 
@@ -1585,11 +1614,14 @@ function getFilteredExpenses(){
 function getFilteredExpensesForDash(){
   const now=new Date();
   const todayStr=today();
+  const yest=new Date(now);yest.setDate(yest.getDate()-1);
+  const yestStr=yest.toISOString().substring(0,10);
   return expenses.filter(e=>{
     const d=e.expense_date||e.created_date?.split('T')[0]||'';
     if(!d) return false;
     if(curFilter==='today') return d===todayStr;
-    if(curFilter==='week'){const day=new Date(now);day.setDate(day.getDate()-day.getDay());return new Date(d)>=day;}
+    if(curFilter==='yesterday') return d===yestStr;
+    if(curFilter==='week'){const day=new Date(now);day.setDate(day.getDate()-6);return d>=day.toISOString().substring(0,10)&&d<=todayStr;}
     if(curFilter==='month') return d.startsWith(todayStr.slice(0,7));
     if(curFilter==='all') return true;
     if(curFilter==='custom') return(!filterFrom||d>=filterFrom)&&(!filterTo||d<=filterTo);
@@ -1599,13 +1631,16 @@ function getFilteredExpensesForDash(){
 function getFilteredSales(){
   const now=new Date();
   const todayStr=today();
+  const yest=new Date(now);yest.setDate(yest.getDate()-1);
+  const yestStr=yest.toISOString().substring(0,10);
   return sales.filter(s=>{
     const d=s.sale_date||s.created_date?.split('T')[0]||'';
     if(!d) return false;
     if(curFilter==='today') return d===todayStr;
+    if(curFilter==='yesterday') return d===yestStr;
     if(curFilter==='week'){
-      const day=new Date(now);day.setDate(day.getDate()-day.getDay());
-      return new Date(d)>=day;
+      const day=new Date(now);day.setDate(day.getDate()-6);
+      return d>=day.toISOString().substring(0,10)&&d<=todayStr;
     }
     if(curFilter==='month') return d.startsWith(todayStr.slice(0,7));
     if(curFilter==='all') return true;
@@ -1615,6 +1650,7 @@ function getFilteredSales(){
 }
 function filterLabel(){
   if(curFilter==='today') return 'Today';
+  if(curFilter==='yesterday') return 'Yesterday';
   if(curFilter==='week') return 'This Week';
   if(curFilter==='month') return 'This Month';
   if(curFilter==='all') return 'All Time';
@@ -1622,6 +1658,44 @@ function filterLabel(){
 }
 
 // ═══════════════════ DASHBOARD ═══════════════════
+function renderYesterdaySummary(){
+  const now=new Date();
+  const todayStr=today();
+  const yest=new Date(now);yest.setDate(yest.getDate()-1);
+  const yestStr=yest.toISOString().substring(0,10);
+
+  const ydSales=sales.filter(s=>{
+    const d=s.sale_date||s.created_date?.split('T')[0]||'';
+    return d===yestStr;
+  });
+  const ydExp=expenses.filter(e=>{
+    const d=e.expense_date||e.created_date?.split('T')[0]||'';
+    return d===yestStr;
+  });
+
+  const ydRev=ydSales.reduce((s,sl)=>s+(sl.sale_total||0),0);
+  const ydExpTot=ydExp.reduce((s,e)=>s+(e.amount||0),0);
+  const ydProfit=ydRev-ydExpTot;
+
+  const rvEl=document.getElementById('ydRevVal');
+  const rsSub=document.getElementById('ydRevSub');
+  const exEl=document.getElementById('ydExpVal');
+  const exSub=document.getElementById('ydExpSub');
+  const prEl=document.getElementById('ydProfitVal');
+  const prSub=document.getElementById('ydProfitSub');
+  const prCard=document.getElementById('ydProfitCard');
+  const prIcon=document.getElementById('ydProfitIcon');
+
+  if(rvEl) rvEl.textContent=peso(ydRev);
+  if(rsSub) rsSub.textContent=`${ydSales.length} transaction${ydSales.length!==1?'s':''}`;
+  if(exEl) exEl.textContent=peso(ydExpTot);
+  if(exSub) exSub.textContent=`${ydExp.length} entr${ydExp.length!==1?'ies':'y'}`;
+  if(prEl){ prEl.textContent=peso(ydProfit); prEl.style.color=ydProfit>=0?'var(--gold)':'var(--red)'; }
+  if(prSub) prSub.textContent=`${peso(ydRev)} rev − ${peso(ydExpTot)} exp`;
+  if(prCard) prCard.style.border=`1px solid ${ydProfit>=0?'rgba(212,168,67,.3)':'rgba(239,68,68,.25)'}`;
+  if(prIcon) prIcon.textContent=ydProfit>=0?'📈':'📉';
+}
+
 function renderDash(){
   const fs=getFilteredSales();
   const totVal=products.reduce((s,p)=>s+(p.unit_price||0)*(p.stock_qty||0),0);
@@ -1691,6 +1765,7 @@ function renderDash(){
     </tr>`).join('')
     ||`<tr><td colspan="3" style="text-align:center;padding:24px;color:var(--gray)">No expenses in this period</td></tr>`;
 
+  renderYesterdaySummary();
   document.getElementById('dashBottom').innerHTML=`
     <!-- NET PROFIT BANNER -->
     <div style="background:var(--navy2);border:1px solid ${netProfit>=0?'rgba(212,168,67,.35)':'rgba(239,68,68,.35)'};border-radius:var(--r);padding:20px 28px;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
