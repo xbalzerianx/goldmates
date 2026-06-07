@@ -3474,7 +3474,7 @@ function _renderEmpGrid(commMap) {
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--navy4)">
         <button onclick="openEmpModal('${emp.id}')" style="padding:11px;background:transparent;color:var(--gray);border:none;border-right:1px solid var(--navy4);font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px" onmouseover="this.style.color='var(--gold)'" onmouseout="this.style.color='var(--gray)'">✏️ Edit</button>
-        <button onclick="deleteEmployee('${emp.id}','${(emp.name||'').replace(/'/g,''')}')" style="padding:11px;background:transparent;color:var(--gray);border:none;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='var(--gray)'">🗑️ Remove</button>
+        <button onclick="deleteEmployee('${emp.id}','${(emp.name||'').replace(/'/g,'')}')" style="padding:11px;background:transparent;color:var(--gray);border:none;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='var(--gray)'">🗑️ Remove</button>
       </div>
     </div>`;
   }).join('');
