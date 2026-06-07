@@ -712,7 +712,7 @@ tbody td{padding:13px 16px;vertical-align:middle}
 
   <div class="content">
     <div class="topbar">
-      <div class="tb-title" id="tbTitle">Dashboard</div>
+      
       <div class="tb-right">
         <div class="tb-live"><div class="tb-dot"></div>Live</div>
         <div id="tbDate" style="font-size:12px;color:var(--gray);background:var(--navy3);padding:6px 12px;border-radius:8px"></div>
@@ -1432,7 +1432,7 @@ function genSaleId(){
 }
 
 // ═══════════════════ LOAD ═══════════════════
-async function loadAll(){
+async async function loadAll(){
   try {
     [products, sales, expenses, actLogs, categories, employees] = await Promise.all([
       apiGet('KGProduct'),
@@ -1488,7 +1488,7 @@ async function go(page){
     if(p) p.scrollTop = 0;
   });
   document.querySelectorAll('.sb-item,.mob-item').forEach(b=>b.classList.toggle('active',b.dataset.page===page));
-  document.getElementById('tbTitle').textContent=TITLES[page]||'';
+  const _tbt=document.getElementById('tbTitle');if(_tbt)_tbt.textContent=TITLES[page]||'';
   if(page==='sale')resetSale();
   if(page==='workorders'){
     loadWorkOrders().then(()=>{
