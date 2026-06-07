@@ -3267,73 +3267,40 @@ async function renderEmployees() {
   const grid = document.getElementById('empGrid');
   if (!grid) return;
   grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--gray)">Loading…</div>';
+  try { employees = await apiGet('KGEmployee'); } catch(e) { console.error('Employee fetch error:', e); }
+
+  // Build commission map from all work orders (match by name, case-insensitive)
+  let commMap = {};
   try {
-    employees = await apiGet('KGEmployee');
-  } catch(e) { console.error('Employee fetch error:', e); }
-  _renderEmpGrid();
-  renderEmpCommissions();
+    const wos = await apiGet('KGWorkOrder');
+    wos.forEach(w => {
+      if (!w.mechanic) return;
+      // Support both plain name and encoded "Name||id||rate"
+      const rawName = w.mechanic.split('||')[0].trim().toLowerCase();
+      if (!rawName) return;
+      const labor = parseFloat(w.labor_total) || 0;
+      // Find matching employee to get their commission rate
+      const emp = employees.find(e => (e.name||'').toLowerCase().trim() === rawName);
+      if (!emp) return;
+      const rate = parseFloat(emp.commission_rate) || 0;
+      const earned = labor * rate / 100;
+      if (!commMap[rawName]) commMap[rawName] = { jobs: 0, laborTotal: 0, commission: 0 };
+      commMap[rawName].jobs++;
+      commMap[rawName].laborTotal += labor;
+      commMap[rawName].commission += earned;
+    });
+  } catch(e) { console.error('WO fetch for commission error:', e); }
+
+  _renderEmpGrid(commMap);
 }
 
 
-// ── Employee Commission Summary ────────────────────────────────────────────
-async function renderEmpCommissions() {
-  const wrap = document.getElementById('empCommSummary');
-  const list  = document.getElementById('empCommList');
-  if (!wrap || !list) return;
+// Commission is now rendered inline on each employee card via _renderEmpGrid(commMap)
+function renderEmpCommissions() { /* deprecated - now inline on cards */ }
 
-  // Fetch all work orders fresh
-  let wos = [];
-  try { wos = await apiGet('KGWorkOrder'); } catch(e) { wos = []; }
-
-  // Filter by period
-  const period = document.getElementById('commPeriodSel')?.value || 'all';
-  const now = new Date();
-  wos = wos.filter(w => {
-    if (period === 'all') return true;
-    const d = new Date(w.created_date || w.work_date);
-    if (period === 'month') return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
-    if (period === 'week') { const diff = (now - d) / 86400000; return diff <= 7; }
-    return true;
-  });
-
-  // Build commission map: employee_id → { name, rate, laborTotal, commission, jobs }
-  const map = {};
-  wos.forEach(w => {
-    if (!w.mechanic || !w.mechanic.includes('||')) return;
-    const [name, empId, rateStr] = w.mechanic.split('||');
-    const rate = parseFloat(rateStr) || 0;
-    const labor = parseFloat(w.labor_total) || 0;
-    if (!empId) return;
-    if (!map[empId]) map[empId] = { name, rate, laborTotal: 0, commission: 0, jobs: 0 };
-    map[empId].laborTotal += labor;
-    map[empId].commission += labor * rate / 100;
-    map[empId].jobs++;
-  });
-
-  const entries = Object.values(map).sort((a, b) => b.commission - a.commission);
-
-  if (!entries.length) {
-    wrap.style.display = 'none';
-    return;
-  }
-
-  wrap.style.display = 'block';
-  list.innerHTML = entries.map(e => `
-    <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #1f2937">
-      <div style="width:36px;height:36px;border-radius:50%;background:#1f2937;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#d4a843;border:2px solid #d4a843;flex-shrink:0">${e.name[0].toUpperCase()}</div>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:13px;font-weight:700;color:#f9fafb">${e.name}</div>
-        <div style="font-size:11px;color:#9ca3af;margin-top:1px">${e.jobs} job${e.jobs!==1?'s':''} · Labor: ${peso(e.laborTotal)}</div>
-      </div>
-      <div style="text-align:right;flex-shrink:0">
-        <div style="font-size:16px;font-weight:800;color:#d4a843">${peso(e.commission)}</div>
-        <div style="font-size:10px;color:#9ca3af;margin-top:1px">${e.rate}% commission</div>
-      </div>
-    </div>
-  `).join('');
-}
-
-function _renderEmpGrid() {
+function _renderEmpGrid(commMap) {
+  // commMap: { empName(lowercase) -> { jobs, laborTotal, commission } }
+  commMap = commMap || {};
   const grid = document.getElementById('empGrid');
   const empty = document.getElementById('empEmpty');
   if (!grid) return;
@@ -3352,8 +3319,30 @@ function _renderEmpGrid() {
     const photoHtml = emp.photo_url
       ? `<img src="${emp.photo_url}" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:2.5px solid #d4a843;flex-shrink:0"/>`
       : `<div style="width:56px;height:56px;border-radius:50%;background:#1f2937;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:#d4a843;border:2.5px solid #d4a843;flex-shrink:0">${initial}</div>`;
+
+    const key = (emp.name || '').toLowerCase().trim();
+    const cm = commMap[key];
+    const commEarned = cm ? cm.commission : 0;
+    const commJobs   = cm ? cm.jobs : 0;
+    const commLabor  = cm ? cm.laborTotal : 0;
+
+    const earnedBadge = cm
+      ? `<div style="margin-top:2px;background:#0d1f10;border:1px solid #1e4d20;border-radius:10px;padding:10px 12px">
+           <div style="font-size:10px;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">💰 Commission Earned</div>
+           <div style="display:flex;align-items:center;justify-content:space-between">
+             <div style="font-size:22px;font-weight:800;color:#4ade80">${peso(commEarned)}</div>
+             <div style="text-align:right">
+               <div style="font-size:11px;color:#9ca3af">${commJobs} job${commJobs!==1?'s':''}</div>
+               <div style="font-size:11px;color:#9ca3af">Labor: ${peso(commLabor)}</div>
+             </div>
+           </div>
+         </div>`
+      : `<div style="margin-top:2px;background:#0b1120;border:1px dashed #1f2937;border-radius:10px;padding:10px 12px;text-align:center">
+           <div style="font-size:11px;color:#4b5563">No completed work orders yet</div>
+         </div>`;
+
     return `
-    <div style="background:#111827;border-radius:14px;border:1px solid #1f2937;padding:18px;display:flex;flex-direction:column;gap:14px;opacity:${isInactive ? 0.55 : 1}">
+    <div style="background:#111827;border-radius:14px;border:1px solid #1f2937;padding:18px;display:flex;flex-direction:column;gap:12px;opacity:${isInactive ? 0.55 : 1}">
       <div style="display:flex;align-items:center;gap:14px">
         ${photoHtml}
         <div style="flex:1;min-width:0">
@@ -3368,10 +3357,11 @@ function _renderEmpGrid() {
           <div style="font-size:13px;color:#f9fafb;font-weight:600">${emp.phone || '—'}</div>
         </div>
         <div style="background:#0b1120;border-radius:8px;padding:10px 12px">
-          <div style="font-size:10px;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">Commission</div>
+          <div style="font-size:10px;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">Rate</div>
           <div style="font-size:15px;color:#d4a843;font-weight:800">${emp.commission_rate || 0}%</div>
         </div>
       </div>
+      ${earnedBadge}
       <div style="display:flex;gap:8px">
         <button onclick="openEmpModal('${emp.id}')" style="flex:1;padding:9px;border-radius:8px;background:#1f2937;color:#f9fafb;border:1px solid #374151;font-size:12px;font-weight:600;cursor:pointer">✏️ Edit</button>
         <button onclick="deleteEmployee('${emp.id}','${(emp.name||'').replace(/'/g,'\u0027')}')" style="flex:1;padding:9px;border-radius:8px;background:#1f2937;color:#ef4444;border:1px solid #374151;font-size:12px;font-weight:600;cursor:pointer">🗑️ Remove</button>
