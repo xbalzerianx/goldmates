@@ -847,7 +847,7 @@ tbody td{padding:13px 16px;vertical-align:middle}
           <div class="page-hdr-row">
             <div><div class="page-title">Sales Log</div><div class="page-sub">Complete transaction history</div></div>
             <div class="flex gap8">
-              <select class="sel" id="exportPeriod" style="font-size:12px;padding:7px 12px">
+              <select class="sel" id="exportPeriod" style="font-size:12px;padding:7px 12px" onchange="onPeriodChange()">
                 <option value="all">All Time</option>
                 <option value="today">Today</option>
                 <option value="week">This Week</option>
@@ -855,9 +855,9 @@ tbody td{padding:13px 16px;vertical-align:middle}
                 <option value="custom">Custom Range</option>
               </select>
               <div id="exportCustom" style="display:none;align-items:center;gap:6px" class="flex">
-                <input type="date" class="date-inp" id="expFrom" style="font-size:12px"/>
+                <input type="date" class="date-inp" id="expFrom" style="font-size:12px" oninput="renderSL()"/>
                 <span style="color:var(--gray);font-size:12px">to</span>
-                <input type="date" class="date-inp" id="expTo" style="font-size:12px"/>
+                <input type="date" class="date-inp" id="expTo" style="font-size:12px" oninput="renderSL()"/>
               </div>
               <button class="btn btn-ghost btn-sm" onclick="exportCSV('sales')">⬇ Export Sales</button>
               <button class="btn btn-ghost btn-sm" onclick="exportCSV('expenses')">⬇ Export Expenses</button>
@@ -2258,13 +2258,34 @@ function exportCSV(type) {
   toast(`✅ Exported ${rows.length} rows → ${filename}`,'ok');
 }
 
+function onPeriodChange(){
+  const period=document.getElementById('exportPeriod')?.value||'all';
+  const customDiv=document.getElementById('exportCustom');
+  if(customDiv) customDiv.style.display=(period==='custom')?'flex':'none';
+  renderSL();
+}
 function renderSL(){
   const q=document.getElementById('slQ').value.toLowerCase();
   const cat=document.getElementById('slCat').value;
   const who=document.getElementById('slWho').value;
+  const period=document.getElementById('exportPeriod')?.value||'all';
+  const from=document.getElementById('expFrom')?.value||'';
+  const to=document.getElementById('expTo')?.value||'';
+  const todayStr=today();
+  const now=new Date();
+  function inDateRange(d){
+    if(!d) return false;
+    const ds=d.substring(0,10);
+    if(period==='today') return ds===todayStr;
+    if(period==='week'){const s=new Date(now);s.setDate(s.getDate()-6);return new Date(ds)>=s;}
+    if(period==='month') return ds.startsWith(todayStr.slice(0,7));
+    if(period==='custom') return (!from||ds>=from)&&(!to||ds<=to);
+    return true;
+  }
   const list=sales.filter(s=>{
     const mQ=!q||[s.product_name||'',s.sale_id||'',s.recorded_by||''].join(' ').toLowerCase().includes(q);
-    return mQ&&(!cat||s.category===cat)&&(!who||s.recorded_by===who);
+    const dateOk=inDateRange(s.sale_date||s.created_date);
+    return mQ&&(!cat||s.category===cat)&&(!who||s.recorded_by===who)&&dateOk;
   });
   const tot=list.reduce((s,sl)=>s+(sl.sale_total||0),0);
   document.getElementById('slBody').innerHTML=list.map(s=>`
