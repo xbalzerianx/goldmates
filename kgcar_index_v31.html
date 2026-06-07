@@ -2583,6 +2583,11 @@ function renderWOList() {
         <div>
           <div class="wo-card-num">${w.wo_number || '—'}</div>
           <span class="wo-status-badge ${sc}">${sl}</span>
+          ${w.payment_status ? `<span style="display:inline-block;margin-left:6px;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;vertical-align:middle;${
+            w.payment_status==='paid' ? 'background:#14532d;color:#4ade80' :
+            w.payment_status==='not_paid' ? 'background:#450a0a;color:#f87171' :
+            'background:#1c1a06;color:#facc15'
+          }">${w.payment_status==='paid'?'✅ PAID':w.payment_status==='not_paid'?'❌ UNPAID':w.payment_status==='down'?'💰 DOWN':' ✏️ PARTIAL'}</span>` : ''}
         </div>
         <div class="wo-card-total">${peso(w.grand_total || 0)}</div>
       </div>
@@ -2621,6 +2626,9 @@ function openNewWO() {
   document.getElementById('woVehicle').value = '';
   document.getElementById('woMechanic').value = '';
   document.getElementById('woNotes').value = '';
+  document.getElementById('woPayStatus').value = '';
+  document.getElementById('woPayAmount').value = '';
+  document.getElementById('woPayAmountWrap').style.display = 'none';
   document.getElementById('woPartQ').value = '';
   document.getElementById('woPartResults').style.display = 'none';
   populateWOTplSelect();
@@ -2647,12 +2655,40 @@ function openEditWO(id) {
   document.getElementById('woVehicle').value = wo.vehicle || '';
   document.getElementById('woMechanic').value = (wo.mechanic || '').split('||')[0];
   document.getElementById('woNotes').value = wo.notes || '';
+  // Payment
+  const ps = document.getElementById('woPayStatus');
+  ps.value = wo.payment_status || '';
+  document.getElementById('woPayAmount').value = wo.payment_amount != null ? wo.payment_amount : '';
+  togglePayAmount();
+  // Override amount with saved value (togglePayAmount may have overwritten it for 'paid')
+  if (wo.payment_amount != null) document.getElementById('woPayAmount').value = wo.payment_amount;
   document.getElementById('woPartQ').value = '';
   document.getElementById('woPartResults').style.display = 'none';
   populateWOTplSelect();
   renderWOServices(); renderWOParts(); calcWOTotals();
   const m = document.getElementById('woModal');
   m.style.display = 'flex'; m.scrollTop = 0;
+}
+
+function togglePayAmount() {
+  const sel = document.getElementById('woPayStatus').value;
+  const wrap = document.getElementById('woPayAmountWrap');
+  const lbl  = document.getElementById('woPayAmountLabel');
+  const inp  = document.getElementById('woPayAmount');
+  if (sel === 'paid') {
+    // auto-fill full amount
+    const grand = parseFloat(document.getElementById('woTtlGrand').textContent.replace(/[^0-9.]/g,'')) || 0;
+    inp.value = grand.toFixed(2);
+    wrap.style.display = 'block';
+    lbl.textContent = 'Amount Paid ₱';
+  } else if (sel === 'down' || sel === 'custom') {
+    inp.value = '';
+    wrap.style.display = 'block';
+    lbl.textContent = sel === 'down' ? 'Down Payment ₱' : 'Custom Amount ₱';
+  } else {
+    wrap.style.display = 'none';
+    inp.value = '';
+  }
 }
 
 function closeWOModal() {
@@ -2807,7 +2843,11 @@ async function saveWO() {
     subtotal: t.sub,
     vat_amount: t.vat,
     grand_total: t.grand,
-    recorded_by: curUser?.name || 'Admin'
+    recorded_by: curUser?.name || 'Admin',
+    payment_status: document.getElementById('woPayStatus').value || null,
+    payment_amount: (document.getElementById('woPayStatus').value && document.getElementById('woPayStatus').value !== 'not_paid')
+      ? (parseFloat(document.getElementById('woPayAmount').value) || null)
+      : null
   };
   const btn = document.getElementById('woSaveBtn');
   btn.disabled = true; btn.textContent = 'Saving…';
@@ -2958,6 +2998,31 @@ function openWOPrint(id) {
       '</div>' +
     '</div>';
 
+  // ── Payment block
+  var payBlock = '';
+  if (wo.payment_status) {
+    var payLabel = wo.payment_status === 'paid' ? '✅ PAID IN FULL'
+                 : wo.payment_status === 'not_paid' ? '❌ NOT PAID'
+                 : wo.payment_status === 'down' ? '💰 DOWN PAYMENT'
+                 : '✏️ PARTIAL PAYMENT';
+    var payColor = wo.payment_status === 'paid' ? '#14532d' : wo.payment_status === 'not_paid' ? '#450a0a' : '#1c1a06';
+    var payTextColor = wo.payment_status === 'paid' ? '#4ade80' : wo.payment_status === 'not_paid' ? '#f87171' : '#facc15';
+    var payAmtLine = (wo.payment_amount != null && wo.payment_status !== 'paid' && wo.payment_status !== 'not_paid')
+      ? '<span style="margin-left:12px;font-size:13px;color:#1a1a1a;font-weight:700">Amount: ' + peso(wo.payment_amount) + '</span>'
+      : (wo.payment_status === 'paid' ? '<span style="margin-left:12px;font-size:13px;color:#1a1a1a;font-weight:700">Amount: ' + peso(wo.grand_total||0) + '</span>' : '');
+    var balanceLine = '';
+    if ((wo.payment_status === 'down' || wo.payment_status === 'custom') && wo.payment_amount != null) {
+      var bal = (wo.grand_total || 0) - wo.payment_amount;
+      balanceLine = '<div style="margin-top:6px;font-size:12px;color:#444">Balance Due: <strong>' + peso(bal < 0 ? 0 : bal) + '</strong></div>';
+    }
+    payBlock =
+      '<div style="margin-top:18px;padding:12px 16px;border-radius:8px;background:' + payColor + ';border:1px solid rgba(255,255,255,.1)">' +
+        '<span style="font-size:12px;font-weight:900;letter-spacing:.08em;color:' + payTextColor + '">' + payLabel + '</span>' +
+        payAmtLine +
+        balanceLine +
+      '</div>';
+  }
+
   // ── Footer
   var now = new Date();
   var footerBlock =
@@ -2993,6 +3058,7 @@ function openWOPrint(id) {
     partsBlock +
     totalsBlock +
     notesBlock +
+    payBlock +
     sigBlock +
     footerBlock;
 
@@ -3576,6 +3642,27 @@ function showWOCommission(laborTotal) {
     <div class="wo-section">
       <div class="wo-section-title">Notes / Remarks</div>
       <textarea class="inp" id="woNotes" rows="2" placeholder="Additional instructions or observations…" style="width:100%;resize:vertical;font-size:16px"></textarea>
+    </div>
+
+    <!-- Payment -->
+    <div class="wo-section">
+      <div class="wo-section-title">Payment</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+        <div class="fg" style="flex:1;min-width:160px">
+          <label class="label">Payment Status</label>
+          <select class="sel2" id="woPayStatus" onchange="togglePayAmount()" style="font-size:16px">
+            <option value="">— Select —</option>
+            <option value="paid">✅ Paid (Full)</option>
+            <option value="down">💰 Down Payment</option>
+            <option value="custom">✏️ Custom Amount</option>
+            <option value="not_paid">❌ Not Paid</option>
+          </select>
+        </div>
+        <div class="fg" id="woPayAmountWrap" style="flex:1;min-width:160px;display:none">
+          <label class="label" id="woPayAmountLabel">Amount Paid ₱</label>
+          <input class="inp" id="woPayAmount" type="number" min="0" step="0.01" placeholder="0.00" style="font-size:16px"/>
+        </div>
+      </div>
     </div>
 
     <!-- Totals -->
