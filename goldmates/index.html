@@ -3456,7 +3456,7 @@ function _renderEmpGrid(commMap) {
   }
   if (empty) empty.style.display = 'none';
   grid.innerHTML = all.map(emp => {
-    const isInactive = emp.status === 'inactive';
+    const isInactive = emp.is_active === false;
     const initial = (emp.name || '?')[0].toUpperCase();
     const photoHtml = emp.photo_url
       ? `<img src="${emp.photo_url}" style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:2.5px solid var(--gold);flex-shrink:0"/>`
@@ -3533,7 +3533,7 @@ function openEmpModal(id) {
       document.getElementById('empPhone').value = emp.phone || '';
       document.getElementById('empRole').value = emp.role || '';
       document.getElementById('empCommission').value = emp.commission_rate || 0;
-      document.getElementById('empStatus').value = emp.status || 'active';
+      document.getElementById('empStatus').value = emp.is_active === false ? 'inactive' : 'active';
       if (emp.photo_url) {
         document.getElementById('empPhotoImg').src = emp.photo_url;
         document.getElementById('empPhotoImg').style.display = 'block';
@@ -3575,7 +3575,7 @@ async function saveEmployee() {
       phone: document.getElementById('empPhone').value.trim(),
       role: document.getElementById('empRole').value.trim(),
       commission_rate: parseFloat(document.getElementById('empCommission').value) || 0,
-      status: document.getElementById('empStatus').value,
+      is_active: document.getElementById('empStatus').value === 'active',
     };
     if (empPhotoBase64) payload.photo_url = empPhotoBase64;
     if (editEmpId) {
