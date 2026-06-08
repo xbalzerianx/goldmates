@@ -1207,7 +1207,7 @@ const TBL_ORDER = {KGEmployee:'created_at'};
 // ═══════════════════ API (Supabase) ═══════════════════
 async function apiGet(e,id=''){
   const tbl=TBL[e]||e;
-  const orderCol=(TBL_ORDER&&TBL_ORDER[e])||'created_date';
+  const orderCol=(TBL_ORDER&&TBL_ORDER[e])||'created_at';
   const url=id?`${SB_URL}/${tbl}?id=eq.${id}&select=*`:`${SB_URL}/${tbl}?select=*&limit=1000&order=${orderCol}.desc`;
   const r=await fetch(url,{headers:SB_HDR});
   if(!r.ok)throw new Error(await r.text());
@@ -2584,7 +2584,7 @@ async function loadWorkOrders() {
       apiGet('KGWorkOrder').catch(() => []),
       apiGet('KGWOTemplate').catch(() => [])
     ]);
-    workOrders.sort((a, b) => new Date(b.created_date || 0) - new Date(a.created_date || 0));
+    workOrders.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
   } catch(e) { workOrders = []; woTemplates = []; }
 }
 
