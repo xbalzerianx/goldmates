@@ -884,7 +884,7 @@ tbody td{padding:13px 16px;vertical-align:middle}
         </div>
         <div class="tbl-wrap">
           <table>
-            <thead><tr><th>Sale ID</th><th>Date & Time</th><th>Product</th><th class="tbl-col-hide">Category</th><th>Qty</th><th class="tbl-col-hide">Unit Price</th><th>Total</th><th class="tbl-col-hide">Recorded By</th></tr></thead>
+            <thead><tr><th>Sale ID</th><th>Date & Time</th><th>Product</th><th class="tbl-col-hide">Category</th><th>Qty</th><th class="tbl-col-hide">Unit Price</th><th>Total</th><th class="tbl-col-hide">Recorded By</th><th></th></tr></thead>
             <tbody id="slBody"></tbody>
           </table>
         </div>
@@ -2318,9 +2318,24 @@ function renderSL(){
     <td class="fw7">${num(s.qty_sold)}</td>
     <td class="num tbl-col-hide">${peso(s.unit_price)}</td>
     <td class="num text-gold fw7">${peso(s.sale_total)}</td>
-    <td class="tbl-col-hide"><span class="badge ${s.recorded_by==='Admin'?'b-admin':'b-asst'}">${s.recorded_by||'Admin'}</span></td></tr>`).join('')
+    <td class="tbl-col-hide"><span class="badge ${s.recorded_by==='Admin'?'b-admin':'b-asst'}">${s.recorded_by||'Admin'}</span></td>
+    ${curUser?.role==='admin'?`<td><button onclick="delSaleLog('${s.id}')" style="background:transparent;border:1px solid #ef4444;color:#ef4444;border-radius:6px;padding:3px 10px;cursor:pointer;font-size:12px;" title="Delete this sale">🗑</button></td>`:'<td></td>'}</tr>`).join('')
     ||`<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--gray)">No sales recorded yet</td></tr>`;
   document.getElementById('slFooter').innerHTML=list.length?`${list.length} transactions · Total: <span class="num text-gold fw7" style="font-size:15px">${peso(tot)}</span>`:'';
+}
+
+async function delSaleLog(id){
+  if(curUser?.role!=='admin'){toast('⛔ Admin access only','err');return;}
+  if(!confirm('Delete this sale record? This cannot be undone.')) return;
+  try {
+    await apiDel('KGSale', id);
+    sales = sales.filter(s=>s.id!==id);
+    renderSL();
+    toast('🗑 Sale deleted','ok');
+    logActivity('delete','Sale Record','Admin deleted a sales log entry');
+  } catch(e){
+    toast('❌ Failed to delete: '+e.message,'err');
+  }
 }
 
 // ═══════════════════ EXPENSES ═══════════════════
