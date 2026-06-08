@@ -1235,7 +1235,7 @@ async function apiDel(e,id){
   return {};
 }
 
-const DEFAULT_PINS = { admin:'070726', asst:'5678' };
+const DEFAULT_PINS = { admin:'070726', asst:'111111' };
 function getPins(){
   try {
     const s=localStorage.getItem('goldmates_pins');
@@ -2387,7 +2387,7 @@ function openChangePin(){
   document.getElementById('changePinModal').classList.add('open');
 }
 function closeChangePin(){ document.getElementById('changePinModal').classList.remove('open'); }
-function saveNewPins(){
+async function saveNewPins(){
   const pins=getPins();
   const newAdmin=document.getElementById('newAdminPin').value.trim();
   const newAsst=document.getElementById('newAsstPin').value.trim();
@@ -2395,9 +2395,28 @@ function saveNewPins(){
   if(newAsst && (newAsst.length!==6||!/^\d+$/.test(newAsst))){toast('Assistant PIN must be exactly 6 digits','err');return;}
   if(newAdmin) pins.admin=newAdmin;
   if(newAsst) pins.asst=newAsst;
+  // Save to localStorage immediately
   savePins(pins);
-  closeChangePin();
-  toast('✅ PINs updated successfully','ok');
+  // Save to Supabase so it persists across devices
+  const btn=document.querySelector('#changePinModal .btn-gold');
+  if(btn){btn.disabled=true;btn.textContent='Saving…';}
+  try {
+    const updates=[];
+    if(newAdmin) updates.push(
+      fetch(`${SB_URL}/gm_settings?key=eq.admin_pin`,{method:'PATCH',headers:{...SB_HDR,'Prefer':'return=minimal'},body:JSON.stringify({value:newAdmin})})
+    );
+    if(newAsst) updates.push(
+      fetch(`${SB_URL}/gm_settings?key=eq.asst_pin`,{method:'PATCH',headers:{...SB_HDR,'Prefer':'return=minimal'},body:JSON.stringify({value:newAsst})})
+    );
+    await Promise.all(updates);
+    closeChangePin();
+    toast('✅ PINs updated successfully','ok');
+  } catch(e){
+    toast('⚠️ Saved locally but Supabase sync failed','err');
+    closeChangePin();
+  } finally {
+    if(btn){btn.disabled=false;btn.textContent='Save PINs';}
+  }
 }
 document.getElementById('changePinModal').addEventListener('click',e=>{
   if(e.target===document.getElementById('changePinModal'))closeChangePin();
