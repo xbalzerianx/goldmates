@@ -2708,6 +2708,7 @@ function openNewWO() {
   document.getElementById('woPayAmountWrap').style.display = 'none';
   document.getElementById('woPartQ').value = '';
   document.getElementById('woPartResults').style.display = 'none';
+  populateWOMechanic();
   populateWOTplSelect();
   renderWOServices(); renderWOParts(); calcWOTotals();
   const m = document.getElementById('woModal');
@@ -2730,7 +2731,18 @@ function openEditWO(id) {
   document.getElementById('woCustPhone').value = wo.customer_phone || '';
   document.getElementById('woPlate').value = wo.plate_number || '';
   document.getElementById('woVehicle').value = wo.vehicle || '';
-  document.getElementById('woMechanic').value = (wo.mechanic || '').split('||')[0];
+  populateWOMechanic();
+  // Set the saved mechanic — must happen after populateWOMechanic builds the options
+  const savedMechanic = (wo.mechanic || '').split('||')[0].trim();
+  const woMecSel = document.getElementById('woMechanic');
+  woMecSel.value = savedMechanic;
+  // If not found in list (e.g. employee removed), add a temporary option
+  if (savedMechanic && woMecSel.value !== savedMechanic) {
+    const opt = document.createElement('option');
+    opt.value = savedMechanic; opt.textContent = savedMechanic + ' (inactive)';
+    woMecSel.appendChild(opt);
+    woMecSel.value = savedMechanic;
+  }
   document.getElementById('woNotes').value = wo.notes || '';
   // Payment
   const ps = document.getElementById('woPayStatus');
@@ -2741,6 +2753,7 @@ function openEditWO(id) {
   if (wo.payment_amount != null) document.getElementById('woPayAmount').value = wo.payment_amount;
   document.getElementById('woPartQ').value = '';
   document.getElementById('woPartResults').style.display = 'none';
+  populateWOMechanic();
   populateWOTplSelect();
   renderWOServices(); renderWOParts(); calcWOTotals();
   const m = document.getElementById('woModal');
@@ -3616,23 +3629,17 @@ function populateWOMechanic() {
   const sel = document.getElementById('woMechanic');
   if (!sel) return;
   const currentVal = sel.value;
-  // Keep it as a text input — just provide a datalist
-  let dl = document.getElementById('mechanicList');
-  if (!dl) {
-    dl = document.createElement('datalist');
-    dl.id = 'mechanicList';
-    document.body.appendChild(dl);
-    sel.setAttribute('list', 'mechanicList');
-  }
-  dl.innerHTML = employees.filter(e => e.status === 'active').map(e =>
-    `<option value="${e.name}">${e.name}${e.role ? ' — ' + e.role : ''}</option>`
-  ).join('');
+  const active = employees.filter(e => e.is_active !== false);
+  sel.innerHTML = '<option value="">— Select Mechanic —</option>' +
+    active.map(e =>
+      `<option value="${e.name}" ${e.name === currentVal ? 'selected' : ''}>${e.name}${e.role ? ' — ' + e.role : ''}</option>`
+    ).join('');
 }
 
 // Show commission breakdown in WO modal (not in print)
 function showWOCommission(laborTotal) {
   const mechanicName = document.getElementById('woMechanic')?.value?.trim();
-  const emp = employees.find(e => e.name === mechanicName && e.status === 'active');
+  const emp = employees.find(e => e.name === mechanicName && e.is_active !== false);
   const commDiv = document.getElementById('woCommissionInfo');
   if (!commDiv) return;
   if (emp && emp.commission_rate > 0 && laborTotal > 0) {
@@ -3683,7 +3690,9 @@ function showWOCommission(laborTotal) {
     <!-- Mechanic / Worker -->
     <div class="wo-section">
       <div class="wo-section-title">Assigned Mechanic</div>
-      <div class="fg"><input class="inp" id="woMechanic" placeholder="e.g. Ramon Cruz" list="mechanicList" style="font-size:16px" oninput="calcWOTotals()" onchange="calcWOTotals()"/></div>
+      <div class="fg"><select class="inp" id="woMechanic" style="font-size:16px" onchange="calcWOTotals()">
+        <option value="">— Select Mechanic —</option>
+      </select></div>
     </div>
 
     <!-- Load Template -->
