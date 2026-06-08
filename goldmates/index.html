@@ -2137,7 +2137,7 @@ function saleSearch(){
     <div class="prod-item" onclick="pickProd('${p.id}')">
       <div><div class="prod-item-name">${p.product_name}</div><div class="prod-item-sub">${p.brand||''} · ${p.category}${p.sku?' · SKU: '+p.sku:''}</div></div>
       <div style="text-align:right;flex-shrink:0;margin-left:12px">
-        <div class="num text-gold fw7 fs12">${peso(p.unit_price)}</div>
+        <div class="num text-gold fw7 fs12">${peso(p.markup_price||p.unit_price)}</div>
         <div class="fs11 ${p.stock_qty<=0?'text-red':p.stock_qty<=(p.min_stock||0)?'text-yellow':'text-gray'}">${p.stock_qty} in stock</div>
       </div></div>`).join('');
 }
@@ -2146,7 +2146,7 @@ function pickProd(id){
   document.getElementById('saleQ').value=selProd.product_name;
   document.getElementById('saleResults').style.display='none';
   document.getElementById('selName').textContent=selProd.product_name;
-  document.getElementById('selMeta').textContent=`${selProd.brand||''} · ${selProd.category} · ${peso(selProd.unit_price)}/${selProd.unit||'pcs'} · ${selProd.stock_qty} in stock`;
+  document.getElementById('selMeta').textContent=`${selProd.brand||''} · ${selProd.category} · ${peso(selProd.markup_price||selProd.unit_price)}/${selProd.unit||'pcs'} · ${selProd.stock_qty} in stock`;
   document.getElementById('selProdBox').style.display='block';
   document.getElementById('saleHint').textContent=`Available: ${selProd.stock_qty} ${selProd.unit||'pcs'}`;
   calcTotal();
@@ -2155,7 +2155,7 @@ function quickSell(id){go('sale');setTimeout(()=>pickProd(id),50);}
 function calcTotal(){
   if(!selProd)return;
   const q=parseInt(document.getElementById('saleQty').value)||0;
-  document.getElementById('saleTot').value=q>0?peso(q*selProd.unit_price):'';
+  document.getElementById('saleTot').value=q>0?peso(q*(selProd.markup_price||selProd.unit_price)):'';
 }
 async function doSale(){
   if(!selProd){toast('Select a product first','err');return;}
@@ -2172,8 +2172,8 @@ async function doSale(){
       product_name:selProd.product_name,
       category:selProd.category,
       qty_sold:qty,
-      unit_price:selProd.unit_price,
-      sale_total:qty*selProd.unit_price,
+      unit_price:selProd.markup_price||selProd.unit_price,
+      sale_total:qty*(selProd.markup_price||selProd.unit_price),
       recorded_by:curUser?.name||'Admin',
       notes:document.getElementById('saleNote').value,
       sale_date:document.getElementById('saleDate').value,
