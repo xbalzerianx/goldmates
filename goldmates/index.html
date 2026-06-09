@@ -1214,7 +1214,7 @@ tbody td{padding:13px 16px;vertical-align:middle}
 const SB_URL = 'https://hzauyygzmbfscqqobspb.supabase.co/rest/v1';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh6YXV5eWd6bWJmc2NxcW9ic3BiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA4MzM0ODksImV4cCI6MjA5NjQwOTQ4OX0.5bgDoS_g4dTxRMNm1bNLJFXV-jcSaWu0Y03v8ThgjHU';
 const SB_HDR = {'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY};
-const TBL = {KGProduct:'gm_products',KGSale:'gm_sales',KGExpense:'gm_expenses',KGActivity:'gm_activity',KGCategory:'gm_categories',KGWorkOrder:'gm_work_orders',KGWOTemplate:'gm_wo_templates',KGEmployee:'gm_employees'};
+const TBL = {KGProduct:'kg_products',KGSale:'kg_sales',KGExpense:'kg_expenses',KGActivity:'kg_activity',KGCategory:'kg_categories',KGWorkOrder:'kg_work_orders',KGWOTemplate:'kg_wo_templates',KGEmployee:'kg_employees'};
 const TBL_ORDER = {KGEmployee:'created_at'};
 
 // ═══════════════════ API (Supabase) ═══════════════════
@@ -2736,8 +2736,8 @@ function openEditWO(id) {
   currentWOId = id;
   woServices = JSON.parse(wo.services_json || '[]');
   woParts = JSON.parse(wo.parts_json || '[]');
-  // Restore VAT toggle state (default true for old WOs without the flag)
-  woVatEnabled = (wo.vat_enabled === false) ? false : true;
+  // Restore VAT toggle state: if vat_amount is 0 and subtotal > 0, VAT was off
+  woVatEnabled = (wo.vat_amount === 0 && (wo.subtotal || 0) > 0) ? false : true;
   // Sync toggle button UI after modal renders
   setTimeout(() => {
     const btn = document.getElementById('woVatToggle');
@@ -3022,8 +3022,8 @@ function openWOPrint(id) {
   const labor      = wo.labor_total  || 0;
   const partsTotal = wo.parts_total  || 0;
   const sub        = wo.subtotal     || 0;
-  const vatEnabled = (wo.vat_enabled === false) ? false : true;
-  const vat        = vatEnabled ? (wo.vat_amount || 0) : 0;
+  const vatEnabled = (wo.vat_amount > 0);
+  const vat        = wo.vat_amount || 0;
   const grand      = wo.grand_total  || 0;
 
   // ── Services rows
