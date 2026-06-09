@@ -2610,6 +2610,7 @@ let workOrders = [];
 let woTemplates = [];
 let currentWOId = null;
 let woFilter = 'active';
+let woVatEnabled = true; // VAT toggle state for current WO
 let woServices = [];   // [{name, price}]
 let woParts = [];      // [{id, product_name, qty, unit_price}]
 let tplServices = [];
@@ -2735,6 +2736,20 @@ function openEditWO(id) {
   currentWOId = id;
   woServices = JSON.parse(wo.services_json || '[]');
   woParts = JSON.parse(wo.parts_json || '[]');
+  // Restore VAT toggle state (default true for old WOs without the flag)
+  woVatEnabled = (wo.vat_enabled === false) ? false : true;
+  // Sync toggle button UI after modal renders
+  setTimeout(() => {
+    const btn = document.getElementById('woVatToggle');
+    if (btn) {
+      btn.textContent = woVatEnabled ? '✅ VAT ON' : '⬜ VAT OFF';
+      btn.style.background = woVatEnabled ? 'rgba(16,185,129,0.15)' : 'rgba(136,136,136,0.12)';
+      btn.style.color = woVatEnabled ? '#10b981' : '#888888';
+      btn.style.borderColor = woVatEnabled ? '#10b981' : '#444444';
+    }
+    const vatRow = document.getElementById('woVatRow');
+    if (vatRow) vatRow.style.display = woVatEnabled ? '' : 'none';
+  }, 50);
   document.getElementById('woModalTitle').textContent = 'Edit ' + (wo.wo_number || 'Work Order');
   document.getElementById('woNum').value = wo.wo_number || '';
   document.getElementById('woStatus').value = wo.status || 'open';
@@ -2895,15 +2910,29 @@ function calcWOTotals() {
   const labor = woServices.reduce((s, x) => s + (x.price || 0), 0);
   const parts = woParts.reduce((s, x) => s + (x.unit_price || 0) * (x.qty || 1), 0);
   const sub = labor + parts;
-  const vat = sub * 0.12;
+  const vat = woVatEnabled ? sub * 0.12 : 0;
   const grand = sub + vat;
   document.getElementById('woTtlLabor').textContent = peso(labor);
   document.getElementById('woTtlParts').textContent = peso(parts);
   document.getElementById('woTtlSub').textContent = peso(sub);
-  document.getElementById('woTtlVat').textContent = peso(vat);
+  document.getElementById('woTtlVat').textContent = woVatEnabled ? peso(vat) : '—';
   document.getElementById('woTtlGrand').textContent = peso(grand);
+  // Show/hide VAT row
+  const vatRow = document.getElementById('woVatRow');
+  if (vatRow) vatRow.style.display = woVatEnabled ? '' : 'none';
   showWOCommission(labor);
   return { labor, parts, sub, vat, grand };
+}
+function toggleWOVat() {
+  woVatEnabled = !woVatEnabled;
+  const btn = document.getElementById('woVatToggle');
+  if (btn) {
+    btn.textContent = woVatEnabled ? '✅ VAT ON' : '⬜ VAT OFF';
+    btn.style.background = woVatEnabled ? 'rgba(16,185,129,0.15)' : 'rgba(136,136,136,0.12)';
+    btn.style.color = woVatEnabled ? '#10b981' : '#888888';
+    btn.style.borderColor = woVatEnabled ? '#10b981' : '#444444';
+  }
+  calcWOTotals();
 }
 
 // ---- Template dropdown in WO modal ----
@@ -2993,7 +3022,8 @@ function openWOPrint(id) {
   const labor      = wo.labor_total  || 0;
   const partsTotal = wo.parts_total  || 0;
   const sub        = wo.subtotal     || 0;
-  const vat        = wo.vat_amount   || 0;
+  const vatEnabled = (wo.vat_enabled === false) ? false : true;
+  const vat        = vatEnabled ? (wo.vat_amount || 0) : 0;
   const grand      = wo.grand_total  || 0;
 
   // ── Services rows
@@ -3061,7 +3091,7 @@ function openWOPrint(id) {
   if (labor > 0)      totRows += '<tr><td style="padding:7px 14px;color:#444;font-size:13px;border-bottom:1px solid #eee">Services / Labor</td><td style="padding:7px 14px;color:#1c1c1c;font-size:13px;font-weight:600;text-align:right;white-space:nowrap;border-bottom:1px solid #eee">' + peso(labor) + '</td></tr>';
   if (partsTotal > 0) totRows += '<tr><td style="padding:7px 14px;color:#444;font-size:13px;border-bottom:1px solid #eee">Parts</td><td style="padding:7px 14px;color:#1c1c1c;font-size:13px;font-weight:600;text-align:right;white-space:nowrap;border-bottom:1px solid #eee">' + peso(partsTotal) + '</td></tr>';
   totRows += '<tr><td style="padding:7px 14px;color:#444;font-size:13px;border-bottom:1px solid #eee">Subtotal</td><td style="padding:7px 14px;color:#1c1c1c;font-size:13px;font-weight:600;text-align:right;white-space:nowrap;border-bottom:1px solid #eee">' + peso(sub) + '</td></tr>';
-  if (vat > 0)        totRows += '<tr><td style="padding:7px 14px;color:#444;font-size:13px;border-bottom:1px solid #eee">VAT (12%)</td><td style="padding:7px 14px;color:#1c1c1c;font-size:13px;font-weight:600;text-align:right;white-space:nowrap;border-bottom:1px solid #eee">' + peso(vat) + '</td></tr>';
+  if (vatEnabled && vat > 0) totRows += '<tr><td style="padding:7px 14px;color:#444;font-size:13px;border-bottom:1px solid #eee">VAT (12%)</td><td style="padding:7px 14px;color:#1c1c1c;font-size:13px;font-weight:600;text-align:right;white-space:nowrap;border-bottom:1px solid #eee">' + peso(vat) + '</td></tr>';
   totRows += '<tr style="background:#fffdf5"><td style="padding:10px 14px;color:#b8860b;font-size:14px;font-weight:800;letter-spacing:.02em">GRAND TOTAL</td><td style="padding:10px 14px;color:#b8860b;font-size:14px;font-weight:800;text-align:right;white-space:nowrap">' + peso(grand) + '</td></tr>';
 
   var totalsBlock =
@@ -3767,11 +3797,15 @@ function showWOCommission(laborTotal) {
     </div>
 
     <!-- Totals -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <span style="font-size:12px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.5px">Summary</span>
+      <button id="woVatToggle" onclick="toggleWOVat()" style="font-size:12px;font-weight:700;padding:5px 13px;border-radius:20px;border:1px solid #10b981;background:rgba(16,185,129,0.15);color:#10b981;cursor:pointer;transition:all .2s">✅ VAT ON</button>
+    </div>
     <div class="wo-totals">
       <div class="wo-total-row"><span>Services / Labor</span><span id="woTtlLabor">₱0.00</span></div>
       <div class="wo-total-row"><span>Parts</span><span id="woTtlParts">₱0.00</span></div>
       <div class="wo-total-row"><span>Subtotal</span><span id="woTtlSub">₱0.00</span></div>
-      <div class="wo-total-row"><span>VAT (12%)</span><span id="woTtlVat">₱0.00</span></div>
+      <div id="woVatRow" class="wo-total-row"><span>VAT (12%)</span><span id="woTtlVat">₱0.00</span></div>
       <div class="wo-total-row grand"><span>TOTAL</span><span id="woTtlGrand">₱0.00</span></div>
     </div>
     <!-- Commission info (app only, not printed) -->
