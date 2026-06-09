@@ -2853,7 +2853,7 @@ function woPartSearch() {
     <div class="prod-item" onclick="pickWOPart('${p.id}')">
       <div>
         <div class="prod-item-name">${p.product_name}</div>
-        <div class="prod-item-sub">${p.category || ''} · SRP ${peso(p.unit_price || 0)} · Stock: ${p.stock_qty || 0}</div>
+        <div class="prod-item-sub">${p.category || ''} · MU: ${peso(p.markup_price || p.unit_price || 0)} · Stock: ${p.stock_qty || 0}</div>
       </div>
     </div>`).join('');
 }
@@ -2862,7 +2862,7 @@ function pickWOPart(pid) {
   if (!p) return;
   const existing = woParts.find(x => x.id === pid);
   if (existing) { existing.qty = (existing.qty || 1) + 1; }
-  else { woParts.push({ id: p.id, product_name: p.product_name, qty: 1, unit_price: p.unit_price || 0 }); }
+  else { woParts.push({ id: p.id, product_name: p.product_name, qty: 1, unit_price: p.markup_price || p.unit_price || 0 }); }
   document.getElementById('woPartQ').value = '';
   document.getElementById('woPartResults').style.display = 'none';
   renderWOParts(); calcWOTotals();
