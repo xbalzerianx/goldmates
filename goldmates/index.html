@@ -2868,7 +2868,7 @@ function woPartSearch() {
     <div class="prod-item" onclick="pickWOPart('${p.id}')">
       <div>
         <div class="prod-item-name">${p.product_name}</div>
-        <div class="prod-item-sub">${p.category || ''} · MU: ${peso(p.markup_price || p.unit_price || 0)} · Stock: ${p.stock_qty || 0}</div>
+        <div class="prod-item-sub">${p.category || ''} · <span style="color:var(--green);font-weight:600">MU: ${peso(p.markup_price || p.unit_price || 0)}</span> · Stock: ${p.stock_qty || 0}</div>
       </div>
     </div>`).join('');
 }
