@@ -1214,7 +1214,7 @@ tbody td{padding:13px 16px;vertical-align:middle}
 const SB_URL = 'https://hzauyygzmbfscqqobspb.supabase.co/rest/v1';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh6YXV5eWd6bWJmc2NxcW9ic3BiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA4MzM0ODksImV4cCI6MjA5NjQwOTQ4OX0.5bgDoS_g4dTxRMNm1bNLJFXV-jcSaWu0Y03v8ThgjHU';
 const SB_HDR = {'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY};
-const TBL = {KGProduct:'kg_products',KGSale:'kg_sales',KGExpense:'kg_expenses',KGActivity:'kg_activity',KGCategory:'kg_categories',KGWorkOrder:'kg_work_orders',KGWOTemplate:'kg_wo_templates',KGEmployee:'kg_employees'};
+const TBL = {KGProduct:'gm_products',KGSale:'gm_sales',KGExpense:'gm_expenses',KGActivity:'gm_activity',KGCategory:'gm_categories',KGWorkOrder:'gm_work_orders',KGWOTemplate:'gm_wo_templates',KGEmployee:'gm_employees'};
 const TBL_ORDER = {KGEmployee:'created_at'};
 
 // ═══════════════════ API (Supabase) ═══════════════════
@@ -1455,8 +1455,11 @@ async function loadAll(){
       apiGet('KGCategory').catch(()=>[]),
       apiGet('KGEmployee').catch(()=>[]),
     ]);
-    sales.forEach(s=>{ if(s.created_date&&s.created_date.includes('T')&&!s.created_date.endsWith('Z')&&!s.created_date.includes('+')) s.created_date+='Z'; });
-    sales.sort((a,b)=>new Date(b.created_date||0)-new Date(a.created_date||0));
+    // Normalize: map created_at → created_date for backward compat
+    sales.forEach(s=>{ if(!s.created_date&&s.created_at) s.created_date=s.created_at; if(s.created_date&&!s.created_date.endsWith('Z')&&!s.created_date.includes('+')) s.created_date+='Z'; });
+    sales.sort((a,b)=>new Date(b.created_date||b.created_at||0)-new Date(a.created_date||a.created_at||0));
+    expenses.forEach(e=>{ if(!e.created_date&&e.created_at) e.created_date=e.created_at; if(e.created_date&&!e.created_date.endsWith('Z')&&!e.created_date.includes('+')) e.created_date+='Z'; });
+    expenses.sort((a,b)=>new Date(b.created_date||b.created_at||0)-new Date(a.created_date||a.created_at||0));
     expenses.forEach(e=>{ if(e.created_date&&e.created_date.includes('T')&&!e.created_date.endsWith('Z')&&!e.created_date.includes('+')) e.created_date+='Z'; });
     expenses.sort((a,b)=>new Date(b.created_date||0)-new Date(a.created_date||0));
     // normalize KGActivity: add .timestamp key for renderActLog
@@ -2665,10 +2668,13 @@ function renderWOList() {
   wrap.innerHTML = '<div class="wo-grid">' + list.map(w => {
     const sc = SC[w.status] || 'wo-status-open';
     const sl = SL[w.status] || w.status;
-    const svcCount = JSON.parse(w.services_json || '[]').length;
-    const partsCount = JSON.parse(w.parts_json || '[]').length;
-    const plateLine = [w.plate_number, w.vehicle].filter(Boolean).join(' · ');
-    const mechLine = w.mechanic ? '🔧 ' + w.mechanic : '';
+    const _charges = w.charges && Array.isArray(w.charges) ? w.charges : [];
+    const _svcArr = _charges.length ? _charges.filter(c=>c.type==='service') : JSON.parse(w.services_json||'[]');
+    const _prtArr = _charges.length ? _charges.filter(c=>c.type==='part') : JSON.parse(w.parts_json||'[]');
+    const svcCount = _svcArr.length;
+    const partsCount = _prtArr.length;
+    const plateLine = [w.plate_number, w.vehicle_make||w.vehicle].filter(Boolean).join(' · ');
+    const mechLine = (w.mechanic_name||w.mechanic) ? '🔧 ' + (w.mechanic_name||w.mechanic) : '';
     return `<div class="wo-card" onclick="viewWO('${w.id}')">
       <div class="wo-card-top">
         <div>
@@ -2682,7 +2688,7 @@ function renderWOList() {
         </div>
         <div class="wo-card-total">${peso(w.grand_total || 0)}</div>
       </div>
-      <div class="wo-card-customer">${w.customer_name || '—'}</div>
+      <div class="wo-card-customer">${(w.client_name||w.customer_name) || '—'}</div>
       <div class="wo-card-vehicle">${plateLine || '—'}</div>
       ${mechLine ? `<div class="wo-card-meta">${mechLine}</div>` : ''}
       <div class="wo-card-meta">${w.work_date || ''}${w.work_time ? ' · '+w.work_time : ''} · ${svcCount} svc · ${partsCount} part(s)</div>
@@ -2734,10 +2740,17 @@ function openEditWO(id) {
   const wo = workOrders.find(w => w.id === id);
   if (!wo) return;
   currentWOId = id;
-  woServices = JSON.parse(wo.services_json || '[]');
-  woParts = JSON.parse(wo.parts_json || '[]');
-  // Restore VAT toggle state: if vat_amount is 0 and subtotal > 0, VAT was off
-  woVatEnabled = (wo.vat_amount === 0 && (wo.subtotal || 0) > 0) ? false : true;
+  // Support both legacy services_json/parts_json and new charges[] format
+  if (wo.charges && Array.isArray(wo.charges) && wo.charges.length > 0) {
+    woServices = wo.charges.filter(c => c.type === 'service').map(c => ({ name: c.name, price: c.price || 0 }));
+    woParts = wo.charges.filter(c => c.type === 'part').map(c => ({ id: null, product_name: c.name, qty: c.qty || 1, unit_price: c.price || 0 }));
+  } else {
+    woServices = JSON.parse(wo.services_json || '[]');
+    woParts = JSON.parse(wo.parts_json || '[]');
+  }
+  // Restore VAT toggle state: compare grand_total vs sum to detect if VAT was included
+  const _woSub = (wo.labor_total||0) + (wo.parts_total||0);
+  woVatEnabled = wo.grand_total > 0 ? (wo.grand_total > _woSub * 1.001) : true;
   // Sync toggle button UI after modal renders
   setTimeout(() => {
     const btn = document.getElementById('woVatToggle');
@@ -2755,13 +2768,13 @@ function openEditWO(id) {
   document.getElementById('woStatus').value = wo.status || 'open';
   document.getElementById('woDate').value = wo.work_date || '';
   document.getElementById('woTime').value = wo.work_time || '';
-  document.getElementById('woCustName').value = wo.customer_name || '';
-  document.getElementById('woCustPhone').value = wo.customer_phone || '';
+  document.getElementById('woCustName').value = wo.client_name || wo.customer_name || '';
+  document.getElementById('woCustPhone').value = wo.client_phone || wo.customer_phone || '';
   document.getElementById('woPlate').value = wo.plate_number || '';
-  document.getElementById('woVehicle').value = wo.vehicle || '';
+  document.getElementById('woVehicle').value = wo.vehicle_make || wo.vehicle || '';
   populateWOMechanic();
   // Set the saved mechanic — must happen after populateWOMechanic builds the options
-  const savedMechanic = (wo.mechanic || '').split('||')[0].trim();
+  const savedMechanic = (wo.mechanic_name || wo.mechanic || '').split('||')[0].trim();
   const woMecSel = document.getElementById('woMechanic');
   woMecSel.value = savedMechanic;
   // If not found in list (e.g. employee removed), add a temporary option
@@ -2957,29 +2970,33 @@ async function saveWO() {
   const custName = document.getElementById('woCustName').value.trim();
   if (!custName) { toast('Customer name is required.', 'error'); return; }
   const t = calcWOTotals();
+  // Build combined charges array: services + parts
+  const chargesArr = [
+    ...woServices.map(s => ({ type: 'service', name: s.name, qty: 1, price: s.price || 0 })),
+    ...woParts.map(p => ({ type: 'part', name: p.product_name, qty: p.qty || 1, price: p.unit_price || 0 }))
+  ];
+  const vehicleStr = document.getElementById('woVehicle').value.trim();
+  const mechVal = document.getElementById('woMechanic').value.trim();
+  // Find mechanic employee for commission
+  const mechEmp = employees.find(e => e.name === mechVal || e.id === mechVal);
   const payload = {
     wo_number: document.getElementById('woNum').value,
     status: document.getElementById('woStatus').value,
-    work_date: document.getElementById('woDate').value,
-    work_time: document.getElementById('woTime').value,
-    customer_name: custName,
-    customer_phone: document.getElementById('woCustPhone').value.trim(),
+    client_name: custName,
+    client_phone: document.getElementById('woCustPhone').value.trim(),
     plate_number: document.getElementById('woPlate').value.trim().toUpperCase(),
-    vehicle: document.getElementById('woVehicle').value.trim(),
-    mechanic: document.getElementById('woMechanic').value.trim(),
-    notes: document.getElementById('woNotes').value.trim(),
-    services_json: JSON.stringify(woServices),
-    parts_json: JSON.stringify(woParts),
+    vehicle_make: vehicleStr,
+    vehicle_model: '',
+    charges: chargesArr,
     labor_total: t.labor,
     parts_total: t.parts,
-    subtotal: t.sub,
-    vat_amount: t.vat,
     grand_total: t.grand,
-    recorded_by: curUser?.name || 'Admin',
-    payment_status: document.getElementById('woPayStatus').value || null,
-    payment_amount: (document.getElementById('woPayStatus').value && document.getElementById('woPayStatus').value !== 'not_paid')
-      ? (parseFloat(document.getElementById('woPayAmount').value) || null)
-      : null
+    mechanic_name: mechVal,
+    mechanic_id: mechEmp ? mechEmp.id : null,
+    commission_rate: mechEmp ? (mechEmp.commission_rate || 0) : 0,
+    commission_amt: mechEmp ? Math.round(t.labor * (mechEmp.commission_rate || 0) / 100 * 100) / 100 : 0,
+    notes: document.getElementById('woNotes').value.trim(),
+    recorded_by: curUser?.name || 'Admin'
   };
   const btn = document.getElementById('woSaveBtn');
   btn.disabled = true; btn.textContent = 'Saving…';
@@ -3017,13 +3034,20 @@ function deleteWO(id) {
 function openWOPrint(id) {
   const wo = workOrders.find(w => w.id === id);
   if (!wo) return;
-  const services = JSON.parse(wo.services_json || '[]');
-  const parts    = JSON.parse(wo.parts_json    || '[]');
+  // Support both legacy services_json/parts_json and new charges[] format
+  var services, parts;
+  if (wo.charges && Array.isArray(wo.charges) && wo.charges.length > 0) {
+    services = wo.charges.filter(c => c.type === 'service').map(c => ({ name: c.name, price: c.price || 0 }));
+    parts    = wo.charges.filter(c => c.type === 'part').map(c => ({ product_name: c.name, qty: c.qty || 1, unit_price: c.price || 0 }));
+  } else {
+    services = JSON.parse(wo.services_json || '[]');
+    parts    = JSON.parse(wo.parts_json    || '[]');
+  }
   const labor      = wo.labor_total  || 0;
   const partsTotal = wo.parts_total  || 0;
-  const sub        = wo.subtotal     || 0;
-  const vatEnabled = (wo.vat_amount > 0);
-  const vat        = wo.vat_amount || 0;
+  const sub        = labor + partsTotal;
+  const vatEnabled = (wo.grand_total > sub * 1.001);
+  const vat        = vatEnabled ? (wo.grand_total - sub) : 0;
   const grand      = wo.grand_total  || 0;
 
   // ── Services rows
@@ -3181,10 +3205,10 @@ function openWOPrint(id) {
     // Info table
     '<table style="width:100%;border-collapse:collapse;margin-bottom:22px">' +
       '<tbody>' +
-        infoRow('Customer Name', wo.customer_name || '—') +
-        infoRow('Phone Number', wo.customer_phone || '—') +
+        infoRow('Customer Name', wo.client_name || wo.customer_name || '—') +
+        infoRow('Phone Number', wo.client_phone || wo.customer_phone || '—') +
         infoRow('Plate Number', (wo.plate_number || '—') + vehicleSpan) +
-        infoRow('Mechanic', (wo.mechanic || '—').split('||')[0]) +
+        infoRow('Mechanic', (wo.mechanic_name || wo.mechanic || '—').split('||')[0]) +
       '</tbody>' +
     '</table>' +
     svcBlock +
