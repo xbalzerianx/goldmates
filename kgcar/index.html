@@ -1336,8 +1336,8 @@ async function loadPinsFromSupabase() {
     if (!rows.length) return;
     const pins = {...DEFAULT_PINS};
     rows.forEach(row => {
-      if ((row.key === 'pin_admin' || row.key === 'admin_pin') && row.value) pins.admin = row.value;
-      if ((row.key === 'pin_asst' || row.key === 'asst_pin') && row.value) pins.asst = row.value;
+      if (row.key === 'admin_pin' && row.value) pins.admin = row.value;
+      if (row.key === 'asst_pin' && row.value) pins.asst = row.value;
     });
     savePins(pins);
   } catch(e) {
@@ -2387,7 +2387,7 @@ function openChangePin(){
   document.getElementById('changePinModal').classList.add('open');
 }
 function closeChangePin(){ document.getElementById('changePinModal').classList.remove('open'); }
-function saveNewPins(){
+async function saveNewPins(){
   const pins=getPins();
   const newAdmin=document.getElementById('newAdminPin').value.trim();
   const newAsst=document.getElementById('newAsstPin').value.trim();
@@ -2396,6 +2396,29 @@ function saveNewPins(){
   if(newAdmin) pins.admin=newAdmin;
   if(newAsst) pins.asst=newAsst;
   savePins(pins);
+  // Also persist to Supabase so changes survive page reload
+  try {
+    const updates = [];
+    if(newAdmin) updates.push({key:'admin_pin', value:pins.admin});
+    if(newAsst)  updates.push({key:'asst_pin',  value:pins.asst});
+    for(const row of updates){
+      // Try update first
+      const upd = await fetch(SB_URL+'/kg_settings?key=eq.'+row.key, {
+        method:'PATCH',
+        headers:{...SB_HDR,'Content-Type':'application/json','Prefer':'return=minimal'},
+        body:JSON.stringify({value:row.value})
+      });
+      // If no row existed (204 but 0 rows matched), insert
+      const countHdr = upd.headers.get('content-range');
+      if(countHdr && countHdr.startsWith('0')){
+        await fetch(SB_URL+'/kg_settings', {
+          method:'POST',
+          headers:{...SB_HDR,'Content-Type':'application/json','Prefer':'return=minimal'},
+          body:JSON.stringify({key:row.key, value:row.value})
+        });
+      }
+    }
+  } catch(e){ console.warn('PIN Supabase sync failed:', e); }
   closeChangePin();
   toast('✅ PINs updated successfully','ok');
 }
