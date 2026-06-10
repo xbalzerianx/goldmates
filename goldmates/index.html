@@ -1650,20 +1650,27 @@ function filterLabel(){
 // ═══════════════════ DASHBOARD ═══════════════════
 function renderDash(){
   const fs=getFilteredSales();
-  const totVal=products.reduce((s,p)=>s+(p.unit_price||0)*(p.stock_qty||0),0);
   const totSRP=products.reduce((s,p)=>s+(p.unit_price||0)*(p.stock_qty||0),0);
   const totMarkup=products.reduce((s,p)=>s+(p.markup_price&&p.markup_price>0?(p.markup_price||0)*(p.stock_qty||0):(p.unit_price||0)*(p.stock_qty||0)),0);
   const totMarkupGain=totMarkup-totSRP;
   const totMarkupPct=totSRP>0?((totMarkupGain/totSRP)*100).toFixed(1):0;
-  const periodRev=fs.reduce((s,sl)=>s+(sl.sale_total||0),0);
-  const periodTx=fs.length;
-  const periodQty=fs.reduce((s,sl)=>s+(sl.qty_sold||0),0);
+
+  // Sales breakdown — Total / Cash / A/R / Paid A/R
+  const fsCash   = fs.filter(s => !s.payment_status || s.payment_status === 'cash');
+  const fsAR     = fs.filter(s => s.payment_status === 'receivable');
+  const fsPaidAR = fs.filter(s => s.payment_status === 'paid');
+  const cashRev   = fsCash.reduce((s,sl)=>s+(sl.sale_total||0),0);
+  const arRev     = fsAR.reduce((s,sl)=>s+(sl.sale_total||0),0);
+  const paidARRev = fsPaidAR.reduce((s,sl)=>s+(sl.sale_total||0),0);
+  const periodRev = cashRev + arRev;   // Total = Cash + A/R on creation date
+  const periodTx  = fs.length;
+  const periodQty = fs.reduce((s,sl)=>s+(sl.qty_sold||0),0);
+
   const low=products.filter(p=>st(p)==='low').length;
   const out=products.filter(p=>st(p)==='out').length;
   const alerts=low+out;
   const lbl=filterLabel();
 
-  // expenses — must be calculated before kpiGrid
   const fexp=getFilteredExpensesForDash();
   const periodExpTot=fexp.reduce((s,e)=>s+(e.amount||0),0);
   const netProfit=periodRev-periodExpTot;
@@ -1699,7 +1706,7 @@ function renderDash(){
     <div class="prog"><div class="prog-fill" style="width:${Math.round(d.val/maxV*100)}%"></div></div></div>
     <div class="cat-qty">${num(d.qty)} pcs</div></div>`).join('');
 
-  // top sales in period
+  // top sales rows
   const topRows=fs.slice(0,6).map(s=>`
     <tr><td class="fs11 text-gray fw7 tbl-col-hide">${s.sale_id||'—'}</td>
     <td><div class="fw7">${s.product_name||'—'}</div><div class="fs11 text-gray">${phDate(s.sale_date||s.created_date)}</div></td>
@@ -1708,7 +1715,6 @@ function renderDash(){
     <td class="tbl-col-hide"><span class="badge ${s.recorded_by==='Admin'?'b-admin':'b-asst'}">${s.recorded_by||'—'}</span></td></tr>`).join('')
     ||`<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--gray)">No sales in this period</td></tr>`;
 
-  // filtered expenses
   const expRows=fexp.slice(0,6).map(e=>`
     <tr>
     <td style="padding:10px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:0"><div class="fw7" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.description||'—'}</div><div class="fs11 text-gray">${phDate(e.expense_date||e.created_date)}</div></td>
@@ -1734,23 +1740,61 @@ function renderDash(){
       </div>
     </div>
 
-    <!-- SALES + EXPENSES — 3 slim cols each, no overflow -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-      <div class="card" style="min-width:0;overflow:hidden">
+    <!-- SALES BREAKDOWN + EXPENSES GRID -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+
+      <!-- Sales Summary Panel -->
+      <div class="card" style="min-width:0">
         <div class="card-hdr">
           <div class="card-title">💰 Sales · ${lbl}</div>
           <button class="btn btn-ghost btn-xs" onclick="go('saleslog')">View All →</button>
         </div>
-        <table style="width:100%;border-collapse:collapse;table-layout:fixed">
-          <colgroup><col style="width:42%"><col style="width:28%"><col style="width:30%"></colgroup>
-          <thead><tr>
-            <th style="padding:8px 10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--gray);text-align:left;border-bottom:1px solid var(--navy3)">Product</th>
-            <th style="padding:8px 10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--gray);text-align:left;border-bottom:1px solid var(--navy3)">Category</th>
-            <th style="padding:8px 10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--gray);text-align:right;border-bottom:1px solid var(--navy3)">Total</th>
-          </tr></thead>
-          <tbody>${topRows}</tbody>
-        </table>
+        <!-- AR Breakdown rows -->
+        <div style="display:flex;flex-direction:column;gap:0;border-radius:10px;overflow:hidden;border:1px solid var(--navy3)">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:var(--navy2)">
+            <div>
+              <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--gray)">Total Sales</div>
+              <div style="font-size:10px;color:var(--gray);margin-top:2px">Cash + A/R (by creation)</div>
+            </div>
+            <div class="num" style="font-size:20px;font-weight:800;color:var(--gold)">${peso(periodRev)}</div>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-top:1px solid var(--navy3)">
+            <div>
+              <div style="font-size:12px;font-weight:600;color:#ccc">💵 Cash Sales</div>
+            </div>
+            <div class="num" style="font-size:15px;font-weight:700;color:var(--green)">${peso(cashRev)}</div>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-top:1px solid var(--navy3)">
+            <div>
+              <div style="font-size:12px;font-weight:600;color:#ccc">📋 A/R Sales</div>
+              <div style="font-size:10px;color:var(--gray)">Billed, not yet collected</div>
+            </div>
+            <div class="num" style="font-size:15px;font-weight:700;color:#fb923c">${peso(arRev)}</div>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-top:1px solid var(--navy3)">
+            <div>
+              <div style="font-size:12px;font-weight:600;color:#ccc">✅ Paid A/R</div>
+              <div style="font-size:10px;color:var(--gray)">A/R collected this period</div>
+            </div>
+            <div class="num" style="font-size:15px;font-weight:700;color:var(--green)">${peso(paidARRev)}</div>
+          </div>
+        </div>
+        <!-- Top sales mini-table -->
+        <div style="margin-top:14px">
+          <div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--gray);margin-bottom:6px">Recent Transactions</div>
+          <table style="width:100%;border-collapse:collapse;table-layout:fixed">
+            <colgroup><col style="width:42%"><col style="width:28%"><col style="width:30%"></colgroup>
+            <thead><tr>
+              <th style="padding:6px 8px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--gray);text-align:left;border-bottom:1px solid var(--navy3)">Product</th>
+              <th style="padding:6px 8px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--gray);text-align:left;border-bottom:1px solid var(--navy3)">Category</th>
+              <th style="padding:6px 8px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--gray);text-align:right;border-bottom:1px solid var(--navy3)">Total</th>
+            </tr></thead>
+            <tbody>${topRows}</tbody>
+          </table>
+        </div>
       </div>
+
+      <!-- Expenses Panel -->
       <div class="card" style="min-width:0;overflow:hidden">
         <div class="card-hdr">
           <div class="card-title">💸 Expenses · ${lbl}</div>
@@ -1767,8 +1811,10 @@ function renderDash(){
         </table>
         <button class="btn btn-gold btn-sm" style="width:100%;justify-content:center;margin-top:14px" onclick="openAddExpense()">+ Add Expense</button>
       </div>
+
     </div>`
 }
+
 
 // ═══════════════════ INVENTORY ═══════════════════
 function populateCatDropdown(){
@@ -2350,11 +2396,11 @@ async async function delSaleLog(id){
       const prod = products.find(p => p.id === sl.product_id);
       if (prod) {
         const newQty = (prod.stock_qty || 0) + (sl.qty_sold || 1);
-        await apiPut('GMProduct', sl.product_id, { stock_qty: newQty });
+        await apiPut('KGProduct', sl.product_id, { stock_qty: newQty });
         prod.stock_qty = newQty;
       }
     }
-    await apiDel('GMSale', id);
+    await apiDel('KGSale', id);
     sales = sales.filter(s=>s.id!==id);
     renderSL();
     if (curPage === 'dashboard') renderDash();
@@ -2711,6 +2757,7 @@ function renderWOList() {
           <button class="btn btn-ghost btn-sm no-print" title="Print" onclick="event.stopPropagation();openWOPrint('${w.id}')">🖨️</button>
           <button class="btn btn-ghost btn-sm no-print" title="Delete" onclick="event.stopPropagation();deleteWO('${w.id}')" style="color:#f87171">🗑️</button>
           ${w.status !== 'cancelled' ? `<button class="btn btn-ghost btn-sm no-print" title="Cancel WO" onclick="event.stopPropagation();cancelWO('${w.id}')" style="color:#fb923c">⛔</button>` : ''}
+          ${w.payment_status === 'receivable' ? `<button class="btn btn-ghost btn-sm no-print" title="Mark as Paid" onclick="event.stopPropagation();markWOPaid('${w.id}')" style="color:#10b981">💚 Paid</button>` : ''}
         </div>
       </div>
     </div>`;
@@ -3091,7 +3138,7 @@ async function saveWO() {
       // Auto-create a sale entry for this WO
       const today = new Date().toISOString().split('T')[0];
       try {
-        await apiPost('GMSale', {
+        await apiPost('KGSale', {
           sale_id: 'WO-' + (saved.wo_number || saved.id),
           product_id: null,
           product_name: 'Work Order #' + (saved.wo_number || ''),
@@ -3111,12 +3158,12 @@ async function saveWO() {
             const prod = products.find(x => x.id === p.id);
             if (prod) {
               const newQty = Math.max(0, (prod.stock_qty || 0) - (p.qty || 1));
-              await apiPut('GMProduct', p.id, { stock_qty: newQty });
+              await apiPut('KGProduct', p.id, { stock_qty: newQty });
               prod.stock_qty = newQty;
             }
           }
         }
-        await loadSales();
+        // Sales array updated inline above
       } catch(se) { console.warn('Sale record error:', se.message); }
       toast('Work order saved!', 'success');
     }
@@ -3142,7 +3189,7 @@ async function deleteWO(id) {
           const prod = products.find(p => p.id === c.product_id);
           if (prod) {
             const newQty = (prod.stock_qty || 0) + (c.qty || 1);
-            await apiPut('GMProduct', c.product_id, { stock_qty: newQty });
+            await apiPut('KGProduct', c.product_id, { stock_qty: newQty });
             prod.stock_qty = newQty;
           }
         }
@@ -3150,7 +3197,7 @@ async function deleteWO(id) {
     }
     // 2. Delete linked sales entry
     const linked = sales.filter(s => s.wo_id === id || s.sale_id === 'WO-' + (wo && wo.wo_number));
-    for (const s of linked) { try { await apiDel('GMSale', s.id); } catch(e){} }
+    for (const s of linked) { try { await apiDel('KGSale', s.id); } catch(e){} }
     sales = sales.filter(s => s.wo_id !== id && s.sale_id !== 'WO-' + (wo && wo.wo_number));
     // 3. Delete WO
     await apiDel('KGWorkOrder', id);
@@ -3173,7 +3220,7 @@ async function cancelWO(id) {
           const prod = products.find(p => p.id === c.product_id);
           if (prod) {
             const newQty = (prod.stock_qty || 0) + (c.qty || 1);
-            await apiPut('GMProduct', c.product_id, { stock_qty: newQty });
+            await apiPut('KGProduct', c.product_id, { stock_qty: newQty });
             prod.stock_qty = newQty;
           }
         }
@@ -3181,7 +3228,7 @@ async function cancelWO(id) {
     }
     // Remove linked sale record
     const linked = sales.filter(s => s.wo_id === id || s.sale_id === 'WO-' + wo.wo_number);
-    for (const s of linked) { try { await apiDel('GMSale', s.id); } catch(e){} }
+    for (const s of linked) { try { await apiDel('KGSale', s.id); } catch(e){} }
     sales = sales.filter(s => s.wo_id !== id && s.sale_id !== 'WO-' + wo.wo_number);
     // Mark WO as cancelled
     await apiPut('KGWorkOrder', id, { status: 'cancelled' });
@@ -3192,6 +3239,27 @@ async function cancelWO(id) {
     toast('Work order cancelled. Stock restored.', 'success');
   } catch(e) { toast('Error cancelling: ' + e.message, 'error'); }
 }
+async function markWOPaid(id) {
+  if (!confirm('Mark this A/R work order as Paid?')) return;
+  const wo = workOrders.find(w => w.id === id);
+  if (!wo) return;
+  const today = new Date().toISOString().split('T')[0];
+  try {
+    await apiPut('KGWorkOrder', id, { payment_status: 'paid', paid_date: today });
+    const i = workOrders.findIndex(w => w.id === id);
+    if (i > -1) { workOrders[i].payment_status = 'paid'; workOrders[i].paid_date = today; }
+    // Also update linked sale record payment_status
+    const linked = sales.find(s => s.wo_id === id || s.sale_id === 'WO-' + (wo && wo.wo_number));
+    if (linked) {
+      await apiPut('KGSale', linked.id, { payment_status: 'paid' });
+      linked.payment_status = 'paid';
+    }
+    renderWOList();
+    if (curPage === 'dashboard') renderDash();
+    toast('✅ Work order marked as Paid!', 'success');
+  } catch(e) { toast('Error: ' + e.message, 'error'); }
+}
+
 
 
 // ---- Print WO ----
@@ -3207,12 +3275,18 @@ function openWOPrint(id) {
     services = JSON.parse(wo.services_json || '[]');
     parts    = JSON.parse(wo.parts_json    || '[]');
   }
-  const labor      = wo.labor_total  || 0;
-  const partsTotal = wo.parts_total  || 0;
-  const sub        = labor + partsTotal;
-  const vatEnabled = (wo.grand_total > sub * 1.001);
-  const vat        = vatEnabled ? (wo.grand_total - sub) : 0;
-  const grand      = wo.grand_total  || 0;
+  const labor       = wo.labor_total   || 0;
+  const partsTotal  = wo.parts_total   || 0;
+  const sub         = labor + partsTotal;
+  const vatEnabled  = wo.grand_total > 0 ? (wo.grand_total > sub * 1.001) : false;
+  const vat         = vatEnabled ? sub * 0.12 : 0;
+  const discEnabled = !!(wo.discount_pct && wo.discount_pct > 0);
+  const discPct     = wo.discount_pct || 0;
+  const discAmt     = wo.discount_amt || 0;
+  const grand       = wo.grand_total   || 0;
+  const payStatus   = wo.payment_status || 'cash';
+  const downPayment = wo.down_payment  || 0;
+  const balanceDue  = wo.balance_due   || 0;
 
   // ── Services rows
   var svcRows = '';
@@ -3280,7 +3354,13 @@ function openWOPrint(id) {
   if (partsTotal > 0) totRows += '<tr><td style="padding:7px 14px;color:#444;font-size:13px;border-bottom:1px solid #eee">Parts</td><td style="padding:7px 14px;color:#1c1c1c;font-size:13px;font-weight:600;text-align:right;white-space:nowrap;border-bottom:1px solid #eee">' + peso(partsTotal) + '</td></tr>';
   totRows += '<tr><td style="padding:7px 14px;color:#444;font-size:13px;border-bottom:1px solid #eee">Subtotal</td><td style="padding:7px 14px;color:#1c1c1c;font-size:13px;font-weight:600;text-align:right;white-space:nowrap;border-bottom:1px solid #eee">' + peso(sub) + '</td></tr>';
   if (vatEnabled && vat > 0) totRows += '<tr><td style="padding:7px 14px;color:#444;font-size:13px;border-bottom:1px solid #eee">VAT (12%)</td><td style="padding:7px 14px;color:#1c1c1c;font-size:13px;font-weight:600;text-align:right;white-space:nowrap;border-bottom:1px solid #eee">' + peso(vat) + '</td></tr>';
+  if (discEnabled && discAmt > 0) totRows += '<tr><td style="padding:7px 14px;color:#b45309;font-size:13px;border-bottom:1px solid #eee">Discount (' + discPct + '%)</td><td style="padding:7px 14px;color:#b45309;font-size:13px;font-weight:600;text-align:right;white-space:nowrap;border-bottom:1px solid #eee">-' + peso(discAmt) + '</td></tr>';
   totRows += '<tr style="background:#fffdf5"><td style="padding:10px 14px;color:#b8860b;font-size:14px;font-weight:800;letter-spacing:.02em">GRAND TOTAL</td><td style="padding:10px 14px;color:#b8860b;font-size:14px;font-weight:800;text-align:right;white-space:nowrap">' + peso(grand) + '</td></tr>';
+  if (payStatus === 'receivable' && downPayment > 0) totRows += '<tr><td style="padding:7px 14px;color:#444;font-size:13px;border-bottom:1px solid #eee">Down Payment</td><td style="padding:7px 14px;color:#1c1c1c;font-size:13px;font-weight:600;text-align:right;white-space:nowrap;border-bottom:1px solid #eee">' + peso(downPayment) + '</td></tr>';
+  if (payStatus === 'receivable' && balanceDue > 0) totRows += '<tr style="background:#fff5f5"><td style="padding:10px 14px;color:#dc2626;font-size:14px;font-weight:800">BALANCE DUE</td><td style="padding:10px 14px;color:#dc2626;font-size:14px;font-weight:800;text-align:right;white-space:nowrap">' + peso(balanceDue) + '</td></tr>';
+  if (payStatus === 'cash') totRows += '<tr><td style="padding:7px 14px;color:#15803d;font-size:12px">Payment Mode</td><td style="padding:7px 14px;color:#15803d;font-size:12px;font-weight:700;text-align:right">CASH</td></tr>';
+  if (payStatus === 'receivable') totRows += '<tr><td style="padding:7px 14px;color:#b45309;font-size:12px">Payment Mode</td><td style="padding:7px 14px;color:#b45309;font-size:12px;font-weight:700;text-align:right">ACCOUNT RECEIVABLE</td></tr>';
+  if (payStatus === 'paid') totRows += '<tr><td style="padding:7px 14px;color:#15803d;font-size:12px">Payment Mode</td><td style="padding:7px 14px;color:#15803d;font-size:12px;font-weight:700;text-align:right">PAID (A/R)</td></tr>';
 
   var totalsBlock =
     '<div style="display:flex;justify-content:flex-end;margin-bottom:30px">' +
