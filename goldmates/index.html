@@ -2340,19 +2340,31 @@ function renderSL(){
   document.getElementById('slFooter').innerHTML=list.length?`${list.length} transactions · Total: <span class="num text-gold fw7" style="font-size:15px">${peso(tot)}</span>`:'';
 }
 
-async function delSaleLog(id){
+async async function delSaleLog(id){
   if(curUser?.role!=='admin'){toast('⛔ Admin access only','err');return;}
-  if(!confirm('Delete this sale record? This cannot be undone.')) return;
+  const sl = sales.find(s => s.id === id);
+  if(!confirm('Delete this sale record? Stock will be restored if applicable.')) return;
   try {
-    await apiDel('KGSale', id);
+    // Restore stock for direct product sales (not WO-sourced)
+    if (sl && sl.product_id && sl.source !== 'work_order') {
+      const prod = products.find(p => p.id === sl.product_id);
+      if (prod) {
+        const newQty = (prod.stock_qty || 0) + (sl.qty_sold || 1);
+        await apiPut('GMProduct', sl.product_id, { stock_qty: newQty });
+        prod.stock_qty = newQty;
+      }
+    }
+    await apiDel('GMSale', id);
     sales = sales.filter(s=>s.id!==id);
     renderSL();
-    toast('🗑 Sale deleted','ok');
+    if (curPage === 'dashboard') renderDash();
+    toast('🗑 Sale deleted. Stock restored.','ok');
     logActivity('delete','Sale Record','Admin deleted a sales log entry');
   } catch(e){
     toast('❌ Failed to delete: '+e.message,'err');
   }
 }
+
 
 // ═══════════════════ EXPENSES ═══════════════════
 function renderExpenses(){
@@ -2613,7 +2625,8 @@ let workOrders = [];
 let woTemplates = [];
 let currentWOId = null;
 let woFilter = 'active';
-let woVatEnabled = true; // VAT toggle state for current WO
+let woVatEnabled = true;   // VAT toggle state for current WO
+let woDiscEnabled = false; // Discount toggle state for current WO
 let woServices = [];   // [{name, price}]
 let woParts = [];      // [{id, product_name, qty, unit_price}]
 let tplServices = [];
@@ -2678,7 +2691,7 @@ function renderWOList() {
     return `<div class="wo-card" onclick="viewWO('${w.id}')">
       <div class="wo-card-top">
         <div>
-          <div class="wo-card-num">${w.wo_number || '—'}</div>
+          <div class="wo-card-num">${w.wo_number || '—'} ${w.payment_status === 'receivable' ? '<span style="font-size:10px;background:rgba(251,146,60,.15);color:#fb923c;border:1px solid #fb923c;border-radius:10px;padding:1px 7px;font-weight:700;margin-left:4px">A/R</span>' : w.payment_status === 'paid' ? '<span style="font-size:10px;background:rgba(16,185,129,.15);color:#10b981;border:1px solid #10b981;border-radius:10px;padding:1px 7px;font-weight:700;margin-left:4px">PAID A/R</span>' : ''}</div>
           <span class="wo-status-badge ${sc}">${sl}</span>
           ${w.payment_status ? `<span style="display:inline-block;margin-left:6px;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;vertical-align:middle;${
             w.payment_status==='paid' ? 'background:#14532d;color:#4ade80' :
@@ -2697,6 +2710,7 @@ function renderWOList() {
           <button class="btn btn-ghost btn-sm no-print" title="Edit" onclick="event.stopPropagation();openEditWO('${w.id}')">✏️</button>
           <button class="btn btn-ghost btn-sm no-print" title="Print" onclick="event.stopPropagation();openWOPrint('${w.id}')">🖨️</button>
           <button class="btn btn-ghost btn-sm no-print" title="Delete" onclick="event.stopPropagation();deleteWO('${w.id}')" style="color:#f87171">🗑️</button>
+          ${w.status !== 'cancelled' ? `<button class="btn btn-ghost btn-sm no-print" title="Cancel WO" onclick="event.stopPropagation();cancelWO('${w.id}')" style="color:#fb923c">⛔</button>` : ''}
         </div>
       </div>
     </div>`;
@@ -2707,11 +2721,12 @@ function renderWOList() {
 function openNewWO() {
   currentWOId = null;
   woServices = []; woParts = [];
+  woVatEnabled = true;
+  woDiscEnabled = false;
   document.getElementById('woModalTitle').textContent = '+ New Work Order';
   document.getElementById('woNum').value = genWONum();
   document.getElementById('woStatus').value = 'open';
   const now = new Date();
-  // Always use PH time for date/time
   const ph = new Date(now.toLocaleString('en-US', {timeZone:'Asia/Manila'}));
   const phDate = ph.getFullYear() + '-' + String(ph.getMonth()+1).padStart(2,'0') + '-' + String(ph.getDate()).padStart(2,'0');
   const phTime = String(ph.getHours()).padStart(2,'0') + ':' + String(ph.getMinutes()).padStart(2,'0');
@@ -2723,9 +2738,17 @@ function openNewWO() {
   document.getElementById('woVehicle').value = '';
   document.getElementById('woMechanic').value = '';
   document.getElementById('woNotes').value = '';
-  document.getElementById('woPayStatus').value = '';
+  document.getElementById('woPayStatus').value = 'cash';
   document.getElementById('woPayAmount').value = '';
-  document.getElementById('woPayAmountWrap').style.display = 'none';
+  document.getElementById('woDownWrap').style.display = 'none';
+  document.getElementById('woDueDateWrap').style.display = 'none';
+  if (document.getElementById('woDueDate')) document.getElementById('woDueDate').value = '';
+  // Reset discount toggle UI
+  const discBtn = document.getElementById('woDiscToggle');
+  if (discBtn) { discBtn.textContent='⬜ DISC OFF'; discBtn.style.background='rgba(136,136,136,0.12)'; discBtn.style.color='#888'; discBtn.style.borderColor='#444'; }
+  // Reset VAT toggle UI
+  const vatBtn = document.getElementById('woVatToggle');
+  if (vatBtn) { vatBtn.textContent='✅ VAT ON'; vatBtn.style.background='rgba(16,185,129,0.15)'; vatBtn.style.color='#10b981'; vatBtn.style.borderColor='#10b981'; }
   document.getElementById('woPartQ').value = '';
   document.getElementById('woPartResults').style.display = 'none';
   populateWOMechanic();
@@ -2734,6 +2757,7 @@ function openNewWO() {
   const m = document.getElementById('woModal');
   m.style.display = 'flex'; m.scrollTop = 0;
 }
+
 
 // ---- Open Edit WO ----
 function openEditWO(id) {
@@ -2748,20 +2772,33 @@ function openEditWO(id) {
     woServices = JSON.parse(wo.services_json || '[]');
     woParts = JSON.parse(wo.parts_json || '[]');
   }
-  // Restore VAT toggle state: compare grand_total vs sum to detect if VAT was included
+  // Restore VAT & discount toggle states
   const _woSub = (wo.labor_total||0) + (wo.parts_total||0);
   woVatEnabled = wo.grand_total > 0 ? (wo.grand_total > _woSub * 1.001) : true;
-  // Sync toggle button UI after modal renders
+  woDiscEnabled = !!(wo.discount_pct && wo.discount_pct > 0);
   setTimeout(() => {
-    const btn = document.getElementById('woVatToggle');
-    if (btn) {
-      btn.textContent = woVatEnabled ? '✅ VAT ON' : '⬜ VAT OFF';
-      btn.style.background = woVatEnabled ? 'rgba(16,185,129,0.15)' : 'rgba(136,136,136,0.12)';
-      btn.style.color = woVatEnabled ? '#10b981' : '#888888';
-      btn.style.borderColor = woVatEnabled ? '#10b981' : '#444444';
+    // VAT button
+    const vatBtn = document.getElementById('woVatToggle');
+    if (vatBtn) {
+      vatBtn.textContent = woVatEnabled ? '✅ VAT ON' : '⬜ VAT OFF';
+      vatBtn.style.background = woVatEnabled ? 'rgba(16,185,129,0.15)' : 'rgba(136,136,136,0.12)';
+      vatBtn.style.color = woVatEnabled ? '#10b981' : '#888888';
+      vatBtn.style.borderColor = woVatEnabled ? '#10b981' : '#444444';
     }
     const vatRow = document.getElementById('woVatRow');
     if (vatRow) vatRow.style.display = woVatEnabled ? '' : 'none';
+    // Discount button
+    const discBtn = document.getElementById('woDiscToggle');
+    if (discBtn) {
+      discBtn.textContent = woDiscEnabled ? '✅ DISC ON' : '⬜ DISC OFF';
+      discBtn.style.background = woDiscEnabled ? 'rgba(212,168,67,0.15)' : 'rgba(136,136,136,0.12)';
+      discBtn.style.color = woDiscEnabled ? 'var(--gold)' : '#888';
+      discBtn.style.borderColor = woDiscEnabled ? 'var(--gold)' : '#444';
+    }
+    const discRow = document.getElementById('woDiscRow');
+    if (discRow) discRow.style.display = woDiscEnabled ? '' : 'none';
+    const discPctInp = document.getElementById('woDiscPct');
+    if (discPctInp && wo.discount_pct) discPctInp.value = wo.discount_pct;
   }, 50);
   document.getElementById('woModalTitle').textContent = 'Edit ' + (wo.wo_number || 'Work Order');
   document.getElementById('woNum').value = wo.wo_number || '';
@@ -2773,11 +2810,9 @@ function openEditWO(id) {
   document.getElementById('woPlate').value = wo.plate_number || '';
   document.getElementById('woVehicle').value = wo.vehicle_make || wo.vehicle || '';
   populateWOMechanic();
-  // Set the saved mechanic — must happen after populateWOMechanic builds the options
   const savedMechanic = (wo.mechanic_name || wo.mechanic || '').split('||')[0].trim();
   const woMecSel = document.getElementById('woMechanic');
   woMecSel.value = savedMechanic;
-  // If not found in list (e.g. employee removed), add a temporary option
   if (savedMechanic && woMecSel.value !== savedMechanic) {
     const opt = document.createElement('option');
     opt.value = savedMechanic; opt.textContent = savedMechanic + ' (inactive)';
@@ -2785,41 +2820,33 @@ function openEditWO(id) {
     woMecSel.value = savedMechanic;
   }
   document.getElementById('woNotes').value = wo.notes || '';
-  // Payment
+  // Payment mode
   const ps = document.getElementById('woPayStatus');
-  ps.value = wo.payment_status || '';
-  document.getElementById('woPayAmount').value = wo.payment_amount != null ? wo.payment_amount : '';
-  togglePayAmount();
-  // Override amount with saved value (togglePayAmount may have overwritten it for 'paid')
-  if (wo.payment_amount != null) document.getElementById('woPayAmount').value = wo.payment_amount;
+  ps.value = wo.payment_status || 'cash';
+  const isAR = ps.value === 'receivable';
+  document.getElementById('woPayAmount').value = wo.down_payment || '';
+  document.getElementById('woDownWrap').style.display = isAR ? 'block' : 'none';
+  document.getElementById('woDueDateWrap').style.display = isAR ? 'block' : 'none';
+  if (document.getElementById('woDueDate')) document.getElementById('woDueDate').value = wo.due_date || '';
   document.getElementById('woPartQ').value = '';
   document.getElementById('woPartResults').style.display = 'none';
-  populateWOMechanic();
   populateWOTplSelect();
   renderWOServices(); renderWOParts(); calcWOTotals();
   const m = document.getElementById('woModal');
   m.style.display = 'flex'; m.scrollTop = 0;
 }
 
+
 function togglePayAmount() {
   const sel = document.getElementById('woPayStatus').value;
-  const wrap = document.getElementById('woPayAmountWrap');
-  const lbl  = document.getElementById('woPayAmountLabel');
-  const inp  = document.getElementById('woPayAmount');
-  if (sel === 'paid') {
-    // auto-fill full amount
-    const grand = parseFloat(document.getElementById('woTtlGrand').textContent.replace(/[^0-9.]/g,'')) || 0;
-    inp.value = grand.toFixed(2);
-    wrap.style.display = 'block';
-    lbl.textContent = 'Amount Paid ₱';
-  } else if (sel === 'down' || sel === 'custom') {
-    inp.value = '';
-    wrap.style.display = 'block';
-    lbl.textContent = sel === 'down' ? 'Down Payment ₱' : 'Custom Amount ₱';
-  } else {
-    wrap.style.display = 'none';
-    inp.value = '';
+  const isAR = sel === 'receivable';
+  document.getElementById('woDownWrap').style.display = isAR ? 'block' : 'none';
+  document.getElementById('woDueDateWrap').style.display = isAR ? 'block' : 'none';
+  if (!isAR) {
+    document.getElementById('woPayAmount').value = '';
+    document.getElementById('woDueDate').value = '';
   }
+  calcWOTotals();
 }
 
 function closeWOModal() {
@@ -2924,18 +2951,45 @@ function calcWOTotals() {
   const parts = woParts.reduce((s, x) => s + (x.unit_price || 0) * (x.qty || 1), 0);
   const sub = labor + parts;
   const vat = woVatEnabled ? sub * 0.12 : 0;
-  const grand = sub + vat;
+  const afterVat = sub + vat;
+
+  // Discount
+  const discPctInput = document.getElementById('woDiscPct');
+  const discPct = woDiscEnabled ? (parseFloat(discPctInput ? discPctInput.value : 0) || 0) : 0;
+  const discAmt = afterVat * discPct / 100;
+  const grand = afterVat - discAmt;
+
+  // Down payment / balance
+  const downInput = document.getElementById('woPayAmount');
+  const isAR = document.getElementById('woPayStatus') && document.getElementById('woPayStatus').value === 'receivable';
+  const down = isAR ? (parseFloat(downInput ? downInput.value : 0) || 0) : 0;
+  const balance = isAR ? Math.max(0, grand - down) : 0;
+
   document.getElementById('woTtlLabor').textContent = peso(labor);
   document.getElementById('woTtlParts').textContent = peso(parts);
   document.getElementById('woTtlSub').textContent = peso(sub);
   document.getElementById('woTtlVat').textContent = woVatEnabled ? peso(vat) : '—';
   document.getElementById('woTtlGrand').textContent = peso(grand);
+  if (document.getElementById('woTtlDisc')) document.getElementById('woTtlDisc').textContent = '-' + peso(discAmt);
+
   // Show/hide VAT row
   const vatRow = document.getElementById('woVatRow');
   if (vatRow) vatRow.style.display = woVatEnabled ? '' : 'none';
+  // Show/hide discount row
+  const discRow = document.getElementById('woDiscRow');
+  if (discRow) discRow.style.display = woDiscEnabled ? '' : 'none';
+  // Show/hide down + balance rows
+  const downRow = document.getElementById('woDownRow');
+  const balRow  = document.getElementById('woBalRow');
+  if (downRow) downRow.style.display = (isAR && down > 0) ? '' : 'none';
+  if (balRow)  balRow.style.display  = (isAR && down > 0) ? '' : 'none';
+  if (document.getElementById('woTtlDown')) document.getElementById('woTtlDown').textContent = peso(down);
+  if (document.getElementById('woTtlBal'))  document.getElementById('woTtlBal').textContent  = peso(balance);
+
   showWOCommission(labor);
-  return { labor, parts, sub, vat, grand };
+  return { labor, parts, sub, vat, discPct, discAmt, grand, down, balance };
 }
+
 function toggleWOVat() {
   woVatEnabled = !woVatEnabled;
   const btn = document.getElementById('woVatToggle');
@@ -2947,6 +3001,24 @@ function toggleWOVat() {
   }
   calcWOTotals();
 }
+function toggleWODiscount() {
+  woDiscEnabled = !woDiscEnabled;
+  const btn = document.getElementById('woDiscToggle');
+  if (btn) {
+    btn.textContent = woDiscEnabled ? '✅ DISC ON' : '⬜ DISC OFF';
+    btn.style.background = woDiscEnabled ? 'rgba(212,168,67,0.15)' : 'rgba(136,136,136,0.12)';
+    btn.style.color = woDiscEnabled ? 'var(--gold)' : '#888888';
+    btn.style.borderColor = woDiscEnabled ? 'var(--gold)' : '#444444';
+  }
+  const discRow = document.getElementById('woDiscRow');
+  if (discRow) discRow.style.display = woDiscEnabled ? '' : 'none';
+  if (woDiscEnabled) {
+    const inp = document.getElementById('woDiscPct');
+    if (inp) { inp.value = ''; inp.focus(); }
+  }
+  calcWOTotals();
+}
+
 
 // ---- Template dropdown in WO modal ----
 function populateWOTplSelect() {
@@ -2970,15 +3042,15 @@ async function saveWO() {
   const custName = document.getElementById('woCustName').value.trim();
   if (!custName) { toast('Customer name is required.', 'error'); return; }
   const t = calcWOTotals();
-  // Build combined charges array: services + parts
   const chargesArr = [
     ...woServices.map(s => ({ type: 'service', name: s.name, qty: 1, price: s.price || 0 })),
-    ...woParts.map(p => ({ type: 'part', name: p.product_name, qty: p.qty || 1, price: p.unit_price || 0 }))
+    ...woParts.map(p => ({ type: 'part', name: p.product_name, product_id: p.id || null, qty: p.qty || 1, price: p.unit_price || 0 }))
   ];
   const vehicleStr = document.getElementById('woVehicle').value.trim();
   const mechVal = document.getElementById('woMechanic').value.trim();
-  // Find mechanic employee for commission
   const mechEmp = employees.find(e => e.name === mechVal || e.id === mechVal);
+  const payStatus = document.getElementById('woPayStatus').value || 'cash';
+  const dueDate = document.getElementById('woDueDate') ? document.getElementById('woDueDate').value : '';
   const payload = {
     wo_number: document.getElementById('woNum').value,
     status: document.getElementById('woStatus').value,
@@ -2991,6 +3063,13 @@ async function saveWO() {
     labor_total: t.labor,
     parts_total: t.parts,
     grand_total: t.grand,
+    discount_enabled: woDiscEnabled,
+    discount_pct: t.discPct || 0,
+    discount_amt: t.discAmt || 0,
+    payment_status: payStatus,
+    due_date: (payStatus === 'receivable' && dueDate) ? dueDate : null,
+    down_payment: t.down || 0,
+    balance_due: t.balance || 0,
     mechanic_name: mechVal,
     mechanic_id: mechEmp ? mechEmp.id : null,
     commission_rate: mechEmp ? (mechEmp.commission_rate || 0) : 0,
@@ -3003,12 +3082,42 @@ async function saveWO() {
   try {
     if (currentWOId) {
       await apiPut('KGWorkOrder', currentWOId, payload);
-      const idx = workOrders.findIndex(w => w.id === currentWOId);
-      if (idx > -1) workOrders[idx] = { ...workOrders[idx], ...payload };
+      const i = workOrders.findIndex(w => w.id === currentWOId);
+      if (i > -1) workOrders[i] = { ...workOrders[i], ...payload };
       toast('Work order updated!', 'success');
     } else {
       const saved = await apiPost('KGWorkOrder', payload);
       workOrders.unshift(saved);
+      // Auto-create a sale entry for this WO
+      const today = new Date().toISOString().split('T')[0];
+      try {
+        await apiPost('GMSale', {
+          sale_id: 'WO-' + (saved.wo_number || saved.id),
+          product_id: null,
+          product_name: 'Work Order #' + (saved.wo_number || ''),
+          category: 'Work Order',
+          qty_sold: 1,
+          unit_price: t.grand,
+          sale_total: t.grand,
+          sale_date: today,
+          payment_status: payStatus,
+          wo_id: saved.id,
+          source: 'work_order',
+          recorded_by: curUser?.name || 'Admin'
+        });
+        // Deduct stock for parts
+        for (const p of woParts) {
+          if (p.id) {
+            const prod = products.find(x => x.id === p.id);
+            if (prod) {
+              const newQty = Math.max(0, (prod.stock_qty || 0) - (p.qty || 1));
+              await apiPut('GMProduct', p.id, { stock_qty: newQty });
+              prod.stock_qty = newQty;
+            }
+          }
+        }
+        await loadSales();
+      } catch(se) { console.warn('Sale record error:', se.message); }
       toast('Work order saved!', 'success');
     }
     closeWOModal();
@@ -3020,15 +3129,70 @@ async function saveWO() {
   }
 }
 
+
 // ---- Delete WO ----
-function deleteWO(id) {
-  if (!confirm('Delete this work order?')) return;
-  apiDel('KGWorkOrder', id).then(() => {
+async function deleteWO(id) {
+  if (!confirm('Delete this work order? Stock for parts will be restored.')) return;
+  const wo = workOrders.find(w => w.id === id);
+  try {
+    // 1. Restore stock for parts
+    if (wo && wo.charges && Array.isArray(wo.charges)) {
+      for (const c of wo.charges) {
+        if (c.type === 'part' && c.product_id) {
+          const prod = products.find(p => p.id === c.product_id);
+          if (prod) {
+            const newQty = (prod.stock_qty || 0) + (c.qty || 1);
+            await apiPut('GMProduct', c.product_id, { stock_qty: newQty });
+            prod.stock_qty = newQty;
+          }
+        }
+      }
+    }
+    // 2. Delete linked sales entry
+    const linked = sales.filter(s => s.wo_id === id || s.sale_id === 'WO-' + (wo && wo.wo_number));
+    for (const s of linked) { try { await apiDel('GMSale', s.id); } catch(e){} }
+    sales = sales.filter(s => s.wo_id !== id && s.sale_id !== 'WO-' + (wo && wo.wo_number));
+    // 3. Delete WO
+    await apiDel('KGWorkOrder', id);
     workOrders = workOrders.filter(w => w.id !== id);
     renderWOList();
-    toast('Deleted.', 'success');
-  }).catch(e => toast('Error: ' + e.message, 'error'));
+    if (curPage === 'dashboard') renderDash();
+    toast('Work order deleted. Stock restored.', 'success');
+  } catch(e) { toast('Error: ' + e.message, 'error'); }
 }
+
+async function cancelWO(id) {
+  if (!confirm('Cancel this work order? Stock for parts will be restored.')) return;
+  const wo = workOrders.find(w => w.id === id);
+  if (!wo) return;
+  try {
+    // Restore stock for parts
+    if (wo.charges && Array.isArray(wo.charges)) {
+      for (const c of wo.charges) {
+        if (c.type === 'part' && c.product_id) {
+          const prod = products.find(p => p.id === c.product_id);
+          if (prod) {
+            const newQty = (prod.stock_qty || 0) + (c.qty || 1);
+            await apiPut('GMProduct', c.product_id, { stock_qty: newQty });
+            prod.stock_qty = newQty;
+          }
+        }
+      }
+    }
+    // Remove linked sale record
+    const linked = sales.filter(s => s.wo_id === id || s.sale_id === 'WO-' + wo.wo_number);
+    for (const s of linked) { try { await apiDel('GMSale', s.id); } catch(e){} }
+    sales = sales.filter(s => s.wo_id !== id && s.sale_id !== 'WO-' + wo.wo_number);
+    // Mark WO as cancelled
+    await apiPut('KGWorkOrder', id, { status: 'cancelled' });
+    const i = workOrders.findIndex(w => w.id === id);
+    if (i > -1) workOrders[i].status = 'cancelled';
+    renderWOList();
+    if (curPage === 'dashboard') renderDash();
+    toast('Work order cancelled. Stock restored.', 'success');
+  } catch(e) { toast('Error cancelling: ' + e.message, 'error'); }
+}
+
 
 // ---- Print WO ----
 function openWOPrint(id) {
@@ -3800,39 +3964,57 @@ function showWOCommission(laborTotal) {
     </div>
 
     <!-- Payment -->
-    <div class="wo-section">
-      <div class="wo-section-title">Payment</div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
-        <div class="fg" style="flex:1;min-width:160px">
-          <label class="label">Payment Status</label>
-          <select class="sel2" id="woPayStatus" onchange="togglePayAmount()" style="font-size:16px">
-            <option value="">— Select —</option>
-            <option value="paid">✅ Paid (Full)</option>
-            <option value="down">💰 Down Payment</option>
-            <option value="custom">✏️ Custom Amount</option>
-            <option value="not_paid">❌ Not Paid</option>
-          </select>
-        </div>
-        <div class="fg" id="woPayAmountWrap" style="flex:1;min-width:160px;display:none">
-          <label class="label" id="woPayAmountLabel">Amount Paid ₱</label>
-          <input class="inp" id="woPayAmount" type="number" min="0" step="0.01" placeholder="0.00" style="font-size:16px"/>
-        </div>
-      </div>
-    </div>
-
     <!-- Totals -->
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
       <span style="font-size:12px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.5px">Summary</span>
-      <button id="woVatToggle" onclick="toggleWOVat()" style="font-size:12px;font-weight:700;padding:5px 13px;border-radius:20px;border:1px solid #10b981;background:rgba(16,185,129,0.15);color:#10b981;cursor:pointer;transition:all .2s">✅ VAT ON</button>
+      <div style="display:flex;gap:8px">
+        <button id="woVatToggle" onclick="toggleWOVat()" style="font-size:12px;font-weight:700;padding:5px 13px;border-radius:20px;border:1px solid #10b981;background:rgba(16,185,129,0.15);color:#10b981;cursor:pointer;transition:all .2s">✅ VAT ON</button>
+        <button id="woDiscToggle" onclick="toggleWODiscount()" style="font-size:12px;font-weight:700;padding:5px 13px;border-radius:20px;border:1px solid #444;background:rgba(136,136,136,0.12);color:#888;cursor:pointer;transition:all .2s">⬜ DISC OFF</button>
+      </div>
     </div>
     <div class="wo-totals">
       <div class="wo-total-row"><span>Services / Labor</span><span id="woTtlLabor">₱0.00</span></div>
       <div class="wo-total-row"><span>Parts</span><span id="woTtlParts">₱0.00</span></div>
       <div class="wo-total-row"><span>Subtotal</span><span id="woTtlSub">₱0.00</span></div>
       <div id="woVatRow" class="wo-total-row"><span>VAT (12%)</span><span id="woTtlVat">₱0.00</span></div>
-      <div class="wo-total-row grand"><span>TOTAL</span><span id="woTtlGrand">₱0.00</span></div>
+      <div id="woDiscRow" class="wo-total-row" style="display:none">
+        <span style="display:flex;align-items:center;gap:8px">
+          Discount
+          <input id="woDiscPct" type="number" min="0" max="100" step="0.5" placeholder="0" value="0"
+            oninput="calcWOTotals()"
+            style="width:60px;padding:3px 8px;border-radius:6px;border:1px solid #444;background:#1a1a1a;color:#fff;font-size:13px;font-weight:700;text-align:center"/>
+          <span style="color:var(--gold);font-weight:700">%</span>
+        </span>
+        <span id="woTtlDisc" style="color:var(--red)">-₱0.00</span>
+      </div>
+      <div class="wo-total-row grand"><span>GRAND TOTAL</span><span id="woTtlGrand">₱0.00</span></div>
+      <div id="woDownRow" class="wo-total-row" style="display:none"><span>Down Payment</span><span id="woTtlDown">₱0.00</span></div>
+      <div id="woBalRow" class="wo-total-row" style="display:none;color:var(--red)"><span style="font-weight:700;color:var(--red)">Balance Due</span><span id="woTtlBal" style="color:var(--red)">₱0.00</span></div>
     </div>
-    <!-- Commission info (app only, not printed) -->
+
+    <!-- Payment Mode -->
+    <div class="wo-section" style="margin-top:14px">
+      <div class="wo-section-title">Payment</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+        <div class="fg" style="flex:1;min-width:160px">
+          <label class="label">Payment Mode</label>
+          <select class="sel2" id="woPayStatus" onchange="togglePayAmount()" style="font-size:16px">
+            <option value="cash">💵 Cash</option>
+            <option value="receivable">📋 Account Receivable (A/R)</option>
+          </select>
+        </div>
+        <div class="fg" id="woDownWrap" style="flex:1;min-width:160px;display:none">
+          <label class="label">Down Payment ₱</label>
+          <input class="inp" id="woPayAmount" type="number" min="0" step="0.01" placeholder="0.00" oninput="calcWOTotals()" style="font-size:16px"/>
+        </div>
+        <div class="fg" id="woDueDateWrap" style="flex:1;min-width:160px;display:none">
+          <label class="label">Due Date</label>
+          <input class="inp" id="woDueDate" type="date" style="font-size:16px"/>
+        </div>
+      </div>
+    </div>
+
+        <!-- Commission info (app only, not printed) -->
     <div id="woCommissionInfo" style="display:none;background:#1a2a1a;border:1px solid #2a4a2a;border-radius:8px;padding:10px 14px;margin-top:10px"></div>
 
     <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
