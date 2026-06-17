@@ -2341,16 +2341,28 @@ async function saleSearch(){
   res.style.display='block';
   res.innerHTML=matches.map(p=>{
     const oos=(p.stock_qty||0)<=0;
-    const badge=oos?'<span style="margin-left:8px;background:#3a1010;color:#ff6b6b;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px">⛔ OUT OF STOCK</span>':'';
-    return '<div class="prod-item'+(oos?' prod-item-disabled':'')+'" '+(oos?'':'data-pick="'+p.id+'"')+'>'
-      +'<div style="flex:1"><div class="prod-item-name" style="'+(oos?'color:#888;':'')+'">'+p.product_name+badge+'</div>'
+    if(oos){
+      return '<div style="padding:14px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--navy4);opacity:0.4;cursor:not-allowed;user-select:none" aria-disabled="true">'
+        +'<div style="flex:1"><div style="font-size:13px;font-weight:600;color:#888">'+p.product_name
+        +'<span style="margin-left:8px;background:#3a1010;color:#ff6b6b;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px">⛔ OUT OF STOCK</span></div>'
+        +'<div style="font-size:11px;color:var(--gray);margin-top:2px">'+(p.brand||'')+' · '+p.category+(p.sku?' · SKU: '+p.sku:'')+'</div></div>'
+        +'<div style="text-align:right;flex-shrink:0;margin-left:12px">'
+        +'<div style="color:#666;font-weight:700;font-size:12px">'+peso(p.markup_price||p.unit_price)+'</div>'
+        +'<div style="font-size:11px;color:#e74c3c">0 in stock</div>'
+        +'</div></div>';
+    }
+    return '<div class="prod-item" data-pick="'+p.id+'">'
+      +'<div style="flex:1"><div class="prod-item-name">'+p.product_name+'</div>'
       +'<div class="prod-item-sub">'+(p.brand||'')+' · '+p.category+(p.sku?' · SKU: '+p.sku:'')+'</div></div>'
       +'<div style="text-align:right;flex-shrink:0;margin-left:12px">'
-      +'<div class="num fw7 fs12" style="color:'+(oos?'#666':'var(--gold)')+'">'+peso(p.markup_price||p.unit_price)+'</div>'
-      +'<div class="fs11 '+(p.stock_qty<=0?'text-red':p.stock_qty<=(p.min_stock||0)?'text-yellow':'text-gray')+'">'+p.stock_qty+' in stock</div>'
+      +'<div class="num fw7 fs12" style="color:var(--gold)">'+peso(p.markup_price||p.unit_price)+'</div>'
+      +'<div class="fs11 '+(p.stock_qty<=(p.min_stock||0)?'text-yellow':'text-gray')+'">'+p.stock_qty+' in stock</div>'
       +'</div></div>';
   }).join('');
-  res.querySelectorAll('[data-pick]').forEach(el=>el.addEventListener('click',()=>pickProd(el.dataset.pick)));
+  res.querySelectorAll('[data-pick]').forEach(el=>{
+    el.addEventListener('click',()=>pickProd(el.dataset.pick));
+    el.addEventListener('touchend',e=>{e.preventDefault();pickProd(el.dataset.pick);});
+  });
 }
 
 async function pickProd(id){
@@ -3408,14 +3420,24 @@ function woPartSearch() {
   positionDropdown('woPartQ','woPartResults');
   res.innerHTML = matches.map(p => {
     const oos=(p.stock_qty||0)<=0;
-    const badge=oos?'<span style="margin-left:8px;background:#3a1010;color:#ff6b6b;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px">⛔ OUT OF STOCK</span>':'';
-    return '<div class="prod-item'+(oos?' prod-item-disabled':'')+'" '+(oos?'':'data-wopick="'+p.id+'"')+'>'
+    if(oos){
+      return '<div style="padding:14px 16px;display:flex;align-items:center;border-bottom:1px solid var(--navy4);opacity:0.4;cursor:not-allowed;user-select:none" aria-disabled="true">'
+        +'<div style="flex:1">'
+        +'<div style="font-size:13px;font-weight:600;color:#888">'+p.product_name
+        +'<span style="margin-left:8px;background:#3a1010;color:#ff6b6b;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px">⛔ OUT OF STOCK</span></div>'
+        +'<div style="font-size:11px;color:var(--gray);margin-top:2px">'+(p.category||'')+' · <span style="color:#666;font-weight:600">MU: '+peso(p.markup_price||p.unit_price||0)+'</span> · Stock: 0</div>'
+        +'</div></div>';
+    }
+    return '<div class="prod-item" data-wopick="'+p.id+'">'
       +'<div style="flex:1">'
-      +'<div class="prod-item-name" style="'+(oos?'color:#888;':'')+'">'+p.product_name+badge+'</div>'
-      +'<div class="prod-item-sub">'+(p.category||'')+' · <span style="color:'+(oos?'#666':'var(--green)')+';font-weight:600">MU: '+peso(p.markup_price||p.unit_price||0)+'</span> · Stock: '+(p.stock_qty||0)+'</div>'
+      +'<div class="prod-item-name">'+p.product_name+'</div>'
+      +'<div class="prod-item-sub">'+(p.category||'')+' · <span style="color:var(--green);font-weight:600">MU: '+peso(p.markup_price||p.unit_price||0)+'</span> · Stock: '+p.stock_qty+'</div>'
       +'</div></div>';
   }).join('');
-  res.querySelectorAll('[data-wopick]').forEach(el=>el.addEventListener('click',()=>pickWOPart(el.dataset.wopick)));
+  res.querySelectorAll('[data-wopick]').forEach(el=>{
+    el.addEventListener('click',()=>pickWOPart(el.dataset.wopick));
+    el.addEventListener('touchend',e=>{e.preventDefault();pickWOPart(el.dataset.wopick);});
+  });
 }
 
 async function pickWOPart(pid) {
