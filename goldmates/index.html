@@ -57,9 +57,9 @@ button,input,select,textarea{font-family:inherit}
 .app{display:none;height:100vh;overflow:hidden;position:relative}
 .app.visible{display:flex}
 .sidebar{width:240px;min-width:240px;background:#141414;display:flex;flex-direction:column;border-right:1px solid var(--navy3);overflow-y:auto}
-.content{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.content{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;min-height:0}
 .topbar{height:58px;min-height:58px;background:#141414;border-bottom:1px solid var(--navy3);display:flex;align-items:center;justify-content:space-between;padding:0 24px;gap:16px}
-.main{flex:1;overflow:hidden;display:flex;flex-direction:column}
+.main{flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0}
 
 /* SIDEBAR */
 .sb-logo{padding:24px 20px 20px;border-bottom:1px solid var(--navy3)}
@@ -94,7 +94,7 @@ button,input,select,textarea{font-family:inherit}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 
 /* PAGES */
-.page{display:none}.page.active{display:block;height:100%;overflow-y:auto;padding:20px 28px;box-sizing:border-box}
+.page{display:none}.page.active{display:flex;flex-direction:column;flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:20px 28px;box-sizing:border-box}
 .page-hdr{margin-bottom:20px}
 .page-hdr-row{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}
 .page-title{font-size:26px;font-weight:800;letter-spacing:-.5px}
@@ -594,6 +594,11 @@ tbody td{padding:13px 16px;vertical-align:middle}
   .wop-sig-line{border-top:1px solid #aaa;padding-top:6px;font-size:11px;color:#777}
 .wop-footer{text-align:center;margin-top:20px;font-size:10px;color:#bbb;border-top:1px solid #eee;padding-top:10px}
 }
+@media screen {
+  .page.active{display:flex!important;flex-direction:column!important;flex:1!important;min-height:0!important;overflow-y:auto!important;height:unset!important}
+  .main{overflow:hidden!important;flex:1!important;min-height:0!important;height:auto!important}
+}
+
 @media(max-width:700px){
   .wo-header{grid-template-columns:1fr}
   .wo-add-item-row{flex-direction:column}
@@ -681,7 +686,7 @@ tbody td{padding:13px 16px;vertical-align:middle}
     <div class="sb-user" id="sbUser"></div>
     <div class="sb-section">Overview</div>
     <button class="sb-item active" data-page="dashboard" onclick="go('dashboard')">
-      <span class="sb-item-icon">📊</span>Dashboard
+      <span class="sb-item-icon">📊</span>Dashboard<span id="sbARBadge" style="display:none;margin-left:auto;background:#ef4444;color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;line-height:1.4">0</span>
     </button>
     <div class="sb-section">Inventory</div>
     <button class="sb-item" data-page="inventory" onclick="go('inventory')">
@@ -876,6 +881,7 @@ tbody td{padding:13px 16px;vertical-align:middle}
               </div>
               <button class="btn btn-ghost btn-sm" onclick="exportCSV('sales')">⬇ Export Sales</button>
               <button class="btn btn-ghost btn-sm" onclick="exportCSV('expenses')">⬇ Export Expenses</button>
+              <button class="btn btn-ghost btn-sm" onclick="exportProducts()">⬇ Export Products</button>
             </div>
           </div>
         </div>
@@ -925,7 +931,7 @@ tbody td{padding:13px 16px;vertical-align:middle}
             <button class="al-tab"        id="alt-expenses" onclick="setActFilter('expenses')">💸 Expenses</button>
           </div>
         </div>
-        <div class="card" style="padding:0;overflow:hidden">
+        <div class="card" style="padding:0">
           <div id="actLogBody" style="min-height:120px"></div>
         </div>
       </div>
@@ -935,7 +941,10 @@ tbody td{padding:13px 16px;vertical-align:middle}
         <div class="page-hdr">
           <div class="page-hdr-row">
             <div><div class="page-title">Expenses</div><div class="page-sub">Track daily business expenses</div></div>
-            <button class="btn btn-gold" onclick="openAddExpense()">+ Add Expense</button>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn btn-ghost btn-sm" onclick="exportExpenses()" title="Export filtered expenses as CSV">⬇ Export CSV</button>
+              <button class="btn btn-gold" onclick="openAddExpense()">+ Add Expense</button>
+            </div>
           </div>
         </div>
         <div class="toolbar">
@@ -948,12 +957,18 @@ tbody td{padding:13px 16px;vertical-align:middle}
             <option>Salary</option><option>Transport</option><option>Maintenance</option>
             <option>Marketing</option><option>Food</option><option>Other</option>
           </select>
-          <select class="sel" id="expPeriod" onchange="renderExpenses()">
+          <select class="sel" id="expPeriod" onchange="onExpPeriodChange()">
             <option value="today">Today</option>
             <option value="week">This Week</option>
             <option value="month">This Month</option>
             <option value="all">All Time</option>
+            <option value="custom">Custom Range</option>
           </select>
+          <div id="expCustomRange" style="display:none;align-items:center;gap:6px" class="flex">
+            <input type="date" class="date-inp" id="expCustomFrom" style="font-size:13px;min-height:38px" oninput="renderExpenses()"/>
+            <span style="color:var(--gray);font-size:12px">to</span>
+            <input type="date" class="date-inp" id="expCustomTo" style="font-size:13px;min-height:38px" oninput="renderExpenses()"/>
+          </div>
         </div>
         <div class="tbl-wrap">
           <table>
@@ -988,7 +1003,6 @@ tbody td{padding:13px 16px;vertical-align:middle}
           <div style="font-size:13px;font-weight:600;color:#888888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">Current Categories</div>
           <div id="catMgrList" style="display:flex;flex-direction:column;gap:8px"></div>
         </div>
-      </div>
       </div>
 
       <!-- ===== WORK ORDERS PAGE ===== -->
@@ -1214,8 +1228,8 @@ tbody td{padding:13px 16px;vertical-align:middle}
 const SB_URL = 'https://hzauyygzmbfscqqobspb.supabase.co/rest/v1';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh6YXV5eWd6bWJmc2NxcW9ic3BiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA4MzM0ODksImV4cCI6MjA5NjQwOTQ4OX0.5bgDoS_g4dTxRMNm1bNLJFXV-jcSaWu0Y03v8ThgjHU';
 const SB_HDR = {'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY};
-const TBL = {KGProduct:'gm_products',KGSale:'gm_sales',KGExpense:'gm_expenses',KGActivity:'gm_activity',KGCategory:'gm_categories',KGWorkOrder:'gm_work_orders',KGWOTemplate:'gm_wo_templates',KGEmployee:'gm_employees'};
-const TBL_ORDER = {KGEmployee:'created_at'};
+const TBL = {KGProduct:'gm_products',KGSale:'gm_sales',KGExpense:'gm_expenses',KGActivity:'gm_activity',KGCategory:'gm_categories',KGWorkOrder:'gm_work_orders',KGWOTemplate:'gm_wo_templates',KGEmployee:'gm_employees',KGCommissionPayout:'gm_commission_payouts'};
+const TBL_ORDER = {KGProduct:'created_at',KGSale:'created_at',KGExpense:'created_at',KGActivity:'created_at',KGCategory:'created_at',KGWorkOrder:'created_at',KGWOTemplate:'created_at',KGEmployee:'created_at',KGCommissionPayout:'created_at'};
 
 // ═══════════════════ API (Supabase) ═══════════════════
 async function apiGet(e,id=''){
@@ -1248,7 +1262,7 @@ async function apiDel(e,id){
   return {};
 }
 
-const DEFAULT_PINS = { admin:'070726', asst:'111111' };
+const DEFAULT_PINS = { admin:'111111', asst:'000000' };
 function getPins(){
   try {
     const s=localStorage.getItem('goldmates_pins');
@@ -1273,7 +1287,7 @@ let editId=null, selProd=null, curFilter='today', filterFrom='', filterTo='';
 let curUser=null, pinEntry='', pinTarget=null, actFilter='all';
 
 // ═══════════════════ LOGIN ═══════════════════
-function selectUser(key) {
+async function selectUser(key) {
   if(!USERS[key]) return;
   pinTarget = key;
   pinEntry = '';
@@ -1284,7 +1298,7 @@ function selectUser(key) {
   document.getElementById('pinInput').value = '';
   setTimeout(()=>document.getElementById('pinInput').focus(), 100);
 }
-function cancelLogin() {
+async function cancelLogin() {
   pinTarget = null;
   pinEntry = '';
   document.getElementById('loginStep1').style.display='block';
@@ -1292,12 +1306,14 @@ function cancelLogin() {
   document.getElementById('pinInput').value = '';
   document.getElementById('pinErr2').textContent = '';
 }
-function onPinInput() {
+async function onPinInput() {
   const v = document.getElementById('pinInput').value;
   document.getElementById('pinErr2').textContent = '';
   if(v.length === 6) setTimeout(doLogin, 150);
 }
-function doLogin() {
+async function doLogin() {
+  // Always fetch latest PINs from Supabase before comparing
+  await loadPinsFromSupabase();
   const pins = getPins();
   const entered = document.getElementById('pinInput').value.trim();
   if(!entered) { document.getElementById('pinErr2').textContent = '❌ Please enter your PIN'; return; }
@@ -1332,7 +1348,7 @@ async function launchApp() {
   document.getElementById('saleDate').value = today();
   await loadAll();
 }
-function logout() {
+async function logout() {
   curUser=null; localStorage.removeItem('goldmates_user');
   document.getElementById('appWrap').classList.remove('visible');
   document.getElementById('mobNav') && document.getElementById('mobNav').classList.remove('show');
@@ -1368,6 +1384,12 @@ window.addEventListener('DOMContentLoaded', async () => {
 
 // ═══════════════════ UTILS ═══════════════════
 function peso(n){return '₱'+Number(n||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function getDaysOverdue(dueDateStr){
+  if(!dueDateStr) return 0;
+  const due = new Date(dueDateStr); due.setHours(0,0,0,0);
+  const now = new Date(); now.setHours(0,0,0,0);
+  return Math.max(0, Math.floor((now - due) / 86400000));
+}
 function pesoCompact(n){
   const v=Number(n||0);
   if(v>=1000000) return '₱'+(v/1000000).toFixed(2)+'M';
@@ -1433,8 +1455,23 @@ function nowPH(){
 function st(p){if(!p.stock_qty||p.stock_qty<=0)return 'out';if(p.stock_qty<=(p.min_stock||0))return 'low';return 'ok';}
 function badgeEl(p){const s=st(p);return s==='out'?`<span class="badge b-out">⛔ Out of Stock</span>`:s==='low'?`<span class="badge b-low">⚠️ Low Stock</span>`:`<span class="badge b-ok">✅ OK</span>`;}
 function qtyColor(p){return st(p)==='out'?'text-red':st(p)==='low'?'text-yellow':'';}
-function alertBadge(){const n=products.filter(p=>st(p)!=='ok').length;const el=document.getElementById('sbBadge');if(n>0){el.textContent=n;el.style.display='';el.className='sb-badge yellow';}else el.style.display='none';}
-function clock(){const now=new Date();document.getElementById('tbDate').textContent=now.toLocaleDateString('en-PH',{weekday:'short',year:'numeric',month:'short',day:'numeric'});const h=now.getHours();document.getElementById('greeting').textContent=h<12?'Good morning 👋':h<17?'Good afternoon 👋':'Good evening 👋';document.getElementById('dashDateSub').textContent='Sales overview for '+now.toLocaleDateString('en-PH',{month:'long',day:'numeric',year:'numeric'});}
+function alertBadge(){
+  const n=products.filter(p=>st(p)!=='ok').length;
+  const el=document.getElementById('sbBadge');
+  if(n>0){el.textContent=n;el.style.display='';el.className='sb-badge yellow';}else el.style.display='none';
+  // Update overdue AR badge on Dashboard nav
+  const today=new Date(); today.setHours(0,0,0,0);
+  const overdueCount=(workOrders||[]).filter(w=>
+    w.payment_status==='receivable'&&w.status!=='cancelled'&&w.status!=='completed'&&
+    w.due_date&&new Date(w.due_date)<today
+  ).length;
+  const arBadge=document.getElementById('sbARBadge');
+  if(arBadge){
+    if(overdueCount>0){arBadge.textContent=overdueCount;arBadge.style.display='';}
+    else arBadge.style.display='none';
+  }
+}
+async function clock(){const now=new Date();document.getElementById('tbDate').textContent=now.toLocaleDateString('en-PH',{weekday:'short',year:'numeric',month:'short',day:'numeric'});const h=now.getHours();document.getElementById('greeting').textContent=h<12?'Good morning 👋':h<17?'Good afternoon 👋':'Good evening 👋';document.getElementById('dashDateSub').textContent='Sales overview for '+now.toLocaleDateString('en-PH',{month:'long',day:'numeric',year:'numeric'});}
 
 function genSaleId(){
   const now=new Date();const y=now.getFullYear().toString().slice(-2);
@@ -1447,46 +1484,49 @@ function genSaleId(){
 // ═══════════════════ LOAD ═══════════════════
 async function loadAll(){
   try {
-    [products, sales, expenses, actLogs, categories, employees] = await Promise.all([
-      apiGet('KGProduct'),
-      apiGet('KGSale'),
-      apiGet('KGExpense').catch(()=>[]),
-      apiGet('KGActivity').catch(()=>[]),
-      apiGet('KGCategory').catch(()=>[]),
-      apiGet('KGEmployee').catch(()=>[]),
+    [[products, sales, expenses, actLogs, categories, employees], workOrdersRaw] = await Promise.all([
+      Promise.all([
+        apiGet('KGProduct').catch(()=>[]),
+        apiGet('KGSale').catch(()=>[]),
+        apiGet('KGExpense').catch(()=>[]),
+        apiGet('KGActivity').catch(()=>[]),
+        apiGet('KGCategory').catch(()=>[]),
+        apiGet('KGEmployee').catch(()=>[]),
+      ]),
+      apiGet('KGWorkOrder').catch(()=>[]),
     ]);
-    // Normalize: map created_at → created_date for backward compat
-    sales.forEach(s=>{ if(!s.created_date&&s.created_at) s.created_date=s.created_at; if(s.created_date&&!s.created_date.endsWith('Z')&&!s.created_date.includes('+')) s.created_date+='Z'; });
-    sales.sort((a,b)=>new Date(b.created_date||b.created_at||0)-new Date(a.created_date||a.created_at||0));
-    expenses.forEach(e=>{ if(!e.created_date&&e.created_at) e.created_date=e.created_at; if(e.created_date&&!e.created_date.endsWith('Z')&&!e.created_date.includes('+')) e.created_date+='Z'; });
-    expenses.sort((a,b)=>new Date(b.created_date||b.created_at||0)-new Date(a.created_date||a.created_at||0));
-    expenses.forEach(e=>{ if(e.created_date&&e.created_date.includes('T')&&!e.created_date.endsWith('Z')&&!e.created_date.includes('+')) e.created_date+='Z'; });
-    expenses.sort((a,b)=>new Date(b.created_date||0)-new Date(a.created_date||0));
+    workOrders = workOrdersRaw;
+    workOrders.sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0));
+    // Normalize: map created_at → created_at for backward compat
+    sales.forEach(s=>{ if(!s.created_at&&s.created_at) s.created_at=s.created_at; if(s.created_at&&!s.created_at.endsWith('Z')&&!s.created_at.includes('+')) s.created_at+='Z'; });
+    sales.sort((a,b)=>new Date(b.created_at||b.created_at||0)-new Date(a.created_at||a.created_at||0));
+    expenses.forEach(e=>{ if(!e.created_at&&e.created_at) e.created_at=e.created_at; if(e.created_at&&!e.created_at.endsWith('Z')&&!e.created_at.includes('+')) e.created_at+='Z'; });
+    expenses.sort((a,b)=>new Date(b.created_at||b.created_at||0)-new Date(a.created_at||a.created_at||0));
+    expenses.forEach(e=>{ if(e.created_at&&e.created_at.includes('T')&&!e.created_at.endsWith('Z')&&!e.created_at.includes('+')) e.created_at+='Z'; });
+    expenses.sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0));
     // normalize KGActivity: add .timestamp key for renderActLog
     actLogs.forEach(l=>{
       // Normalize timestamps - DB stores without Z (treat as UTC)
-      ['timestamp_ph','created_date'].forEach(k=>{
+      ['timestamp_ph','created_at'].forEach(k=>{
         if(l[k]&&typeof l[k]==='string'&&l[k].includes('T')&&!l[k].endsWith('Z')&&!l[k].includes('+')) l[k]+='Z';
       });
-      if(!l.timestamp) l.timestamp = l.timestamp_ph||l.created_date;
+      if(!l.timestamp) l.timestamp = l.timestamp_ph||l.created_at;
     });
-    actLogs.sort((a,b)=>new Date(b.created_date||0)-new Date(a.created_date||0));
+    actLogs.sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0));
     alertBadge();
-    renderDash();
-    renderExpenses();
-    render();
-    populateCatDropdown();
-    refreshMCatSelect();
+    try { await renderDash(); } catch(re){ console.error('renderDash error:',re); }
+    try { await renderExpenses(); } catch(re){ console.error('renderExpenses error:',re); }
+    try { await render(); } catch(re){ console.error('render error:',re); }
+    try { await populateCatDropdown(); } catch(re){ console.error('populateCatDropdown error:',re); }
+    try { await refreshMCatSelect(); } catch(re){ console.error('refreshMCatSelect error:',re); }
     // Pre-render actlog so spinner is removed even if not navigated yet
     if(curPage!=='actlog') {
       const body=document.getElementById('actLogBody');
       if(body&&body.innerHTML.includes('Loading')) renderActLog();
     }
   } catch(e){
-    toast('⚠️ Failed to load data — retrying...','err');
     console.error('loadAll error:',e);
-    // Auto-retry once after 2s
-    setTimeout(()=>loadAll(),2000);
+    toast('⚠️ Some data failed to load. Refresh to retry.','err');
   }
   // Always refresh mechanic dropdown after data loads
   setTimeout(()=>populateWOMechanic(), 100);
@@ -1506,6 +1546,20 @@ async function go(page){
   document.querySelectorAll('.sb-item,.mob-item').forEach(b=>b.classList.toggle('active',b.dataset.page===page));
   const _tbt=document.getElementById('tbTitle');if(_tbt)_tbt.textContent=TITLES[page]||'';
   if(page==='sale')resetSale();
+  if(page==='dashboard'){
+    // Refresh work orders AND sales for accurate dashboard
+    Promise.all([
+      apiGet('KGWorkOrder').catch(()=>workOrders),
+      apiGet('KGSale').catch(()=>sales),
+    ]).then(([freshWO, freshSales]) => {
+      workOrders = freshWO;
+      workOrders.sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0));
+      freshSales.forEach(s=>{ if(s.created_at&&s.created_at.includes('T')&&!s.created_at.endsWith('Z')&&!s.created_at.includes('+')) s.created_at+='Z'; });
+      freshSales.sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0));
+      sales = freshSales;
+      renderDash();
+    }).catch(()=>renderDash());
+  }
   if(page==='workorders'){
     loadWorkOrders().then(()=>{
       woFilter='active';
@@ -1517,8 +1571,8 @@ async function go(page){
   if(page==='saleslog'){
     // Refresh sales data when navigating to sales log
     apiGet('KGSale').then(fresh=>{
-      fresh.forEach(s=>{ if(s.created_date&&s.created_date.includes('T')&&!s.created_date.endsWith('Z')&&!s.created_date.includes('+')) s.created_date+='Z'; });
-      fresh.sort((a,b)=>new Date(b.created_date||0)-new Date(a.created_date||0));
+      fresh.forEach(s=>{ if(s.created_at&&s.created_at.includes('T')&&!s.created_at.endsWith('Z')&&!s.created_at.includes('+')) s.created_at+='Z'; });
+      fresh.sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0));
       sales=fresh;
       renderSL();
     }).catch(()=>renderSL());
@@ -1544,36 +1598,36 @@ async function go(page){
       ]);
       // Normalize KGActivity timestamps
       freshAct.forEach(l=>{
-        ['timestamp_ph','created_date'].forEach(k=>{
+        ['timestamp_ph','created_at'].forEach(k=>{
           if(l[k]&&typeof l[k]==='string'&&l[k].includes('T')&&!l[k].endsWith('Z')&&!l[k].includes('+')) l[k]+='Z';
         });
-        if(!l.timestamp) l.timestamp = l.timestamp_ph||l.created_date;
+        if(!l.timestamp) l.timestamp = l.timestamp_ph||l.created_at;
       });
       // Normalize KGExpense timestamps  
       freshExp.forEach(e=>{
-        if(e.created_date&&typeof e.created_date==='string'&&e.created_date.includes('T')&&!e.created_date.endsWith('Z')&&!e.created_date.includes('+')) e.created_date+='Z';
+        if(e.created_at&&typeof e.created_at==='string'&&e.created_at.includes('T')&&!e.created_at.endsWith('Z')&&!e.created_at.includes('+')) e.created_at+='Z';
       });
-      freshAct.sort((a,b)=>new Date(b.created_date||0)-new Date(a.created_date||0));
-      freshSales.sort((a,b)=>new Date(b.created_date||0)-new Date(a.created_date||0));
-      freshExp.sort((a,b)=>new Date(b.created_date||0)-new Date(a.created_date||0));
+      freshAct.sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0));
+      freshSales.sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0));
+      freshExp.sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0));
       actLogs = freshAct;
       sales = freshSales;
       expenses = freshExp;
     } catch(e){ console.error('actlog load failed:', e); }
   }
-  render();
+  await render();
 }
-function render(){
-  if(curPage==='dashboard')renderDash();
-  if(curPage==='inventory')renderInv();
-  if(curPage==='saleslog')renderSL();
-  if(curPage==='expenses')renderExpenses();
-  if(curPage==='actlog')renderActLog();
-  if(curPage==='alerts')renderAlerts();
+async function render(){
+  if(curPage==='dashboard') await renderDash();
+  if(curPage==='inventory') await renderInv();
+  if(curPage==='saleslog') await renderSL();
+  if(curPage==='expenses') await renderExpenses();
+  if(curPage==='actlog') await renderActLog();
+  if(curPage==='alerts') await renderAlerts();
 }
 
 // ═══════════════════ FILTER ═══════════════════
-function setFilter(f){
+async function setFilter(f){
   curFilter=f;
   document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('fb-'+f).classList.add('active');
@@ -1581,7 +1635,7 @@ function setFilter(f){
   cd.style.display=f==='custom'?'flex':'none';
   if(f!=='custom') renderDash();
 }
-function applyCustom(){
+async function applyCustom(){
   filterFrom=document.getElementById('filterFrom').value;
   filterTo=document.getElementById('filterTo').value;
   if(filterFrom&&filterTo) renderDash();
@@ -1590,13 +1644,20 @@ function getFilteredExpenses(){
   const now=new Date();
   const todayStr=today();
   const period=document.getElementById('expPeriod')?.value||'today';
+  const from=document.getElementById('expCustomFrom')?.value||'';
+  const to=document.getElementById('expCustomTo')?.value||'';
+  const phNow=new Date(now.toLocaleString('en-US',{timeZone:'Asia/Manila'}));
+  const phYest=new Date(phNow);phYest.setDate(phYest.getDate()-1);
+  const yestStr=phYest.getFullYear()+'-'+String(phYest.getMonth()+1).padStart(2,'0')+'-'+String(phYest.getDate()).padStart(2,'0');
   return expenses.filter(e=>{
-    const d=e.expense_date||e.created_date?.split('T')[0]||'';
+    const d=e.expense_date||e.created_at?.split('T')[0]||'';
     if(!d) return false;
     if(period==='today') return d===todayStr;
-    if(period==='week'){const day=new Date(now);day.setDate(day.getDate()-day.getDay());return new Date(d)>=day;}
+    if(period==='yesterday') return d===yestStr;
+    if(period==='week'){const day=new Date(now);day.setDate(day.getDate()-6);return d>=day.toISOString().substring(0,10)&&d<=todayStr;}
     if(period==='month') return d.startsWith(todayStr.slice(0,7));
-    return true;
+    if(period==='custom') return (!from||d>=from)&&(!to||d<=to);
+    return true; // all
   });
 }
 function getFilteredExpensesForDash(){
@@ -1606,7 +1667,7 @@ function getFilteredExpensesForDash(){
   const phYest=new Date(phNow);phYest.setDate(phYest.getDate()-1);
   const yestStr=phYest.getFullYear()+'-'+String(phYest.getMonth()+1).padStart(2,'0')+'-'+String(phYest.getDate()).padStart(2,'0');
   return expenses.filter(e=>{
-    const d=e.expense_date||e.created_date?.split('T')[0]||'';
+    const d=e.expense_date||e.created_at?.split('T')[0]||'';
     if(!d) return false;
     if(curFilter==='today') return d===todayStr;
     if(curFilter==='yesterday') return d===yestStr;
@@ -1624,7 +1685,8 @@ function getFilteredSales(){
   const phYest=new Date(phNow);phYest.setDate(phYest.getDate()-1);
   const yestStr=phYest.getFullYear()+'-'+String(phYest.getMonth()+1).padStart(2,'0')+'-'+String(phYest.getDate()).padStart(2,'0');
   return sales.filter(s=>{
-    const d=s.sale_date||s.created_date?.split('T')[0]||'';
+    const rawD = s.sale_date || (s.created_at ? (()=>{ const ph=new Date(new Date(s.created_at).toLocaleString('en-US',{timeZone:'Asia/Manila'})); return ph.getFullYear()+'-'+String(ph.getMonth()+1).padStart(2,'0')+'-'+String(ph.getDate()).padStart(2,'0'); })() : '');
+    const d = rawD || '';
     if(!d) return false;
     if(curFilter==='today') return d===todayStr;
     if(curFilter==='yesterday') return d===yestStr;
@@ -1648,21 +1710,48 @@ function filterLabel(){
 }
 
 // ═══════════════════ DASHBOARD ═══════════════════
-function renderDash(){
+async function renderDash(){
   const fs=getFilteredSales();
   const totSRP=products.reduce((s,p)=>s+(p.unit_price||0)*(p.stock_qty||0),0);
   const totMarkup=products.reduce((s,p)=>s+(p.markup_price&&p.markup_price>0?(p.markup_price||0)*(p.stock_qty||0):(p.unit_price||0)*(p.stock_qty||0)),0);
   const totMarkupGain=totMarkup-totSRP;
   const totMarkupPct=totSRP>0?((totMarkupGain/totSRP)*100).toFixed(1):0;
 
-  // Sales breakdown — Total / Cash / A/R / Paid A/R
-  const fsCash   = fs.filter(s => !s.payment_status || s.payment_status === 'cash');
-  const fsAR     = fs.filter(s => s.payment_status === 'receivable');
-  const fsPaidAR = fs.filter(s => s.payment_status === 'paid');
-  const cashRev   = fsCash.reduce((s,sl)=>s+(sl.sale_total||0),0);
-  const arRev     = fsAR.reduce((s,sl)=>s+(sl.sale_total||0),0);
-  const paidARRev = fsPaidAR.reduce((s,sl)=>s+(sl.sale_total||0),0);
-  const periodRev = cashRev + arRev;   // Total = Cash + A/R on creation date
+  // Sales breakdown — Total / Cash / Unpaid Cash / A/R / Paid A/R
+  const fsCash       = fs.filter(s => !s.payment_status || s.payment_status === 'cash');
+  const fsCashUnpaid = fs.filter(s => s.payment_status === 'cash_unpaid');
+  const fsAR         = fs.filter(s => s.payment_status === 'receivable');
+  const fsPaidAR     = fs.filter(s => s.payment_status === 'paid');
+  const cashRev        = fsCash.reduce((s,sl)=>s+(sl.sale_total||0),0);
+  const cashUnpaidRev  = fsCashUnpaid.reduce((s,sl)=>s+(sl.sale_total||0),0);
+  const arRev          = fsAR.reduce((s,sl)=>s+(sl.sale_total||0),0);
+  const paidARRev      = fsPaidAR.reduce((s,sl)=>s+(sl.sale_total||0),0);
+  // Collected from partial payments on A/R WOs — filtered by active date period
+  const now=new Date();
+  const todayStr=today();
+  const phNow=new Date(now.toLocaleString('en-US',{timeZone:'Asia/Manila'}));
+  const phYest=new Date(phNow); phYest.setDate(phYest.getDate()-1);
+  const yestStr=phYest.getFullYear()+'-'+String(phYest.getMonth()+1).padStart(2,'0')+'-'+String(phYest.getDate()).padStart(2,'0');
+  const weekStart=new Date(now); weekStart.setDate(weekStart.getDate()-6);
+  const weekStartStr=weekStart.toISOString().substring(0,10);
+  const monthStr=todayStr.slice(0,7);
+  function _inPeriod(dateStr) {
+    if (!dateStr) return false;
+    if (curFilter==='today')     return dateStr === todayStr;
+    if (curFilter==='yesterday') return dateStr === yestStr;
+    if (curFilter==='week')      return dateStr >= weekStartStr && dateStr <= todayStr;
+    if (curFilter==='month')     return dateStr.startsWith(monthStr);
+    if (curFilter==='all')       return true;
+    if (curFilter==='custom')    return (!filterFrom||dateStr>=filterFrom)&&(!filterTo||dateStr<=filterTo);
+    return true;
+  }
+  const partialCollected = workOrders
+    .filter(w => w.payment_status === 'receivable')
+    .reduce((s,w) => {
+      const hist = Array.isArray(w.payment_history) ? w.payment_history : [];
+      return s + hist.filter(p => _inPeriod(p.date)).reduce((h,p) => h + (p.amount||0), 0);
+    }, 0);
+  const periodRev = cashRev + paidARRev + partialCollected;   // Actual collected revenue
   const periodTx  = fs.length;
   const periodQty = fs.reduce((s,sl)=>s+(sl.qty_sold||0),0);
 
@@ -1709,7 +1798,7 @@ function renderDash(){
   // top sales rows
   const topRows=fs.slice(0,6).map(s=>`
     <tr><td class="fs11 text-gray fw7 tbl-col-hide">${s.sale_id||'—'}</td>
-    <td><div class="fw7">${s.product_name||'—'}</div><div class="fs11 text-gray">${phDate(s.sale_date||s.created_date)}</div></td>
+    <td><div class="fw7">${s.product_name||'—'}</div><div class="fs11 text-gray">${phDate(s.sale_date||s.created_at)}</div></td>
     <td class="tbl-col-hide"><span class="badge b-cat">${s.category||'—'}</span></td>
     <td class="num text-gold fw7">${peso(s.sale_total)}</td>
     <td class="tbl-col-hide"><span class="badge ${s.recorded_by==='Admin'?'b-admin':'b-asst'}">${s.recorded_by||'—'}</span></td></tr>`).join('')
@@ -1717,13 +1806,60 @@ function renderDash(){
 
   const expRows=fexp.slice(0,6).map(e=>`
     <tr>
-    <td style="padding:10px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:0"><div class="fw7" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.description||'—'}</div><div class="fs11 text-gray">${phDate(e.expense_date||e.created_date)}</div></td>
+    <td style="padding:10px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:0"><div class="fw7" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.description||'—'}</div><div class="fs11 text-gray">${phDate(e.expense_date||e.created_at)}</div></td>
     <td style="padding:10px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:0"><span class="badge b-cat" style="max-width:80px;overflow:hidden;text-overflow:ellipsis;display:inline-block">${e.category||'—'}</span></td>
     <td class="num text-red fw7" style="padding:10px 10px;text-align:right;white-space:nowrap">${peso(e.amount)}</td>
     </tr>`).join('')
     ||`<tr><td colspan="3" style="text-align:center;padding:24px;color:var(--gray)">No expenses in this period</td></tr>`;
 
+  // ── Overdue A/R Work Orders ──────────────────────────────────
+  const todayNow = new Date(); todayNow.setHours(0,0,0,0);
+  const overdueAR = workOrders.filter(w =>
+    w.payment_status === 'receivable' &&
+    w.status !== 'cancelled' &&
+    w.status !== 'completed' &&
+    w.due_date &&
+    new Date(w.due_date) < todayNow
+  );
+  alertBadge(); // refresh AR + stock badges
+
   document.getElementById('dashBottom').innerHTML=`
+    <!-- OVERDUE AR BANNER -->
+    ${overdueAR.length > 0 ? `
+    <div style="background:linear-gradient(135deg,#2a0f0f,#1a0a0a);border:1.5px solid rgba(239,68,68,.5);border-radius:var(--r);padding:0;margin-bottom:20px;overflow:hidden;position:relative">
+      <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#ef4444,#f97316)"></div>
+      <div style="padding:16px 20px 12px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:12px">
+          <span style="font-size:28px;line-height:1">🚨</span>
+          <div>
+            <div style="font-size:13px;font-weight:800;color:#ef4444;letter-spacing:.04em;text-transform:uppercase">Overdue A/R — Payment Required</div>
+            <div style="font-size:12px;color:#f87171;margin-top:3px">${overdueAR.length} work order${overdueAR.length>1?'s':''} past due · Total: <strong style="color:#fca5a5">${peso(overdueAR.reduce((s,w)=>s+(w.balance_due||w.grand_total||0),0))}</strong></div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap">
+            <button class="btn btn-sm" onclick="go('workorders')" style="background:#ef4444;color:#fff;font-weight:700;border:none">View A/R →</button>
+            <button id="overdueEmailBtn" class="btn btn-sm" onclick="sendOverdueAREmail(overdueAR)" style="background:#1a1a2e;border:1.5px solid #ef4444;color:#ef4444;font-weight:700">📧 Email Notification</button>
+          </div>
+      </div>
+      <div style="border-top:1px solid rgba(239,68,68,.25);padding:0 20px">
+        ${overdueAR.map(w=>`
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(239,68,68,.12);gap:8px;flex-wrap:wrap">
+          <div style="display:flex;align-items:center;gap:10px;min-width:0">
+            <span style="font-size:16px">🔧</span>
+            <div style="min-width:0">
+              <div style="font-size:13px;font-weight:700;color:#fef2f2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${w.client_name||w.client_name||'Unknown Client'}</div>
+              <div style="font-size:11px;color:#f87171">WO #${(w.wo_number && !w.wo_number.includes('[object')) ? w.wo_number : (w.id||'').slice(-6).toUpperCase()} · Due: ${w.due_date||'no date'} · ${w.vehicle_makemake||w.vehicle_make||''}</div>
+            </div>
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font-size:14px;font-weight:800;color:#fca5a5">${peso(w.balance_due||w.grand_total||0)}</div>
+            <div style="font-size:10px;color:#ef4444;font-weight:600">${getDaysOverdue(w.due_date)} day${getDaysOverdue(w.due_date)!==1?'s':''} overdue</div>
+          </div>
+        </div>`).join('')}
+      </div>
+    </div>
+    ` : ''}
+
     <!-- NET PROFIT BANNER -->
     <div style="background:#141414;border:1px solid ${netProfit>=0?'rgba(212,168,67,.35)':'rgba(239,68,68,.35)'};border-radius:var(--r);padding:20px 28px;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
       <div style="position:absolute;top:0;left:0;right:0;height:3px;background:${netProfit>=0?'var(--gold)':'var(--red)'}"></div>
@@ -1756,27 +1892,35 @@ function renderDash(){
               <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--gray)">Total Sales</div>
               <div style="font-size:10px;color:var(--gray);margin-top:2px">Cash + A/R (by creation)</div>
             </div>
-            <div class="num" style="font-size:20px;font-weight:800;color:var(--gold)">${peso(periodRev)}</div>
+            <div class="num" style="font-size:20px;font-weight:800;color:var(--gold)">${peso(cashRev + cashUnpaidRev + arRev + paidARRev)}</div>
           </div>
           <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-top:1px solid var(--navy3)">
             <div>
               <div style="font-size:12px;font-weight:600;color:#ccc">💵 Cash Sales</div>
+              <div style="font-size:10px;color:var(--gray)">Cash · by creation</div>
             </div>
             <div class="num" style="font-size:15px;font-weight:700;color:var(--green)">${peso(cashRev)}</div>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-top:1px solid var(--navy3)">
+            <div>
+              <div style="font-size:12px;font-weight:600;color:#ccc">⏳ Unpaid Cash</div>
+              <div style="font-size:10px;color:var(--gray)">Cash · not yet collected</div>
+            </div>
+            <div class="num" style="font-size:15px;font-weight:700;color:#facc15">${peso(cashUnpaidRev)}</div>
           </div>
           <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-top:1px solid var(--navy3)">
             <div>
               <div style="font-size:12px;font-weight:600;color:#ccc">📋 A/R Sales</div>
               <div style="font-size:10px;color:var(--gray)">Billed, not yet collected</div>
             </div>
-            <div class="num" style="font-size:15px;font-weight:700;color:#fb923c">${peso(arRev)}</div>
+            <div class="num" style="font-size:15px;font-weight:700;color:#fb923c">${peso(Math.max(0, arRev - partialCollected))}</div>
           </div>
           <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-top:1px solid var(--navy3)">
             <div>
               <div style="font-size:12px;font-weight:600;color:#ccc">✅ Paid A/R</div>
               <div style="font-size:10px;color:var(--gray)">A/R collected this period</div>
             </div>
-            <div class="num" style="font-size:15px;font-weight:700;color:var(--green)">${peso(paidARRev)}</div>
+            <div class="num" style="font-size:15px;font-weight:700;color:var(--green)">${peso(paidARRev + partialCollected)}</div>
           </div>
         </div>
         <!-- Top sales mini-table -->
@@ -1817,7 +1961,7 @@ function renderDash(){
 
 
 // ═══════════════════ INVENTORY ═══════════════════
-function populateCatDropdown(){
+async function populateCatDropdown(){
   const sel = document.getElementById('invCat');
   const current = sel.value;
   const ALL_CATS = getCategories();
@@ -1834,7 +1978,7 @@ function populateCatDropdown(){
   sel.innerHTML = `<option value="">All Categories (${total})</option>` +
     cats.map(c => `<option value="${c}" ${current===c?'selected':''}>${c} (${counts[c]||0})</option>`).join('');
 }
-function renderInv(){
+async function renderInv(){
   const q=document.getElementById('invQ').value.toLowerCase();
   const cat=document.getElementById('invCat').value;
   const stat=document.getElementById('invStat').value;
@@ -1912,16 +2056,16 @@ function renderInv(){
 }
 
 // ═══════════════════ ADD / EDIT ═══════════════════
-function toggleTireSizeRow(cat){
+async function toggleTireSizeRow(cat){
   const row=document.getElementById('tireSizeRow');
   if(row) row.style.display=(cat==='Tires')?'':'none';
 }
-function pickTireSize(el,size){
+async function pickTireSize(el,size){
   document.getElementById('mTireSize').value=size;
   document.querySelectorAll('.size-chip').forEach(c=>c.classList.remove('active'));
   el.classList.add('active');
 }
-function openAdd(){
+async function openAdd(){
   editId=null;
   refreshMCatSelect();
   document.getElementById('modalTitle').textContent='+ Add New Product';
@@ -1934,7 +2078,7 @@ function openAdd(){
   toggleTireSizeRow('Tires');
   document.getElementById('prodModal').classList.add('open');
 }
-function openEdit(id){
+async function openEdit(id){
   const p=products.find(x=>x.id===id);if(!p)return;
   editId=id;
   refreshMCatSelect();
@@ -1958,8 +2102,8 @@ function openEdit(id){
   toggleTireSizeRow(p.category||'Tires');
   document.getElementById('prodModal').classList.add('open');
 }
-function closeModal(){document.getElementById('prodModal').classList.remove('open');}
-function calcMarkupPct(){
+async function closeModal(){document.getElementById('prodModal').classList.remove('open');}
+async function calcMarkupPct(){
   const srp = parseFloat(document.getElementById('mPrice').value) || 0;
   const markup = parseFloat(document.getElementById('mMarkup').value) || 0;
   const row = document.getElementById('markupPctRow');
@@ -2043,7 +2187,7 @@ async function logActivity(type, productName, detail){
     user_role: curUser?.role||'admin',
     timestamp_ph: ts,
     timestamp: ts, // local key for rendering
-    created_date: ts,
+    created_at: ts,
   };
   actLogs.unshift(entry);
   // Save to database (persistent, cross-device)
@@ -2069,7 +2213,7 @@ async function logActivity(type, productName, detail){
   // re-render actlog immediately if currently visible
   if(curPage==='actlog') renderActLog();
 }
-function loadActLogs(){
+async function loadActLogs(){
   // DB is primary source (loaded in loadAll). localStorage is fallback only.
   if(actLogs.length) return;
   try { 
@@ -2077,7 +2221,7 @@ function loadActLogs(){
     if(stored.length) actLogs = stored;
   } catch(e){ actLogs=[]; }
 }
-function setActFilter(f){
+async function setActFilter(f){
   actFilter=f;
   document.querySelectorAll('[id^="alt-"]').forEach(b=>b.classList.remove('active'));
   const btn=document.getElementById('alt-'+f);
@@ -2089,7 +2233,7 @@ function buildUnifiedLog(){
   const actEntries = actLogs.map(l=>({
     _src:'activity',
     _type: l.action_type,
-    _ts: l.timestamp_ph||l.created_date||l.timestamp||'',
+    _ts: l.timestamp_ph||l.created_at||l.timestamp||'',
     name: l.product_name||'—',
     detail: l.detail||'',
     by: l.performed_by||'Unknown',
@@ -2099,18 +2243,18 @@ function buildUnifiedLog(){
   const saleEntries = sales.map(s=>({
     _src:'sale',
     _type:'sale',
-    _ts: s.sale_date ? s.sale_date+'T00:00:00Z' : (s.created_date||''),
+    _ts: s.sale_date ? s.sale_date+'T00:00:00Z' : (s.created_at||''),
     name: s.product_name||'—',
-    detail:`Qty: ${s.qty_sold} · ${peso(s.unit_price)} each · Total: ${peso(s.sale_total)}`,
+    detail:`Qty: ${num(s.qty_sold)} · ${peso(s.unit_price)} each · Total: ${peso(s.sale_total)}`,
     by: s.recorded_by||'Admin',
     role: s.recorded_by==='Admin'?'admin':'assistant',
-    _sale_id: s.sale_id,
+    _sale_id: (s.sale_id && !s.sale_id.includes('[object')) ? s.sale_id : null,
   }));
   // 3. KGExpense entries
   const expEntries = expenses.map(e=>({
     _src:'expense',
     _type:'expense',
-    _ts: e.expense_date ? e.expense_date+'T00:00:00Z' : (e.created_date||''),
+    _ts: e.expense_date ? e.expense_date+'T00:00:00Z' : (e.created_at||''),
     name: e.description||'—',
     detail:`${peso(e.amount)} · ${e.category||'Other'}${e.notes?' · '+e.notes:''}`,
     by: e.recorded_by||'Admin',
@@ -2121,7 +2265,7 @@ function buildUnifiedLog(){
   all.sort((a,b)=>new Date(b._ts||0)-new Date(a._ts||0));
   return all;
 }
-function renderActLog(){
+async function renderActLog(){
   const who=document.getElementById('actWho')?.value||'';
   const productTypes=['add','edit','delete','restock','price_change'];
   const saleTypes=['sale'];
@@ -2179,7 +2323,7 @@ function renderActLog(){
 }
 
 // ═══════════════════ SALE ═══════════════════
-function resetSale(){
+async function resetSale(){
   selProd=null;
   ['saleQ','saleQty','saleTot','saleNote'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('saleDate').value=today();
@@ -2188,11 +2332,11 @@ function resetSale(){
   document.getElementById('selProdBox').style.display='none';
   document.getElementById('saleHint').textContent='';
 }
-function saleSearch(){
+async function saleSearch(){
   const q=document.getElementById('saleQ').value.toLowerCase().trim();
   const res=document.getElementById('saleResults');
   if(!q){res.style.display='none';return;}
-  const matches=products.filter(p=>[p.product_name,p.brand||'',p.product_id||'',p.sku||''].join(' ').toLowerCase().includes(q)).slice(0,8);
+  const matches=products.filter(p=>(p.stock_qty||0)>0&&[p.product_name,p.brand||'',p.product_id||'',p.sku||''].join(' ').toLowerCase().includes(q)).slice(0,8);
   if(!matches.length){res.style.display='none';return;}
   res.style.display='block';
   res.innerHTML=matches.map(p=>`
@@ -2203,8 +2347,9 @@ function saleSearch(){
         <div class="fs11 ${p.stock_qty<=0?'text-red':p.stock_qty<=(p.min_stock||0)?'text-yellow':'text-gray'}">${p.stock_qty} in stock</div>
       </div></div>`).join('');
 }
-function pickProd(id){
+async function pickProd(id){
   selProd=products.find(p=>p.id===id);if(!selProd)return;
+  if((selProd.stock_qty||0)<=0){toast('⛔ This product is out of stock','err');selProd=null;return;}
   document.getElementById('saleQ').value=selProd.product_name;
   document.getElementById('saleResults').style.display='none';
   document.getElementById('selName').textContent=selProd.product_name;
@@ -2213,8 +2358,8 @@ function pickProd(id){
   document.getElementById('saleHint').textContent=`Available: ${selProd.stock_qty} ${selProd.unit||'pcs'}`;
   calcTotal();
 }
-function quickSell(id){go('sale');setTimeout(()=>pickProd(id),50);}
-function calcTotal(){
+async function quickSell(id){go('sale');setTimeout(()=>pickProd(id),50);}
+async function calcTotal(){
   if(!selProd)return;
   const q=parseInt(document.getElementById('saleQty').value)||0;
   document.getElementById('saleTot').value=q>0?peso(q*(selProd.markup_price||selProd.unit_price)):'';
@@ -2251,8 +2396,8 @@ async function doSale(){
     selProd.stock_qty = newStock;
     // Refresh sales data fresh from DB and navigate to sales log
     sales = await apiGet('KGSale').catch(()=>sales);
-    sales.forEach(s=>{ if(s.created_date&&s.created_date.includes('T')&&!s.created_date.endsWith('Z')&&!s.created_date.includes('+')) s.created_date+='Z'; });
-    sales.sort((a,b)=>new Date(b.created_date||0)-new Date(a.created_date||0));
+    sales.forEach(s=>{ if(s.created_at&&s.created_at.includes('T')&&!s.created_at.endsWith('Z')&&!s.created_at.includes('+')) s.created_at+='Z'; });
+    sales.sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0));
     go('saleslog');
   } catch(e){toast('Failed: '+e.message,'err');}
   finally{btn.disabled=false;btn.textContent='💰 Confirm Sale & Update Stock';}
@@ -2267,7 +2412,7 @@ document.addEventListener('change', function(e){
 });
 
 // ═══════════════════ EXPORT CSV ═══════════════════
-function exportCSV(type) {
+async function exportCSV(type) {
   const period = document.getElementById('exportPeriod')?.value || 'all';
   const from   = document.getElementById('expFrom')?.value || '';
   const to     = document.getElementById('expTo')?.value || '';
@@ -2290,10 +2435,10 @@ function exportCSV(type) {
   if(type==='sales'){
     header = ['Sale ID','Date','Product','SKU','Category','Qty','Unit Price','Total','Recorded By','Notes'];
     rows = sales
-      .filter(s=>inRange(s.sale_date||s.created_date?.split('T')[0]))
+      .filter(s=>inRange(s.sale_date||s.created_at?.split('T')[0]))
       .map(s=>[
         s.sale_id||'',
-        s.sale_date||s.created_date?.split('T')[0]||'',
+        s.sale_date||s.created_at?.split('T')[0]||'',
         s.product_name||'',
         s.product_id||'',
         s.category||'',
@@ -2308,9 +2453,9 @@ function exportCSV(type) {
   } else {
     header = ['Date','Description','Category','Amount','Recorded By','Notes'];
     rows = expenses
-      .filter(e=>inRange(e.expense_date||e.created_date?.split('T')[0]))
+      .filter(e=>inRange(e.expense_date||e.created_at?.split('T')[0]))
       .map(e=>[
-        e.expense_date||e.created_date?.split('T')[0]||'',
+        e.expense_date||e.created_at?.split('T')[0]||'',
         e.description||'',
         e.category||'',
         e.amount||0,
@@ -2333,13 +2478,124 @@ function exportCSV(type) {
   toast(`✅ Exported ${rows.length} rows → ${filename}`,'ok');
 }
 
-function onPeriodChange(){
+// ═══════════════════════════════════════════════
+// EXPORT PRODUCTS
+// ═══════════════════════════════════════════════
+function exportProducts() {
+  const todayStr = today();
+  const catFilter = document.getElementById('invCat')?.value || '';
+  const statFilter = document.getElementById('invStat')?.value || '';
+  const q = (document.getElementById('invQ')?.value || '').toLowerCase();
+
+  let rows = products.filter(p => {
+    if (catFilter && p.category !== catFilter) return false;
+    if (statFilter) {
+      const s = st(p);
+      if (statFilter === 'ok'  && s !== 'ok')  return false;
+      if (statFilter === 'low' && s !== 'low') return false;
+      if (statFilter === 'out' && s !== 'out') return false;
+    }
+    if (q) {
+      const name = (p.product_name||'').toLowerCase();
+      const brand = (p.brand||'').toLowerCase();
+      const cat   = (p.category||'').toLowerCase();
+      if (!name.includes(q) && !brand.includes(q) && !cat.includes(q)) return false;
+    }
+    return true;
+  });
+
+  if (!rows.length) { toast('No products match the current filter','err'); return; }
+
+  const header = ['Product Name','Brand','Category','Tire Size','Unit (SRP)','Markup Price','Total Price','Stock Qty','Min Stock','Status','Notes'];
+  const data = rows.map(p => {
+    const totalPrice = (p.unit_price||0) + (p.markup_price||0);
+    const status = st(p);
+    return [
+      p.product_name||'',
+      p.brand||'',
+      p.category||'',
+      p.tire_size||'',
+      p.unit_price||0,
+      p.markup_price||0,
+      totalPrice,
+      p.stock_qty||0,
+      p.min_stock||0,
+      status,
+      p.notes||''
+    ];
+  });
+
+  const escape = v => `"${String(v).replace(/"/g,'""')}"`;
+  const csv = [header, ...data].map(r => r.map(escape).join(',')).join('\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `GOLDMATES_Products_${todayStr}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast(`✅ Exported ${rows.length} products → GOLDMATES_Products_${todayStr}.csv`, 'ok');
+}
+
+// ═══════════════════════════════════════════════
+// EXPORT EXPENSES (from Expenses page with its own period/custom filter)
+// ═══════════════════════════════════════════════
+function exportExpenses() {
+  const todayStr = today();
+  const period = document.getElementById('expPeriod')?.value || 'all';
+  const from = document.getElementById('expCustomFrom')?.value || '';
+  const to = document.getElementById('expCustomTo')?.value || '';
+  const q = (document.getElementById('expQ')?.value || '').toLowerCase();
+  const cat = document.getElementById('expCat')?.value || '';
+
+  let list = getFilteredExpenses().filter(e => {
+    const mQ = !q || [e.description||'', e.category||'', e.notes||''].join(' ').toLowerCase().includes(q);
+    return mQ && (!cat || e.category === cat);
+  });
+
+  if (!list.length) { toast('No expenses in selected range','err'); return; }
+
+  const header = ['Date','Description','Category','Amount','Recorded By','Notes'];
+  const data = list.map(e => [
+    e.expense_date || e.created_at?.split('T')[0] || '',
+    e.description || '',
+    e.category || '',
+    e.amount || 0,
+    e.recorded_by || '',
+    e.notes || ''
+  ]);
+
+  const lbl = period === 'custom' && from && to ? `${from}_to_${to}` : period;
+  const filename = `GOLDMATES_Expenses_${lbl}_${todayStr}.csv`;
+  const escape = v => `"${String(v).replace(/"/g,'""')}"`;
+  const csv = [header, ...data].map(r => r.map(escape).join(',')).join('\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+  toast(`✅ Exported ${list.length} rows → ${filename}`, 'ok');
+}
+
+
+// ═══════════════════════════════════════════════
+// EXPENSES CUSTOM DATE RANGE HANDLER
+// ═══════════════════════════════════════════════
+function onExpPeriodChange() {
+  const v = document.getElementById('expPeriod')?.value;
+  const customDiv = document.getElementById('expCustomRange');
+  if (customDiv) customDiv.style.display = v === 'custom' ? 'flex' : 'none';
+  renderExpenses();
+}
+
+
+async function onPeriodChange(){
   const period=document.getElementById('exportPeriod')?.value||'all';
   const customDiv=document.getElementById('exportCustom');
   if(customDiv) customDiv.style.display=(period==='custom')?'flex':'none';
   renderSL();
 }
-function renderSL(){
+async function renderSL(){
   const q=document.getElementById('slQ').value.toLowerCase();
   const cat=document.getElementById('slCat').value;
   const who=document.getElementById('slWho').value;
@@ -2368,14 +2624,14 @@ function renderSL(){
   }
   const list=sales.filter(s=>{
     const mQ=!q||[s.product_name||'',s.sale_id||'',s.recorded_by||''].join(' ').toLowerCase().includes(q);
-    const dateOk=inDateRange(s.sale_date||s.created_date);
+    const dateOk=inDateRange(s.sale_date||s.created_at);
     return mQ&&(!cat||s.category===cat)&&(!who||s.recorded_by===who)&&dateOk;
   });
   const tot=list.reduce((s,sl)=>s+(sl.sale_total||0),0);
   document.getElementById('slBody').innerHTML=list.map(s=>`
-    <tr><td class="fs11 text-gray fw7">${s.sale_id||'—'}</td>
-    <td style="white-space:nowrap"><span class="desktop-date">${phDate(s.sale_date||s.created_date)}</span><span class="mobile-date">${phDateShort(s.sale_date||s.created_date)}</span></td>
-    <td><div class="fw7">${s.product_name||'—'}</div><div class="fs11 text-gray">${s.product_id||''}</div></td>
+    <tr><td class="fs11 text-gray fw7">${(s.sale_id && !s.sale_id.includes('[object')) ? s.sale_id : (s.created_at ? 'SL-'+new Date(s.created_at).toISOString().slice(2,10).replace(/-/g,'')+'-'+String(s.id||'').slice(-4).toUpperCase() : '—')}</td>
+    <td style="white-space:nowrap"><span class="desktop-date">${phDate(s.sale_date||s.created_at)}</span><span class="mobile-date">${phDateShort(s.sale_date||s.created_at)}</span></td>
+    <td><div class="fw7">${(s.product_name||'—').replace(/\[object Promise\]/g, s.wo_id ? ('#'+(s.wo_id||'').slice(-6).toUpperCase()) : '?')}</div><div class="fs11 text-gray">${s.product_id||''}</div></td>
     <td class="tbl-col-hide"><span class="badge b-cat">${s.category||'—'}</span></td>
     <td class="fw7">${num(s.qty_sold)}</td>
     <td class="num tbl-col-hide">${peso(s.unit_price)}</td>
@@ -2386,7 +2642,7 @@ function renderSL(){
   document.getElementById('slFooter').innerHTML=list.length?`${list.length} transactions · Total: <span class="num text-gold fw7" style="font-size:15px">${peso(tot)}</span>`:'';
 }
 
-async async function delSaleLog(id){
+async function delSaleLog(id){
   if(curUser?.role!=='admin'){toast('⛔ Admin access only','err');return;}
   const sl = sales.find(s => s.id === id);
   if(!confirm('Delete this sale record? Stock will be restored if applicable.')) return;
@@ -2413,7 +2669,7 @@ async async function delSaleLog(id){
 
 
 // ═══════════════════ EXPENSES ═══════════════════
-function renderExpenses(){
+async function renderExpenses(){
   const q=(document.getElementById('expQ')?.value||'').toLowerCase();
   const cat=document.getElementById('expCat')?.value||'';
   const list=getFilteredExpenses().filter(e=>{
@@ -2426,7 +2682,7 @@ function renderExpenses(){
       <td><div class="fw7">${e.description||'—'}</div></td>
       <td><span class="badge b-cat">${e.category||'—'}</span></td>
       <td class="num text-red fw7">${peso(e.amount)}</td>
-      <td><div class="fw7 fs12">${phDate(e.expense_date||e.created_date)}</div><div class="fs11 text-gray fs10">${e.created_date?phTime(e.created_date):''}</div></td>
+      <td><div class="fw7 fs12">${phDate(e.expense_date||e.created_at)}</div><div class="fs11 text-gray fs10">${e.created_at?phTime(e.created_at):''}</div></td>
       <td class="tbl-col-hide"><span class="badge ${e.recorded_by==='Admin'?'b-admin':'b-asst'}">${e.recorded_by||'Admin'}</span></td>
       <td class="tbl-col-hide fs11 text-gray">${e.notes||'—'}</td>
       <td><button class="btn btn-xs" style="background:var(--red2);color:var(--red);border:1px solid rgba(239,68,68,.3)" onclick="deleteExpense('${e.id}','${(e.description||'').replace(/'/g,"'")}')">🗑️</button></td>
@@ -2446,7 +2702,7 @@ async function deleteExpense(id,desc){
 }
 
 // ═══════════════════ ALERTS ═══════════════════
-function renderAlerts(){
+async function renderAlerts(){
   const out=products.filter(p=>st(p)==='out');
   const low=products.filter(p=>st(p)==='low');
   if(!out.length&&!low.length){
@@ -2470,12 +2726,12 @@ function renderAlerts(){
 }
 
 // ═══════════════════ CHANGE PIN (Admin only) ═══════════════════
-function openChangePin(){
+async function openChangePin(){
   document.getElementById('newAdminPin').value='';
   document.getElementById('newAsstPin').value='';
   document.getElementById('changePinModal').classList.add('open');
 }
-function closeChangePin(){ document.getElementById('changePinModal').classList.remove('open'); }
+async function closeChangePin(){ document.getElementById('changePinModal').classList.remove('open'); }
 async function saveNewPins(){
   const pins=getPins();
   const newAdmin=document.getElementById('newAdminPin').value.trim();
@@ -2512,7 +2768,7 @@ document.getElementById('changePinModal').addEventListener('click',e=>{
 });
 
 // ═══════════════════ ADD EXPENSE ═══════════════════
-function openAddExpense(){
+async function openAddExpense(){
   document.getElementById('expModal').classList.add('open');
   document.getElementById('expBy').value=curUser?.name||'Admin';
   document.getElementById('expDesc').value='';
@@ -2521,7 +2777,7 @@ function openAddExpense(){
   document.getElementById('expDate2').value=today();
   document.getElementById('expCatModal').value='Utilities';
 }
-function closeExpModal(){document.getElementById('expModal').classList.remove('open');}
+async function closeExpModal(){document.getElementById('expModal').classList.remove('open');}
 async function saveExpense(){
   const desc=document.getElementById('expDesc').value.trim();
   const amt=parseFloat(document.getElementById('expAmount').value)||0;
@@ -2548,12 +2804,12 @@ async function saveExpense(){
 
 // ═══════════════════ DELETE ═══════════════════
 let deleteTarget=null;
-function confirmDelete(id,name){
+async function confirmDelete(id,name){
   deleteTarget={id,name};
   document.getElementById('delName').textContent=name;
   document.getElementById('delModal').classList.add('open');
 }
-function closeDelModal(){document.getElementById('delModal').classList.remove('open');deleteTarget=null;}
+async function closeDelModal(){document.getElementById('delModal').classList.remove('open');deleteTarget=null;}
 async function doDelete(){
   if(!deleteTarget)return;
   const btn=document.getElementById('delConfirmBtn');
@@ -2568,7 +2824,7 @@ async function doDelete(){
 }
 
 // ═══════════════════ TOAST / MODAL ═══════════════════
-function toast(msg,type='ok'){
+async function toast(msg,type='ok'){
   const el=document.createElement('div');
   el.className=`toast ${type}`;el.textContent=msg;
   document.getElementById('toasts').appendChild(el);
@@ -2633,7 +2889,7 @@ async function removeCategory(id, name){
   }
 }
 
-function renderCatMgr(){
+async function renderCatMgr(){
   const list = document.getElementById('catMgrList');
   if(!list) return;
   const counts = {};
@@ -2653,7 +2909,7 @@ function renderCatMgr(){
   }).join('');
 }
 
-function refreshMCatSelect(){
+async function refreshMCatSelect(){
   const sel = document.getElementById('mCat');
   if(!sel) return;
   const current = sel.value;
@@ -2671,7 +2927,7 @@ let workOrders = [];
 let woTemplates = [];
 let currentWOId = null;
 let woFilter = 'active';
-let woVatEnabled = true;   // VAT toggle state for current WO
+let woVatEnabled = false;  // VAT toggle state for current WO — OFF by default
 let woDiscEnabled = false; // Discount toggle state for current WO
 let woServices = [];   // [{name, price}]
 let woParts = [];      // [{id, product_name, qty, unit_price}]
@@ -2682,9 +2938,15 @@ let currentTplId = null;
 // ---- WO Number generator ----
 function genWONum() {
   const y = new Date().getFullYear();
-  const existing = workOrders.filter(w => w.wo_number && w.wo_number.startsWith('WO-' + y));
-  const seq = existing.length + 1;
-  return 'WO-' + y + '-' + String(seq).padStart(4, '0');
+  const prefix = 'WO-' + y + '-';
+  let maxSeq = 0;
+  workOrders.forEach(w => {
+    if (w.wo_number && w.wo_number.startsWith(prefix) && !w.wo_number.includes('[object')) {
+      const n = parseInt(w.wo_number.slice(prefix.length), 10);
+      if (!isNaN(n) && n > maxSeq) maxSeq = n;
+    }
+  });
+  return prefix + String(maxSeq + 1).padStart(4, '0');
 }
 
 // ---- Load WOs ----
@@ -2699,7 +2961,7 @@ async function loadWorkOrders() {
 }
 
 // ---- Filter ----
-function setWOFilter(f, btn) {
+async function setWOFilter(f, btn) {
   woFilter = f;
   document.querySelectorAll('#woFilterRow .wo-filter-btn').forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
@@ -2711,7 +2973,163 @@ function setWOFilter(f, btn) {
 }
 
 // ---- Render WO List ----
-function renderWOList() {
+
+// ---- Partial Payment System ----
+let ppWOId = null;
+
+async function openPartialPayment(woId) {
+  ppWOId = woId;
+  // Always fetch fresh WO data so payment_history is up-to-date
+  try {
+    const fresh = await apiGet('KGWorkOrder');
+    if (fresh && fresh.length) {
+      workOrders = fresh;
+      workOrders.sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0));
+    }
+  } catch(e) { console.warn('Could not refresh WO for pay modal:', e); }
+  const wo = workOrders.find(w => w.id === woId);
+  if (!wo) return;
+  const bal = wo.balance_due || wo.grand_total || 0;
+  const history = Array.isArray(wo.payment_history) ? wo.payment_history : [];
+  const totalPaid = history.reduce((s,p) => s + (p.amount||0), 0);
+  const currentBal = (wo.grand_total || 0) - totalPaid;
+
+  // Build history table
+  const histRows = history.length ? history.map(p => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.06)">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:700;color:#4ade80;white-space:nowrap">₱${Number(p.amount||0).toLocaleString('en-PH',{minimumFractionDigits:2})}</div>
+        <div style="font-size:11px;color:#aaa;margin-top:2px">${p.date||'—'} · ${p.note||'—'}</div>
+      </div>
+      <div style="font-size:11px;color:#666;margin-left:10px;white-space:nowrap">${p.recorded_by||'—'}</div>
+    </div>`).join('') : `<div style="padding:14px;text-align:center;color:#666;font-size:12px">No payments recorded yet</div>`;
+
+  const modalHtml = `
+  <div id="ppModal" style="position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px">
+    <div style="background:#1a1a1a;border:1px solid rgba(255,255,255,.12);border-radius:14px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto">
+      <div style="padding:20px 20px 0;display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="font-size:16px;font-weight:800;color:#fff">💰 Record Partial Payment</div>
+          <div style="font-size:12px;color:#888;margin-top:3px">WO: ${wo.wo_number||wo.id} · ${wo.client_name||'—'}</div>
+        </div>
+        <button onclick="closePartialPayment()" style="background:none;border:none;color:#888;font-size:20px;cursor:pointer;padding:4px">✕</button>
+      </div>
+      <div style="padding:16px 20px">
+        <!-- Balance Summary -->
+        <div style="background:#111;border-radius:10px;padding:14px 16px;margin-bottom:16px;display:flex;gap:16px;justify-content:space-between">
+          <div style="text-align:center">
+            <div style="font-size:10px;color:#666;font-weight:700;text-transform:uppercase;letter-spacing:.06em">Total Bill</div>
+            <div style="font-size:16px;font-weight:800;color:#fff;margin-top:4px">₱${Number(wo.grand_total||0).toLocaleString('en-PH',{minimumFractionDigits:2})}</div>
+          </div>
+          <div style="text-align:center">
+            <div style="font-size:10px;color:#666;font-weight:700;text-transform:uppercase;letter-spacing:.06em">Total Paid</div>
+            <div style="font-size:16px;font-weight:800;color:#4ade80;margin-top:4px">₱${Number(totalPaid).toLocaleString('en-PH',{minimumFractionDigits:2})}</div>
+          </div>
+          <div style="text-align:center">
+            <div style="font-size:10px;color:#f87171;font-weight:700;text-transform:uppercase;letter-spacing:.06em">Balance Due</div>
+            <div style="font-size:16px;font-weight:800;color:${currentBal<=0?'#4ade80':'#f87171'};margin-top:4px">₱${Number(Math.max(0,currentBal)).toLocaleString('en-PH',{minimumFractionDigits:2})}</div>
+          </div>
+        </div>
+        <!-- Payment History -->
+        <div style="font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Payment History</div>
+        <div style="border:1px solid rgba(255,255,255,.08);border-radius:8px;overflow:hidden;margin-bottom:16px">
+          <div style="font-size:10px;color:#666;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:6px 12px;background:rgba(255,255,255,.04)">Payments</div>
+          ${histRows}
+        </div>
+        ${currentBal > 0 ? `
+        <!-- New Payment Form -->
+        <div style="font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Add New Payment</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;gap:10px">
+            <div style="flex:1">
+              <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">Date</label>
+              <input id="ppDate" type="date" value="${(()=>{const _ph=new Date(new Date().toLocaleString('en-US',{timeZone:'Asia/Manila'}));return _ph.getFullYear()+'-'+String(_ph.getMonth()+1).padStart(2,'0')+'-'+String(_ph.getDate()).padStart(2,'0')})()}" style="width:100%;background:#111;border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#fff;padding:9px 12px;font-size:16px;box-sizing:border-box"/>
+            </div>
+            <div style="flex:1">
+              <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">Amount (₱)</label>
+              <input id="ppAmount" type="number" min="1" max="${currentBal}" step="0.01" placeholder="0.00" style="width:100%;background:#111;border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#fff;padding:9px 12px;font-size:16px;box-sizing:border-box"/>
+            </div>
+          </div>
+          <div>
+            <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">Note (optional)</label>
+            <input id="ppNote" type="text" placeholder="e.g. Cash payment, GCash, etc." style="width:100%;background:#111;border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#fff;padding:9px 12px;font-size:16px;box-sizing:border-box"/>
+          </div>
+          <button onclick="savePartialPayment()" style="background:linear-gradient(135deg,#d4a843,#b8901f);color:#000;font-weight:800;border:none;border-radius:10px;padding:13px;font-size:14px;cursor:pointer;width:100%;margin-top:4px">💰 Record Payment</button>
+        </div>
+        ` : `<div style="text-align:center;padding:16px;background:#0a1a0a;border-radius:10px;border:1px solid #16a34a">
+          <div style="font-size:20px">✅</div>
+          <div style="color:#4ade80;font-weight:700;margin-top:6px">Fully Paid — Balance is ₱0.00</div>
+        </div>`}
+      </div>
+    </div>
+  </div>`;
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+function closePartialPayment() {
+  const m = document.getElementById('ppModal');
+  if (m) m.remove();
+  ppWOId = null;
+}
+
+async function savePartialPayment() {
+  const wo = workOrders.find(w => w.id === ppWOId);
+  if (!wo) return;
+  const amtRaw = parseFloat(document.getElementById('ppAmount').value);
+  if (!amtRaw || amtRaw <= 0) { alert('Enter a valid payment amount.'); return; }
+  const date = document.getElementById('ppDate').value || (()=>{const _ph=new Date(new Date().toLocaleString('en-US',{timeZone:'Asia/Manila'}));return _ph.getFullYear()+'-'+String(_ph.getMonth()+1).padStart(2,'0')+'-'+String(_ph.getDate()).padStart(2,'0')})();
+  const note = document.getElementById('ppNote').value.trim() || 'Payment';
+  // Resolve existing history — support both array (new) and JSON string (legacy)
+  let history = [];
+  if (Array.isArray(wo.payment_history)) {
+    history = [...wo.payment_history];
+  } else if (typeof wo.payment_history === 'string') {
+    try { history = JSON.parse(wo.payment_history); } catch(_){}
+  }
+  const totalPaid = history.reduce((s,p) => s + (p.amount||0), 0);
+  const currentBal = (wo.grand_total||0) - totalPaid;
+  if (currentBal <= 0) { toast('This WO is already fully paid!','ok'); return; }
+  const amt = Math.min(amtRaw, currentBal);
+  history.push({ date, amount: amt, note, recorded_by: curUser?.name||'Admin' });
+  const newTotalPaid = totalPaid + amt;
+  const newBalance = Math.max(0, (wo.grand_total||0) - newTotalPaid);
+  const isFullyPaid = newBalance <= 0;
+  const updates = {
+    payment_history: history,
+    balance_due: newBalance,
+    down_payment: newTotalPaid,
+  };
+  if (isFullyPaid) {
+    updates.payment_status = 'paid';
+    updates.paid_date = date;
+  }
+  const _savedWoId = ppWOId;
+  try {
+    await apiPut('KGWorkOrder', _savedWoId, updates);
+    Object.assign(wo, updates);
+    // Update linked KGSale
+    const linkedSale = (sales||[]).find(s => s.wo_id === ppWOId || s.sale_id === 'WO-'+wo.wo_number);
+    if (linkedSale) {
+      const saleUp = isFullyPaid ? { payment_status: 'paid' } : { payment_status: 'receivable' };
+      await apiPut('KGSale', linkedSale.id, saleUp);
+      Object.assign(linkedSale, saleUp);
+    }
+    await logActivity('sale', wo.client_name||'WO', `Partial payment ₱${amt.toLocaleString('en-PH',{minimumFractionDigits:2})} · Balance: ₱${newBalance.toLocaleString('en-PH',{minimumFractionDigits:2})}`);
+    closePartialPayment();
+    // Refresh workOrders from DB so dashboard + modal show updated payment_history
+    try { workOrders = await apiGet('KGWorkOrder'); workOrders.sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0)); } catch(_){}
+    renderWOList();
+    renderDash();
+    toast(isFullyPaid ? '✅ Fully paid!' : `💰 Payment of ₱${amt.toLocaleString('en-PH',{minimumFractionDigits:2})} recorded`, 'ok');
+    // Re-open modal to show updated payment history (if still has balance)
+    if (!isFullyPaid) setTimeout(() => openPartialPayment(_savedWoId), 250);
+  } catch(e) {
+    console.error('savePartialPayment error:', e);
+    alert('Error saving payment: ' + e.message + '\n\nMake sure the payment_history column exists in gm_work_orders.');
+  }
+}
+
+async function renderWOList() {
   let list = workOrders;
   if (woFilter === 'active') list = list.filter(w => w.status === 'open' || w.status === 'inprogress');
   else if (woFilter !== 'all') list = list.filter(w => w.status === woFilter);
@@ -2727,27 +3145,32 @@ function renderWOList() {
   wrap.innerHTML = '<div class="wo-grid">' + list.map(w => {
     const sc = SC[w.status] || 'wo-status-open';
     const sl = SL[w.status] || w.status;
-    const _charges = w.charges && Array.isArray(w.charges) ? w.charges : [];
-    const _svcArr = _charges.length ? _charges.filter(c=>c.type==='service') : JSON.parse(w.services_json||'[]');
-    const _prtArr = _charges.length ? _charges.filter(c=>c.type==='part') : JSON.parse(w.parts_json||'[]');
+    // charges stored directly as array in gm_work_orders.charges column
+    const _charges = Array.isArray(w.charges) ? w.charges.filter(x=>!(x&&x._meta)) : [];
+    const _svcArr = _charges.filter(c=>c.type==='service');
+    const _prtArr = _charges.filter(c=>c.type==='part');
     const svcCount = _svcArr.length;
     const partsCount = _prtArr.length;
-    const plateLine = [w.plate_number, w.vehicle_make||w.vehicle].filter(Boolean).join(' · ');
-    const mechLine = (w.mechanic_name||w.mechanic) ? '🔧 ' + (w.mechanic_name||w.mechanic) : '';
+    const plateLine = [w.plate_number, w.vehicle_makemake||w.vehicle_make].filter(Boolean).join(' · ');
+    const mechLine = (w.mechanic_name||w.mechanic_name) ? '🔧 ' + (w.mechanic_name||w.mechanic_name) : '';
     return `<div class="wo-card" onclick="viewWO('${w.id}')">
       <div class="wo-card-top">
         <div>
-          <div class="wo-card-num">${w.wo_number || '—'} ${w.payment_status === 'receivable' ? '<span style="font-size:10px;background:rgba(251,146,60,.15);color:#fb923c;border:1px solid #fb923c;border-radius:10px;padding:1px 7px;font-weight:700;margin-left:4px">A/R</span>' : w.payment_status === 'paid' ? '<span style="font-size:10px;background:rgba(16,185,129,.15);color:#10b981;border:1px solid #10b981;border-radius:10px;padding:1px 7px;font-weight:700;margin-left:4px">PAID A/R</span>' : ''}</div>
+          <div class="wo-card-num">${(w.wo_number && !w.wo_number.includes('[object')) ? w.wo_number : ('WO-' + (w.id||'').slice(-6).toUpperCase())} ${w.payment_status === 'receivable' ? '<span style="font-size:10px;background:rgba(251,146,60,.15);color:#fb923c;border:1px solid #fb923c;border-radius:10px;padding:1px 7px;font-weight:700;margin-left:4px">A/R</span>' : w.payment_status === 'paid' ? '<span style="font-size:10px;background:rgba(16,185,129,.15);color:#10b981;border:1px solid #10b981;border-radius:10px;padding:1px 7px;font-weight:700;margin-left:4px">PAID A/R</span>' : ''}</div>
           <span class="wo-status-badge ${sc}">${sl}</span>
           ${w.payment_status ? `<span style="display:inline-block;margin-left:6px;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;vertical-align:middle;${
             w.payment_status==='paid' ? 'background:#14532d;color:#4ade80' :
             w.payment_status==='not_paid' ? 'background:#450a0a;color:#f87171' :
             'background:#1c1a06;color:#facc15'
-          }">${w.payment_status==='paid'?'✅ PAID':w.payment_status==='not_paid'?'❌ UNPAID':w.payment_status==='down'?'💰 DOWN':' ✏️ PARTIAL'}</span>` : ''}
+          }">${w.payment_status==='paid'?'✅ PAID AR':w.payment_status==='cash'?'💵 CASH':w.payment_status==='cash_unpaid'?'⏳ UNPAID':w.payment_status==='receivable'?'📋 A/R':w.payment_status==='not_paid'?'❌ UNPAID':w.payment_status==='down'?'💰 DOWN':'✏️ PARTIAL'}</span>` : ''}
         </div>
-        <div class="wo-card-total">${peso(w.grand_total || 0)}</div>
+        <div class="wo-card-total">
+        <div>${peso(w.grand_total || 0)}</div>
+        ${w.payment_status === 'receivable' && w.balance_due > 0 ? `<div style="font-size:10px;color:#f87171;font-weight:700;margin-top:2px">Bal: ${peso(w.balance_due)}</div>` : ''}
+        ${w.payment_status === 'receivable' && w.balance_due <= 0 && w.grand_total > 0 ? `<div style="font-size:10px;color:#4ade80;font-weight:700;margin-top:2px">Bal: ₱0.00</div>` : ''}
       </div>
-      <div class="wo-card-customer">${(w.client_name||w.customer_name) || '—'}</div>
+      </div>
+      <div class="wo-card-customer">${(w.client_name||w.client_name) || '—'}</div>
       <div class="wo-card-vehicle">${plateLine || '—'}</div>
       ${mechLine ? `<div class="wo-card-meta">${mechLine}</div>` : ''}
       <div class="wo-card-meta">${w.work_date || ''}${w.work_time ? ' · '+w.work_time : ''} · ${svcCount} svc · ${partsCount} part(s)</div>
@@ -2755,9 +3178,12 @@ function renderWOList() {
         <div class="wo-card-actions">
           <button class="btn btn-ghost btn-sm no-print" title="Edit" onclick="event.stopPropagation();openEditWO('${w.id}')">✏️</button>
           <button class="btn btn-ghost btn-sm no-print" title="Print" onclick="event.stopPropagation();openWOPrint('${w.id}')">🖨️</button>
-          <button class="btn btn-ghost btn-sm no-print" title="Delete" onclick="event.stopPropagation();deleteWO('${w.id}')" style="color:#f87171">🗑️</button>
-          ${w.status !== 'cancelled' ? `<button class="btn btn-ghost btn-sm no-print" title="Cancel WO" onclick="event.stopPropagation();cancelWO('${w.id}')" style="color:#fb923c">⛔</button>` : ''}
-          ${w.payment_status === 'receivable' ? `<button class="btn btn-ghost btn-sm no-print" title="Mark as Paid" onclick="event.stopPropagation();markWOPaid('${w.id}')" style="color:#10b981">💚 Paid</button>` : ''}
+          ${w.status !== 'cancelled' && w.status !== 'completed' ? `<button class="btn btn-ghost btn-sm no-print" title="Cancel WO" onclick="event.stopPropagation();cancelWO('${w.id}')" style="color:#fb923c">⛔ Cancel</button>` : ''}
+          ${w.payment_status === 'receivable' ? `
+            <button class="btn btn-ghost btn-sm no-print" title="Add Partial Payment" onclick="event.stopPropagation();openPartialPayment('${w.id}')" style="color:#facc15">💰 Pay</button>
+            <button class="btn btn-ghost btn-sm no-print" title="Mark Fully Paid" onclick="event.stopPropagation();markWOPaid('${w.id}')" style="color:#10b981">✅ Full Paid</button>
+          ` : ''}
+          <button class="btn btn-ghost btn-sm no-print wo-del-btn" title="Delete Work Order" onclick="event.stopPropagation();deleteWO('${w.id}')" style="color:#f87171;margin-left:4px">🗑️</button>
         </div>
       </div>
     </div>`;
@@ -2765,7 +3191,7 @@ function renderWOList() {
 }
 
 // ---- Open New WO ----
-function openNewWO() {
+async function openNewWO() {
   currentWOId = null;
   woServices = []; woParts = [];
   woVatEnabled = true;
@@ -2789,13 +3215,17 @@ function openNewWO() {
   document.getElementById('woPayAmount').value = '';
   document.getElementById('woDownWrap').style.display = 'none';
   document.getElementById('woDueDateWrap').style.display = 'none';
+  if (document.getElementById('woCashPaidWrap')) document.getElementById('woCashPaidWrap').style.display = 'block';
+  if (document.getElementById('woCashPaid')) document.getElementById('woCashPaid').value = 'paid';
+  if (document.getElementById('woARBalanceWrap')) document.getElementById('woARBalanceWrap').style.display = 'none';
   if (document.getElementById('woDueDate')) document.getElementById('woDueDate').value = '';
   // Reset discount toggle UI
   const discBtn = document.getElementById('woDiscToggle');
   if (discBtn) { discBtn.textContent='⬜ DISC OFF'; discBtn.style.background='rgba(136,136,136,0.12)'; discBtn.style.color='#888'; discBtn.style.borderColor='#444'; }
-  // Reset VAT toggle UI
+  // Reset VAT toggle UI (OFF by default)
+  woVatEnabled = false;
   const vatBtn = document.getElementById('woVatToggle');
-  if (vatBtn) { vatBtn.textContent='✅ VAT ON'; vatBtn.style.background='rgba(16,185,129,0.15)'; vatBtn.style.color='#10b981'; vatBtn.style.borderColor='#10b981'; }
+  if (vatBtn) { vatBtn.textContent='⬜ VAT OFF'; vatBtn.style.background='rgba(136,136,136,0.12)'; vatBtn.style.color='#888'; vatBtn.style.borderColor='#444981'; }
   document.getElementById('woPartQ').value = '';
   document.getElementById('woPartResults').style.display = 'none';
   populateWOMechanic();
@@ -2807,7 +3237,7 @@ function openNewWO() {
 
 
 // ---- Open Edit WO ----
-function openEditWO(id) {
+async function openEditWO(id) {
   const wo = workOrders.find(w => w.id === id);
   if (!wo) return;
   currentWOId = id;
@@ -2816,8 +3246,8 @@ function openEditWO(id) {
     woServices = wo.charges.filter(c => c.type === 'service').map(c => ({ name: c.name, price: c.price || 0 }));
     woParts = wo.charges.filter(c => c.type === 'part').map(c => ({ id: null, product_name: c.name, qty: c.qty || 1, unit_price: c.price || 0 }));
   } else {
-    woServices = JSON.parse(wo.services_json || '[]');
-    woParts = JSON.parse(wo.parts_json || '[]');
+    woServices = JSON.parse(wo.charges || '[]');
+    woParts = JSON.parse(wo.charges || '[]');
   }
   // Restore VAT & discount toggle states
   const _woSub = (wo.labor_total||0) + (wo.parts_total||0);
@@ -2852,12 +3282,12 @@ function openEditWO(id) {
   document.getElementById('woStatus').value = wo.status || 'open';
   document.getElementById('woDate').value = wo.work_date || '';
   document.getElementById('woTime').value = wo.work_time || '';
-  document.getElementById('woCustName').value = wo.client_name || wo.customer_name || '';
+  document.getElementById('woCustName').value = wo.client_name || wo.client_name || '';
   document.getElementById('woCustPhone').value = wo.client_phone || wo.customer_phone || '';
   document.getElementById('woPlate').value = wo.plate_number || '';
-  document.getElementById('woVehicle').value = wo.vehicle_make || wo.vehicle || '';
+  document.getElementById('woVehicle').value = wo.vehicle_make_make_make || wo.vehicle_make || '';
   populateWOMechanic();
-  const savedMechanic = (wo.mechanic_name || wo.mechanic || '').split('||')[0].trim();
+  const savedMechanic = (wo.mechanic_name_name || wo.mechanic_name || '').split('||')[0].trim();
   const woMecSel = document.getElementById('woMechanic');
   woMecSel.value = savedMechanic;
   if (savedMechanic && woMecSel.value !== savedMechanic) {
@@ -2869,11 +3299,24 @@ function openEditWO(id) {
   document.getElementById('woNotes').value = wo.notes || '';
   // Payment mode
   const ps = document.getElementById('woPayStatus');
-  ps.value = wo.payment_status || 'cash';
+  const storedPS = wo.payment_status || 'cash';
+  // Map cash_unpaid back to payMode=cash + cashPaid=unpaid
+  if (storedPS === 'cash_unpaid') {
+    ps.value = 'cash';
+    if (document.getElementById('woCashPaid')) document.getElementById('woCashPaid').value = 'unpaid';
+  } else if (storedPS === 'cash') {
+    ps.value = 'cash';
+    if (document.getElementById('woCashPaid')) document.getElementById('woCashPaid').value = 'paid';
+  } else {
+    ps.value = storedPS;
+    if (document.getElementById('woCashPaid')) document.getElementById('woCashPaid').value = 'paid';
+  }
   const isAR = ps.value === 'receivable';
+  if (document.getElementById('woCashPaidWrap')) document.getElementById('woCashPaidWrap').style.display = isAR ? 'none' : 'block';
   document.getElementById('woPayAmount').value = wo.down_payment || '';
   document.getElementById('woDownWrap').style.display = isAR ? 'block' : 'none';
   document.getElementById('woDueDateWrap').style.display = isAR ? 'block' : 'none';
+  if (document.getElementById('woARBalanceWrap')) document.getElementById('woARBalanceWrap').style.display = isAR ? 'block' : 'none';
   if (document.getElementById('woDueDate')) document.getElementById('woDueDate').value = wo.due_date || '';
   document.getElementById('woPartQ').value = '';
   document.getElementById('woPartResults').style.display = 'none';
@@ -2884,27 +3327,33 @@ function openEditWO(id) {
 }
 
 
-function togglePayAmount() {
+async function togglePayAmount() {
   const sel = document.getElementById('woPayStatus').value;
   const isAR = sel === 'receivable';
+  // Cash fields
+  const cashPaidWrap = document.getElementById('woCashPaidWrap');
+  if (cashPaidWrap) cashPaidWrap.style.display = isAR ? 'none' : 'block';
+  // AR fields
   document.getElementById('woDownWrap').style.display = isAR ? 'block' : 'none';
   document.getElementById('woDueDateWrap').style.display = isAR ? 'block' : 'none';
+  const arBal = document.getElementById('woARBalanceWrap');
+  if (arBal) arBal.style.display = isAR ? 'block' : 'none';
   if (!isAR) {
     document.getElementById('woPayAmount').value = '';
-    document.getElementById('woDueDate').value = '';
+    if (document.getElementById('woDueDate')) document.getElementById('woDueDate').value = '';
   }
   calcWOTotals();
 }
 
-function closeWOModal() {
+async function closeWOModal() {
   document.getElementById('woModal').style.display = 'none';
 }
 
 // ---- View WO (just open print preview) ----
-function viewWO(id) { openWOPrint(id); }
+async function viewWO(id) { openWOPrint(id); }
 
 // ---- Services ----
-function addWOService() {
+async function addWOService() {
   const name = document.getElementById('woSvcName').value.trim();
   const price = parseFloat(document.getElementById('woSvcPrice').value) || 0;
   if (!name) { toast('Enter a service name.', 'error'); return; }
@@ -2913,8 +3362,8 @@ function addWOService() {
   document.getElementById('woSvcPrice').value = '';
   renderWOServices(); calcWOTotals();
 }
-function removeWOService(i) { woServices.splice(i, 1); renderWOServices(); calcWOTotals(); }
-function renderWOServices() {
+async function removeWOService(i) { woServices.splice(i, 1); renderWOServices(); calcWOTotals(); }
+async function renderWOServices() {
   const el = document.getElementById('woServiceList');
   if (!el) return;
   if (!woServices.length) { el.innerHTML = '<div style="color:#888888;font-size:13px;padding:6px 0">No services added yet.</div>'; return; }
@@ -2927,7 +3376,7 @@ function renderWOServices() {
 }
 
 // ---- Parts search ----
-function positionDropdown(inputId, dropId) {
+async function positionDropdown(inputId, dropId) {
   const inp = document.getElementById(inputId);
   const drop = document.getElementById(dropId);
   if (!inp || !drop) return;
@@ -2938,11 +3387,11 @@ function positionDropdown(inputId, dropId) {
   drop.style.width = rect.width + 'px';
   drop.style.zIndex = '9999';
 }
-function woPartSearch() {
+async function woPartSearch() {
   const q = document.getElementById('woPartQ').value.toLowerCase().trim();
   const res = document.getElementById('woPartResults');
   if (!q || products.length === 0) { res.style.display = 'none'; return; }
-  const matches = products.filter(p => [p.product_name, p.brand || '', p.category || '', p.product_id || ''].join(' ').toLowerCase().includes(q)).slice(0, 10);
+  const matches = products.filter(p => (p.stock_qty||0)>0 && [p.product_name, p.brand || '', p.category || '', p.product_id || ''].join(' ').toLowerCase().includes(q)).slice(0, 10);
   if (!matches.length) {
     res.style.display = 'block';
     positionDropdown('woPartQ','woPartResults');
@@ -2959,9 +3408,10 @@ function woPartSearch() {
       </div>
     </div>`).join('');
 }
-function pickWOPart(pid) {
+async function pickWOPart(pid) {
   const p = products.find(x => x.id === pid);
   if (!p) return;
+  if((p.stock_qty||0)<=0){toast('⛔ This product is out of stock','err');return;}
   const existing = woParts.find(x => x.id === pid);
   if (existing) { existing.qty = (existing.qty || 1) + 1; }
   else { woParts.push({ id: p.id, product_name: p.product_name, qty: 1, unit_price: p.markup_price || p.unit_price || 0 }); }
@@ -2969,8 +3419,8 @@ function pickWOPart(pid) {
   document.getElementById('woPartResults').style.display = 'none';
   renderWOParts(); calcWOTotals();
 }
-function removeWOPart(i) { woParts.splice(i, 1); renderWOParts(); calcWOTotals(); }
-function renderWOParts() {
+async function removeWOPart(i) { woParts.splice(i, 1); renderWOParts(); calcWOTotals(); }
+async function renderWOParts() {
   const el = document.getElementById('woPartList');
   if (!el) return;
   if (!woParts.length) { el.innerHTML = '<div style="color:#888888;font-size:13px;padding:6px 0">No parts added yet.</div>'; return; }
@@ -2987,13 +3437,13 @@ function renderWOParts() {
       <button class="wo-service-item-del" onclick="removeWOPart(${i})">×</button>
     </div>`).join('');
 }
-function changeWOPartQty(i, delta) {
+async function changeWOPartQty(i, delta) {
   woParts[i].qty = Math.max(1, (woParts[i].qty || 1) + delta);
   renderWOParts(); calcWOTotals();
 }
 
 // ---- Totals ----
-function calcWOTotals() {
+async function calcWOTotals() {
   const labor = woServices.reduce((s, x) => s + (x.price || 0), 0);
   const parts = woParts.reduce((s, x) => s + (x.unit_price || 0) * (x.qty || 1), 0);
   const sub = labor + parts;
@@ -3006,7 +3456,7 @@ function calcWOTotals() {
   const discAmt = afterVat * discPct / 100;
   const grand = afterVat - discAmt;
 
-  // Down payment / balance
+  // Partial payment / balance
   const downInput = document.getElementById('woPayAmount');
   const isAR = document.getElementById('woPayStatus') && document.getElementById('woPayStatus').value === 'receivable';
   const down = isAR ? (parseFloat(downInput ? downInput.value : 0) || 0) : 0;
@@ -3034,10 +3484,20 @@ function calcWOTotals() {
   if (document.getElementById('woTtlBal'))  document.getElementById('woTtlBal').textContent  = peso(balance);
 
   showWOCommission(labor);
+  // Update AR partial/balance display
+  const isARNow = document.getElementById('woPayStatus')?.value === 'receivable';
+  const arBalWrap = document.getElementById('woARBalanceWrap');
+  if (arBalWrap) arBalWrap.style.display = isARNow ? 'block' : 'none';
+  if (isARNow) {
+    const arPartialEl = document.getElementById('woARPartialDisplay');
+    const arBalEl = document.getElementById('woARBalanceDisplay');
+    if (arPartialEl) arPartialEl.textContent = peso(down);
+    if (arBalEl) arBalEl.textContent = peso(balance);
+  }
   return { labor, parts, sub, vat, discPct, discAmt, grand, down, balance };
 }
 
-function toggleWOVat() {
+async function toggleWOVat() {
   woVatEnabled = !woVatEnabled;
   const btn = document.getElementById('woVatToggle');
   if (btn) {
@@ -3048,7 +3508,7 @@ function toggleWOVat() {
   }
   calcWOTotals();
 }
-function toggleWODiscount() {
+async function toggleWODiscount() {
   woDiscEnabled = !woDiscEnabled;
   const btn = document.getElementById('woDiscToggle');
   if (btn) {
@@ -3068,13 +3528,13 @@ function toggleWODiscount() {
 
 
 // ---- Template dropdown in WO modal ----
-function populateWOTplSelect() {
+async function populateWOTplSelect() {
   const sel = document.getElementById('woTplSelect');
   if (!sel) return;
   sel.innerHTML = '<option value="">— Pick a template to prefill services & parts —</option>' +
     woTemplates.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
 }
-function applyWOTemplate(id) {
+async function applyWOTemplate(id) {
   if (!id) return;
   const tpl = woTemplates.find(t => t.id === id);
   if (!tpl) return;
@@ -3088,7 +3548,7 @@ function applyWOTemplate(id) {
 async function saveWO() {
   const custName = document.getElementById('woCustName').value.trim();
   if (!custName) { toast('Customer name is required.', 'error'); return; }
-  const t = calcWOTotals();
+  const t = await calcWOTotals();
   const chargesArr = [
     ...woServices.map(s => ({ type: 'service', name: s.name, qty: 1, price: s.price || 0 })),
     ...woParts.map(p => ({ type: 'part', name: p.product_name, product_id: p.id || null, qty: p.qty || 1, price: p.unit_price || 0 }))
@@ -3096,33 +3556,60 @@ async function saveWO() {
   const vehicleStr = document.getElementById('woVehicle').value.trim();
   const mechVal = document.getElementById('woMechanic').value.trim();
   const mechEmp = employees.find(e => e.name === mechVal || e.id === mechVal);
-  const payStatus = document.getElementById('woPayStatus').value || 'cash';
+  const payMode = document.getElementById('woPayStatus').value || 'cash';
+  const cashPaidSel = document.getElementById('woCashPaid');
+  const cashPaidVal = cashPaidSel ? cashPaidSel.value : 'paid';
+  // Determine effective payment_status
+  let payStatus;
+  if (payMode === 'receivable') {
+    payStatus = 'receivable';
+  } else {
+    payStatus = cashPaidVal === 'unpaid' ? 'cash_unpaid' : 'cash';
+  }
   const dueDate = document.getElementById('woDueDate') ? document.getElementById('woDueDate').value : '';
-  const payload = {
-    wo_number: document.getElementById('woNum').value,
-    status: document.getElementById('woStatus').value,
-    client_name: custName,
-    client_phone: document.getElementById('woCustPhone').value.trim(),
-    plate_number: document.getElementById('woPlate').value.trim().toUpperCase(),
-    vehicle_make: vehicleStr,
-    vehicle_model: '',
-    charges: chargesArr,
-    labor_total: t.labor,
-    parts_total: t.parts,
-    grand_total: t.grand,
-    discount_enabled: woDiscEnabled,
-    discount_pct: t.discPct || 0,
-    discount_amt: t.discAmt || 0,
-    payment_status: payStatus,
+  // Build charges array for gm_work_orders schema
+  const servicesArr = chargesArr.filter(c => c.type === 'service' || c.type === 'labor');
+  const partsArrWO  = chargesArr.filter(c => c.type === 'part');
+  // Store AR metadata (due_date, balance, mechanic info, discount) inside services_json meta key
+  // so we don't need extra DB columns yet
+  const arMeta = {
     due_date: (payStatus === 'receivable' && dueDate) ? dueDate : null,
     down_payment: t.down || 0,
     balance_due: t.balance || 0,
     mechanic_name: mechVal,
     mechanic_id: mechEmp ? mechEmp.id : null,
     commission_rate: mechEmp ? (mechEmp.commission_rate || 0) : 0,
-    commission_amt: mechEmp ? Math.round(t.labor * (mechEmp.commission_rate || 0) / 100 * 100) / 100 : 0,
-    notes: document.getElementById('woNotes').value.trim(),
-    recorded_by: curUser?.name || 'Admin'
+    commission_amt: mechEmp ? Math.round(t.labor * (mechEmp.commission_rate||0)/100*100)/100 : 0,
+    discount_enabled: woDiscEnabled,
+    discount_pct: t.discPct || 0,
+    discount_amt: t.discAmt || 0,
+    charges: chargesArr
+  };
+  const notesRaw = document.getElementById('woNotes').value.trim();
+  const payload = {
+    wo_number:        document.getElementById('woNum').value,
+    status:           document.getElementById('woStatus').value,
+    client_name:      custName,
+    client_phone:     document.getElementById('woCustPhone').value.trim(),
+    plate_number:     document.getElementById('woPlate').value.trim().toUpperCase(),
+    vehicle_make:     vehicleStr,
+    mechanic_name:    mechVal,
+    mechanic_id:      mechEmp ? mechEmp.id : null,
+    commission_rate:  mechEmp ? (mechEmp.commission_rate || 0) : 0,
+    commission_amt:   mechEmp ? Math.round(t.labor * (mechEmp.commission_rate||0)/100*100)/100 : 0,
+    charges:          chargesArr,
+    labor_total:      t.labor,
+    parts_total:      t.parts,
+    grand_total:      t.grand,
+    payment_status:   payStatus,
+    down_payment:     t.down || 0,
+    balance_due:      t.balance || 0,
+    due_date:         (payStatus === 'receivable' && dueDate) ? dueDate : null,
+    discount_enabled: woDiscEnabled,
+    discount_pct:     t.discPct || 0,
+    discount_amt:     t.discAmt || 0,
+    notes:            notesRaw,
+    recorded_by:      curUser?.name || 'Admin'
   };
   const btn = document.getElementById('woSaveBtn');
   btn.disabled = true; btn.textContent = 'Saving…';
@@ -3131,27 +3618,44 @@ async function saveWO() {
       await apiPut('KGWorkOrder', currentWOId, payload);
       const i = workOrders.findIndex(w => w.id === currentWOId);
       if (i > -1) workOrders[i] = { ...workOrders[i], ...payload };
+      // Also update the linked KGSale entry
+      try {
+        const linkedSale = sales.find(s => s.sale_id === 'WO-' + (payload.wo_number||''));
+        if (linkedSale) {
+          const saleUpdate = {
+            unit_price: t.grand,
+            sale_total: t.grand,
+            payment_status: payStatus,
+            notes: 'Updated from Work Order ' + (payload.wo_number || ''),
+            product_name: 'Work Order #' + (payload.wo_number || currentWOId),
+          };
+          await apiPut('KGSale', linkedSale.id, saleUpdate);
+          Object.assign(linkedSale, saleUpdate);
+        }
+      } catch(se) { console.warn('Sale update error:', se.message); }
       toast('Work order updated!', 'success');
     } else {
       const saved = await apiPost('KGWorkOrder', payload);
       workOrders.unshift(saved);
       // Auto-create a sale entry for this WO
-      const today = new Date().toISOString().split('T')[0];
+      const todayPH = today();
       try {
-        await apiPost('KGSale', {
-          sale_id: 'WO-' + (saved.wo_number || saved.id),
+        const newSale = await apiPost('KGSale', {
+          sale_id: 'WO-' + (payload.wo_number || saved.id),
           product_id: null,
-          product_name: 'Work Order #' + (saved.wo_number || ''),
+          product_name: 'Work Order #' + (payload.wo_number || saved.id || ''),
           category: 'Work Order',
           qty_sold: 1,
           unit_price: t.grand,
           sale_total: t.grand,
-          sale_date: today,
+          sale_date: todayPH,
           payment_status: payStatus,
-          wo_id: saved.id,
-          source: 'work_order',
+          wo_id: saved.id || null,
+          notes: 'Auto-generated from Work Order ' + (payload.wo_number || ''),
           recorded_by: curUser?.name || 'Admin'
         });
+        // Push new sale into in-memory sales array immediately
+        if (newSale && newSale.id) sales.unshift(newSale);
         // Deduct stock for parts
         for (const p of woParts) {
           if (p.id) {
@@ -3179,11 +3683,24 @@ async function saveWO() {
 
 // ---- Delete WO ----
 async function deleteWO(id) {
-  if (!confirm('Delete this work order? Stock for parts will be restored.')) return;
   const wo = workOrders.find(w => w.id === id);
+  const status = wo ? wo.status : 'unknown';
+  const statusLabel = status === 'completed' ? 'completed' : status === 'cancelled' ? 'cancelled' : 'in-progress/open';
+  const stockMsg = (status === 'completed' || status === 'cancelled')
+    ? 'Parts stock will NOT be changed (already processed).'
+    : 'Parts stock will be RETURNED to inventory.';
+  if (!confirm(`Permanently delete this work order (${statusLabel})?
+
+${stockMsg}
+
+This cannot be undone.`)) return;
   try {
-    // 1. Restore stock for parts
-    if (wo && wo.charges && Array.isArray(wo.charges)) {
+    // Only restore stock if WO was active (not completed, not already cancelled)
+    // - completed: parts already consumed, sale already counted → no restore
+    // - cancelled: cancelWO already restored stock → no double restore
+    // - open / in-progress: parts were deducted when WO was created → restore
+    const shouldRestoreStock = wo && status !== 'completed' && status !== 'cancelled';
+    if (shouldRestoreStock && wo.charges && Array.isArray(wo.charges)) {
       for (const c of wo.charges) {
         if (c.type === 'part' && c.product_id) {
           const prod = products.find(p => p.id === c.product_id);
@@ -3195,26 +3712,31 @@ async function deleteWO(id) {
         }
       }
     }
-    // 2. Delete linked sales entry
+    // Delete linked sales entry
     const linked = sales.filter(s => s.wo_id === id || s.sale_id === 'WO-' + (wo && wo.wo_number));
     for (const s of linked) { try { await apiDel('KGSale', s.id); } catch(e){} }
     sales = sales.filter(s => s.wo_id !== id && s.sale_id !== 'WO-' + (wo && wo.wo_number));
-    // 3. Delete WO
+    // Delete WO record permanently
     await apiDel('KGWorkOrder', id);
     workOrders = workOrders.filter(w => w.id !== id);
     renderWOList();
     if (curPage === 'dashboard') renderDash();
-    toast('Work order deleted. Stock restored.', 'success');
+    const toastMsg = shouldRestoreStock
+      ? 'Work order deleted. Parts returned to inventory ✅'
+      : 'Work order deleted permanently.';
+    toast(toastMsg, 'success');
   } catch(e) { toast('Error: ' + e.message, 'error'); }
 }
 
 async function cancelWO(id) {
-  if (!confirm('Cancel this work order? Stock for parts will be restored.')) return;
+  if (!confirm('Cancel this work order? Parts stock will be returned to inventory.')) return;
   const wo = workOrders.find(w => w.id === id);
   if (!wo) return;
+  if (wo.status === 'cancelled') { toast('Already cancelled.', 'info'); return; }
   try {
-    // Restore stock for parts
-    if (wo.charges && Array.isArray(wo.charges)) {
+    // Only restore stock if WO was NOT completed (completed means parts already consumed/sold)
+    const shouldRestoreStock = wo.status !== 'completed';
+    if (shouldRestoreStock && wo.charges && Array.isArray(wo.charges)) {
       for (const c of wo.charges) {
         if (c.type === 'part' && c.product_id) {
           const prod = products.find(p => p.id === c.product_id);
@@ -3236,14 +3758,15 @@ async function cancelWO(id) {
     if (i > -1) workOrders[i].status = 'cancelled';
     renderWOList();
     if (curPage === 'dashboard') renderDash();
-    toast('Work order cancelled. Stock restored.', 'success');
+    const msg = shouldRestoreStock ? 'Work order cancelled. Parts returned to inventory ✅' : 'Completed work order cancelled. Stock unchanged.';
+    toast(msg, 'success');
   } catch(e) { toast('Error cancelling: ' + e.message, 'error'); }
 }
 async function markWOPaid(id) {
   if (!confirm('Mark this A/R work order as Paid?')) return;
   const wo = workOrders.find(w => w.id === id);
   if (!wo) return;
-  const today = new Date().toISOString().split('T')[0];
+  const today = (()=>{const _ph=new Date(new Date().toLocaleString('en-US',{timeZone:'Asia/Manila'}));return _ph.getFullYear()+'-'+String(_ph.getMonth()+1).padStart(2,'0')+'-'+String(_ph.getDate()).padStart(2,'0')})();
   try {
     await apiPut('KGWorkOrder', id, { payment_status: 'paid', paid_date: today });
     const i = workOrders.findIndex(w => w.id === id);
@@ -3263,7 +3786,7 @@ async function markWOPaid(id) {
 
 
 // ---- Print WO ----
-function openWOPrint(id) {
+async function openWOPrint(id) {
   const wo = workOrders.find(w => w.id === id);
   if (!wo) return;
   // Support both legacy services_json/parts_json and new charges[] format
@@ -3272,8 +3795,8 @@ function openWOPrint(id) {
     services = wo.charges.filter(c => c.type === 'service').map(c => ({ name: c.name, price: c.price || 0 }));
     parts    = wo.charges.filter(c => c.type === 'part').map(c => ({ product_name: c.name, qty: c.qty || 1, unit_price: c.price || 0 }));
   } else {
-    services = JSON.parse(wo.services_json || '[]');
-    parts    = JSON.parse(wo.parts_json    || '[]');
+    services = JSON.parse(wo.charges || '[]');
+    parts    = JSON.parse(wo.charges    || '[]');
   }
   const labor       = wo.labor_total   || 0;
   const partsTotal  = wo.parts_total   || 0;
@@ -3356,7 +3879,7 @@ function openWOPrint(id) {
   if (vatEnabled && vat > 0) totRows += '<tr><td style="padding:7px 14px;color:#444;font-size:13px;border-bottom:1px solid #eee">VAT (12%)</td><td style="padding:7px 14px;color:#1c1c1c;font-size:13px;font-weight:600;text-align:right;white-space:nowrap;border-bottom:1px solid #eee">' + peso(vat) + '</td></tr>';
   if (discEnabled && discAmt > 0) totRows += '<tr><td style="padding:7px 14px;color:#b45309;font-size:13px;border-bottom:1px solid #eee">Discount (' + discPct + '%)</td><td style="padding:7px 14px;color:#b45309;font-size:13px;font-weight:600;text-align:right;white-space:nowrap;border-bottom:1px solid #eee">-' + peso(discAmt) + '</td></tr>';
   totRows += '<tr style="background:#fffdf5"><td style="padding:10px 14px;color:#b8860b;font-size:14px;font-weight:800;letter-spacing:.02em">GRAND TOTAL</td><td style="padding:10px 14px;color:#b8860b;font-size:14px;font-weight:800;text-align:right;white-space:nowrap">' + peso(grand) + '</td></tr>';
-  if (payStatus === 'receivable' && downPayment > 0) totRows += '<tr><td style="padding:7px 14px;color:#444;font-size:13px;border-bottom:1px solid #eee">Down Payment</td><td style="padding:7px 14px;color:#1c1c1c;font-size:13px;font-weight:600;text-align:right;white-space:nowrap;border-bottom:1px solid #eee">' + peso(downPayment) + '</td></tr>';
+  if (payStatus === 'receivable' && downPayment > 0) totRows += '<tr><td style="padding:7px 14px;color:#444;font-size:13px;border-bottom:1px solid #eee">Partial Payment</td><td style="padding:7px 14px;color:#1c1c1c;font-size:13px;font-weight:600;text-align:right;white-space:nowrap;border-bottom:1px solid #eee">' + peso(downPayment) + '</td></tr>';
   if (payStatus === 'receivable' && balanceDue > 0) totRows += '<tr style="background:#fff5f5"><td style="padding:10px 14px;color:#dc2626;font-size:14px;font-weight:800">BALANCE DUE</td><td style="padding:10px 14px;color:#dc2626;font-size:14px;font-weight:800;text-align:right;white-space:nowrap">' + peso(balanceDue) + '</td></tr>';
   if (payStatus === 'cash') totRows += '<tr><td style="padding:7px 14px;color:#15803d;font-size:12px">Payment Mode</td><td style="padding:7px 14px;color:#15803d;font-size:12px;font-weight:700;text-align:right">CASH</td></tr>';
   if (payStatus === 'receivable') totRows += '<tr><td style="padding:7px 14px;color:#b45309;font-size:12px">Payment Mode</td><td style="padding:7px 14px;color:#b45309;font-size:12px;font-weight:700;text-align:right">ACCOUNT RECEIVABLE</td></tr>';
@@ -3375,7 +3898,7 @@ function openWOPrint(id) {
     : '';
 
   // ── Vehicle / time spans
-  var vehicleSpan = wo.vehicle ? '  <span style="color:#888;font-weight:400;font-size:13px">' + wo.vehicle + '</span>' : '';
+  var vehicleSpan = (wo.vehicle_make_make || wo.vehicle_make) ? '  <span style="color:#888;font-weight:400;font-size:13px">' + (wo.vehicle_make_make || wo.vehicle_make) + '</span>' : '';
   var timeSpan    = wo.work_time ? ' &nbsp;&middot;&nbsp; ' + wo.work_time : '';
 
   // ── Customer info rows
@@ -3408,12 +3931,12 @@ function openWOPrint(id) {
                  : '✏️ PARTIAL PAYMENT';
     var payColor = wo.payment_status === 'paid' ? '#14532d' : wo.payment_status === 'not_paid' ? '#450a0a' : '#1c1a06';
     var payTextColor = wo.payment_status === 'paid' ? '#4ade80' : wo.payment_status === 'not_paid' ? '#f87171' : '#facc15';
-    var payAmtLine = (wo.payment_amount != null && wo.payment_status !== 'paid' && wo.payment_status !== 'not_paid')
-      ? '<span style="margin-left:12px;font-size:13px;color:#1c1c1c;font-weight:700">Amount: ' + peso(wo.payment_amount) + '</span>'
+    var payAmtLine = (wo.down_payment != null && wo.payment_status !== 'paid' && wo.payment_status !== 'not_paid')
+      ? '<span style="margin-left:12px;font-size:13px;color:#1c1c1c;font-weight:700">Amount: ' + peso(wo.down_payment) + '</span>'
       : (wo.payment_status === 'paid' ? '<span style="margin-left:12px;font-size:13px;color:#1c1c1c;font-weight:700">Amount: ' + peso(wo.grand_total||0) + '</span>' : '');
     var balanceLine = '';
-    if ((wo.payment_status === 'down' || wo.payment_status === 'custom') && wo.payment_amount != null) {
-      var bal = (wo.grand_total || 0) - wo.payment_amount;
+    if ((wo.payment_status === 'down' || wo.payment_status === 'custom') && wo.down_payment != null) {
+      var bal = (wo.grand_total || 0) - wo.down_payment;
       balanceLine = '<div style="margin-top:6px;font-size:12px;color:#444">Balance Due: <strong>' + peso(bal < 0 ? 0 : bal) + '</strong></div>';
     }
     payBlock =
@@ -3441,7 +3964,7 @@ function openWOPrint(id) {
         '<div style="font-size:11px;color:#888;margin-top:2px">Work Order</div>' +
       '</div>' +
       '<div style="text-align:right">' +
-        '<div style="font-size:22px;font-weight:900;color:#1c1c1c;letter-spacing:-.5px">' + (wo.wo_number || '—') + '</div>' +
+        '<div style="font-size:22px;font-weight:900;color:#1c1c1c;letter-spacing:-.5px">' + ((wo.wo_number && !wo.wo_number.includes('[object')) ? wo.wo_number : ('WO-' + (wo.id||'').slice(-6).toUpperCase())) + '</div>' +
         '<div style="font-size:12px;color:#888;margin-top:2px">' + (wo.work_date || '—') + timeSpan + '</div>' +
       '</div>' +
     '</div>' +
@@ -3449,10 +3972,11 @@ function openWOPrint(id) {
     // Info table
     '<table style="width:100%;border-collapse:collapse;margin-bottom:22px">' +
       '<tbody>' +
-        infoRow('Customer Name', wo.client_name || wo.customer_name || '—') +
-        infoRow('Phone Number', wo.client_phone || wo.customer_phone || '—') +
-        infoRow('Plate Number', (wo.plate_number || '—') + vehicleSpan) +
-        infoRow('Mechanic', (wo.mechanic_name || wo.mechanic || '—').split('||')[0]) +
+        infoRow('Customer Name', wo.client_name || '—') +
+        infoRow('Phone Number', wo.client_phone || '—') +
+        infoRow('Plate Number', wo.plate_number || '—') +
+        infoRow('Vehicle', (wo.vehicle_make || '—')) +
+        infoRow('Mechanic', wo.mechanic_name || '—') +
       '</tbody>' +
     '</table>' +
     svcBlock +
@@ -3466,12 +3990,12 @@ function openWOPrint(id) {
   document.getElementById('woPrintContent').innerHTML = html;
   document.getElementById('woPrintModal').style.display = 'flex';
 }
-function closeWOPrint() {
+async function closeWOPrint() {
   document.getElementById('woPrintModal').style.display = 'none';
 }
 
 // ---- TEMPLATES ----
-function openNewTpl() {
+async function openNewTpl() {
   currentTplId = null; tplServices = []; tplParts = [];
   document.getElementById('tplModalTitle').textContent = '+ New Template';
   document.getElementById('tplName').value = '';
@@ -3483,7 +4007,7 @@ function openNewTpl() {
   renderTplServices(); renderTplParts();
   document.getElementById('woTplModal').style.display = 'flex';
 }
-function openEditTpl(id) {
+async function openEditTpl(id) {
   const tpl = woTemplates.find(t => t.id === id);
   if (!tpl) return;
   currentTplId = id;
@@ -3497,9 +4021,9 @@ function openEditTpl(id) {
   renderTplServices(); renderTplParts();
   document.getElementById('woTplModal').style.display = 'flex';
 }
-function closeTplModal() { document.getElementById('woTplModal').style.display = 'none'; }
+async function closeTplModal() { document.getElementById('woTplModal').style.display = 'none'; }
 
-function addTplService() {
+async function addTplService() {
   const name = document.getElementById('tplSvcName').value.trim();
   const price = parseFloat(document.getElementById('tplSvcPrice').value) || 0;
   if (!name) return;
@@ -3508,8 +4032,8 @@ function addTplService() {
   document.getElementById('tplSvcPrice').value = '';
   renderTplServices();
 }
-function removeTplService(i) { tplServices.splice(i, 1); renderTplServices(); }
-function renderTplServices() {
+async function removeTplService(i) { tplServices.splice(i, 1); renderTplServices(); }
+async function renderTplServices() {
   const el = document.getElementById('tplServiceList');
   if (!el) return;
   el.innerHTML = tplServices.length
@@ -3517,7 +4041,7 @@ function renderTplServices() {
     : '<div style="color:#888888;font-size:13px;padding:6px 0">No services yet.</div>';
 }
 
-function tplPartSearch() {
+async function tplPartSearch() {
   const q = document.getElementById('tplPartQ').value.toLowerCase().trim();
   const res = document.getElementById('tplPartResults');
   if (!q || products.length === 0) { res.style.display = 'none'; return; }
@@ -3532,7 +4056,7 @@ function tplPartSearch() {
   positionDropdown('tplPartQ','tplPartResults');
   res.innerHTML = matches.map(p => `<div class="prod-item" onclick="pickTplPart('${p.id}')"><div class="prod-item-name">${p.product_name}</div><div class="prod-item-sub">${p.category || ''} · ${peso(p.unit_price || 0)}</div></div>`).join('');
 }
-function pickTplPart(pid) {
+async function pickTplPart(pid) {
   const p = products.find(x => x.id === pid);
   if (!p) return;
   if (!tplParts.find(x => x.id === pid)) tplParts.push({ id: p.id, product_name: p.product_name, qty: 1, unit_price: p.unit_price || 0 });
@@ -3540,8 +4064,8 @@ function pickTplPart(pid) {
   document.getElementById('tplPartResults').style.display = 'none';
   renderTplParts();
 }
-function removeTplPart(i) { tplParts.splice(i, 1); renderTplParts(); }
-function renderTplParts() {
+async function removeTplPart(i) { tplParts.splice(i, 1); renderTplParts(); }
+async function renderTplParts() {
   const el = document.getElementById('tplPartList');
   if (!el) return;
   el.innerHTML = tplParts.length
@@ -3574,7 +4098,7 @@ async function saveTpl() {
   } catch(e) { toast('Error: ' + e.message, 'error'); }
 }
 
-function deleteTpl(id) {
+async function deleteTpl(id) {
   if (!confirm('Delete this template?')) return;
   apiDel('KGWOTemplate', id).then(() => {
     woTemplates = woTemplates.filter(t => t.id !== id);
@@ -3583,7 +4107,7 @@ function deleteTpl(id) {
   }).catch(e => toast('Error: ' + e.message, 'error'));
 }
 
-function renderTplList() {
+async function renderTplList() {
   const wrap = document.getElementById('tplListWrap');
   if (!wrap) return;
   if (!woTemplates.length) {
@@ -3608,7 +4132,7 @@ function renderTplList() {
 
 
 // Download WO as a clean printable HTML file
-function downloadWOHtml() {
+async function downloadWOHtml() {
   const printDiv = document.getElementById('woPrintContent');
   if (!printDiv) return;
   const innerHtml = printDiv.innerHTML;
@@ -3688,8 +4212,22 @@ function downloadWOHtml() {
 </head>
 <body>
 ${innerHtml}
-<script>window.onload=function(){window.print();}<\/script>
+<scr'+'ipt>window.onload=function(){window.print();}<\/script>
 
+
+<!-- Commission History Modal -->
+<div id="empCommHistoryModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;padding:16px">
+  <div style="background:#1c1c1c;border-radius:16px;width:100%;max-width:600px;max-height:90vh;overflow-y:auto;border:1px solid rgba(255,255,255,.08)">
+    <div style="padding:20px 24px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#1c1c1c;z-index:2">
+      <div>
+        <div style="font-size:16px;font-weight:700;color:#fff" id="empCommHistName">Commission History</div>
+        <div style="font-size:12px;color:var(--gray);margin-top:2px" id="empCommHistSub"></div>
+      </div>
+      <button onclick="document.getElementById('empCommHistoryModal').style.display='none'" style="background:rgba(255,255,255,.08);border:none;color:#fff;width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center">✕</button>
+    </div>
+    <div id="empCommHistBody" style="padding:20px 24px"></div>
+  </div>
+</div>
 </body>
 </html>
 `;
@@ -3740,16 +4278,21 @@ async function renderEmployees() {
   try {
     const wos = await apiGet('KGWorkOrder');
     wos.forEach(w => {
-      if (!w.mechanic) return;
-      // Support both plain name and encoded "Name||id||rate"
-      const rawName = w.mechanic.split('||')[0].trim().toLowerCase();
+      // Support both mechanic_name (new) and mechanic (legacy) fields
+      const mechRaw = w.mechanic_name || w.mechanic_name || '';
+      if (!mechRaw) return;
+      // Support encoded "Name||id||rate" format
+      const rawName = mechRaw.split('||')[0].trim().toLowerCase();
       if (!rawName) return;
+      // Only count completed or paid WOs for commission (not cancelled/open)
+      if (w.status === 'cancelled') return;
       const labor = parseFloat(w.labor_total) || 0;
+      if (labor <= 0) return;
       // Find matching employee to get their commission rate
       const emp = employees.find(e => (e.name||'').toLowerCase().trim() === rawName);
       if (!emp) return;
       const rate = parseFloat(emp.commission_rate) || 0;
-      const earned = labor * rate / 100;
+      const earned = Math.round(labor * rate / 100 * 100) / 100;
       if (!commMap[rawName]) commMap[rawName] = { jobs: 0, laborTotal: 0, commission: 0 };
       commMap[rawName].jobs++;
       commMap[rawName].laborTotal += labor;
@@ -3762,9 +4305,9 @@ async function renderEmployees() {
 
 
 // Commission is now rendered inline on each employee card via _renderEmpGrid(commMap)
-function renderEmpCommissions() { /* deprecated - now inline on cards */ }
+async function renderEmpCommissions() { /* deprecated - now inline on cards */ }
 
-function _renderEmpGrid(commMap) {
+async function _renderEmpGrid(commMap) {
   // commMap: { empName(lowercase) -> { jobs, laborTotal, commission } }
   commMap = commMap || {};
   const grid = document.getElementById('empGrid');
@@ -3834,11 +4377,172 @@ function _renderEmpGrid(commMap) {
         <button onclick="openEmpModal('${emp.id}')" style="padding:11px;background:transparent;color:var(--gray);border:none;border-right:1px solid var(--navy4);font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px" onmouseover="this.style.color='var(--gold)'" onmouseout="this.style.color='var(--gray)'">✏️ Edit</button>
         <button onclick="deleteEmployee('${emp.id}','${(emp.name||'').replace(/'/g,'')}')" style="padding:11px;background:transparent;color:var(--gray);border:none;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='var(--gray)'">🗑️ Remove</button>
       </div>
+      <div style="padding:12px 14px;border-top:1px solid var(--navy4)">
+        <button onclick="openPayoutModal('${emp.id}','${(emp.name||'').replace(/'/g,'\'')}',${commEarned})" style="width:100%;padding:11px;background:linear-gradient(135deg,#d4a843,#b8901f);color:#000;border:none;border-radius:8px;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">💸 Record Payout</button>
+        <button onclick="showPayoutHistory('${emp.id}','${(emp.name||'').replace(/'/g,'\'')}' )" style="width:100%;margin-top:6px;padding:9px;background:transparent;color:var(--gray);border:1px solid var(--navy4);border-radius:8px;font-size:12px;font-weight:600;cursor:pointer" onmouseover="this.style.color='#60a5fa';this.style.borderColor='#60a5fa'" onmouseout="this.style.color='var(--gray)';this.style.borderColor='var(--navy4)'">📋 Payout History</button>
+      </div>
     </div>`;
   }).join('');
 }
 
-function openEmpModal(id) {
+// ═══════════════════ COMMISSION PAYOUT SYSTEM ═══════════════════
+
+async function openPayoutModal(empId, empName, totalEarned) {
+  // Fetch all existing payouts for this employee to calculate already paid
+  let existingPayouts = [];
+  try {
+    const all = await apiGet('KGCommissionPayout');
+    existingPayouts = all.filter(p => p.employee_id === empId || p.employee_name === empName);
+  } catch(e) { console.warn('Could not fetch payouts:', e); }
+
+  const totalPaidOut = existingPayouts.reduce((s,p) => s + (parseFloat(p.amount)||0), 0);
+  const outstanding  = Math.max(0, totalEarned - totalPaidOut);
+
+  const phToday = (()=>{ const _ph=new Date(new Date().toLocaleString('en-US',{timeZone:'Asia/Manila'})); return _ph.getFullYear()+'-'+String(_ph.getMonth()+1).padStart(2,'0')+'-'+String(_ph.getDate()).padStart(2,'0'); })();
+
+  const html = `
+  <div id="payoutModal" style="position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px">
+    <div style="background:#1a1a1a;border:1px solid rgba(255,255,255,.12);border-radius:14px;width:100%;max-width:460px;max-height:90vh;overflow-y:auto">
+      <div style="padding:20px 20px 0;display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="font-size:16px;font-weight:800;color:#fff">💸 Record Commission Payout</div>
+          <div style="font-size:12px;color:#888;margin-top:3px">${empName}</div>
+        </div>
+        <button onclick="document.getElementById('payoutModal').remove()" style="background:none;border:none;color:#888;font-size:20px;cursor:pointer">✕</button>
+      </div>
+      <div style="padding:16px 20px">
+        <!-- Summary -->
+        <div style="background:#111;border-radius:10px;padding:14px 16px;margin-bottom:16px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center">
+          <div>
+            <div style="font-size:10px;color:#666;font-weight:700;text-transform:uppercase;letter-spacing:.06em">Total Earned</div>
+            <div style="font-size:15px;font-weight:800;color:#4ade80;margin-top:4px">${peso(totalEarned)}</div>
+          </div>
+          <div>
+            <div style="font-size:10px;color:#666;font-weight:700;text-transform:uppercase;letter-spacing:.06em">Already Paid</div>
+            <div style="font-size:15px;font-weight:800;color:#facc15;margin-top:4px">${peso(totalPaidOut)}</div>
+          </div>
+          <div>
+            <div style="font-size:10px;color:#666;font-weight:700;text-transform:uppercase;letter-spacing:.06em">Outstanding</div>
+            <div style="font-size:15px;font-weight:800;color:${outstanding>0?'#f87171':'#4ade80'};margin-top:4px">${peso(outstanding)}</div>
+          </div>
+        </div>
+        <!-- Form -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+          <div>
+            <label style="font-size:11px;color:#888;font-weight:700;display:block;margin-bottom:5px">DATE</label>
+            <input id="payoutDate" type="date" value="${phToday}" style="width:100%;background:#111;border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:10px 12px;color:#fff;font-size:14px;box-sizing:border-box"/>
+          </div>
+          <div>
+            <label style="font-size:11px;color:#888;font-weight:700;display:block;margin-bottom:5px">AMOUNT (₱)</label>
+            <input id="payoutAmount" type="number" min="0" step="0.01" placeholder="${outstanding.toFixed(2)}" value="${outstanding > 0 ? outstanding.toFixed(2) : ''}" style="width:100%;background:#111;border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:10px 12px;color:#fff;font-size:14px;box-sizing:border-box"/>
+          </div>
+        </div>
+        <div style="margin-bottom:10px">
+          <label style="font-size:11px;color:#888;font-weight:700;display:block;margin-bottom:5px">PERIOD (optional)</label>
+          <input id="payoutPeriod" type="text" placeholder="e.g. June 1–15, 2026" style="width:100%;background:#111;border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:10px 12px;color:#fff;font-size:14px;box-sizing:border-box"/>
+        </div>
+        <div style="margin-bottom:16px">
+          <label style="font-size:11px;color:#888;font-weight:700;display:block;margin-bottom:5px">NOTE (optional)</label>
+          <input id="payoutNote" type="text" placeholder="e.g. Cash payout, GCash, etc." style="width:100%;background:#111;border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:10px 12px;color:#fff;font-size:14px;box-sizing:border-box"/>
+        </div>
+        <button onclick="saveCommissionPayout('${empId}','${empName.replace(/'/g,"\'")}' )" style="width:100%;padding:13px;background:linear-gradient(135deg,#d4a843,#b8901f);color:#000;font-weight:800;border:none;border-radius:10px;font-size:14px;cursor:pointer">💸 Record Payout</button>
+      </div>
+    </div>
+  </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+async function saveCommissionPayout(empId, empName) {
+  const amtRaw = parseFloat(document.getElementById('payoutAmount').value);
+  if (!amtRaw || amtRaw <= 0) { toast('Enter a valid payout amount', 'error'); return; }
+  const date   = document.getElementById('payoutDate').value;
+  const period = document.getElementById('payoutPeriod').value.trim();
+  const note   = document.getElementById('payoutNote').value.trim();
+  try {
+    await apiPost('KGCommissionPayout', {
+      employee_id:   empId,
+      employee_name: empName,
+      amount:        amtRaw,
+      payout_date:   date,
+      period_label:  period || null,
+      note:          note   || null,
+      recorded_by:   curUser?.name || 'Admin'
+    });
+    document.getElementById('payoutModal').remove();
+    toast(`💸 Payout of ${peso(amtRaw)} recorded for ${empName}`, 'success');
+    await logActivity('expense', empName, `Commission payout ₱${amtRaw.toLocaleString('en-PH',{minimumFractionDigits:2})}${period ? ' · ' + period : ''}`);
+    renderEmployees(); // refresh card
+  } catch(e) {
+    toast('Error saving payout: ' + e.message, 'error');
+  }
+}
+
+async function showPayoutHistory(empId, empName) {
+  let payouts = [];
+  try {
+    const all = await apiGet('KGCommissionPayout');
+    payouts = all.filter(p => p.employee_id === empId || p.employee_name === empName);
+    payouts.sort((a,b) => new Date(b.payout_date||0) - new Date(a.payout_date||0));
+  } catch(e) { toast('Could not load payout history', 'error'); return; }
+
+  const totalPaid = payouts.reduce((s,p) => s+(parseFloat(p.amount)||0), 0);
+
+  const rows = payouts.length ? payouts.map(p => `
+    <tr style="border-bottom:1px solid rgba(255,255,255,.05)">
+      <td style="padding:10px 8px;font-size:12px;color:#aaa">${p.payout_date||'—'}</td>
+      <td style="padding:10px 8px;font-size:13px;font-weight:700;color:#facc15">₱${Number(p.amount||0).toLocaleString('en-PH',{minimumFractionDigits:2})}</td>
+      <td style="padding:10px 8px;font-size:12px;color:#ccc">${p.period_label||'—'}</td>
+      <td style="padding:10px 8px;font-size:12px;color:#888">${p.note||'—'}</td>
+      <td style="padding:10px 8px;font-size:11px;color:#666">${p.recorded_by||'—'}</td>
+      <td style="padding:10px 8px;text-align:center">
+        <button onclick="deleteCommissionPayout('${p.id}')" style="background:none;border:none;color:#f87171;cursor:pointer;font-size:13px" title="Delete">🗑️</button>
+      </td>
+    </tr>`).join('')
+  : `<tr><td colspan="6" style="padding:20px;text-align:center;color:#555;font-size:13px">No payouts recorded yet</td></tr>`;
+
+  const html = `
+  <div id="payoutHistModal" style="position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px">
+    <div style="background:#1a1a1a;border:1px solid rgba(255,255,255,.12);border-radius:14px;width:100%;max-width:640px;max-height:90vh;overflow-y:auto">
+      <div style="padding:20px 20px 0;display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="font-size:16px;font-weight:800;color:#fff">📋 Payout History</div>
+          <div style="font-size:12px;color:#888;margin-top:3px">${empName} · Total paid: <strong style="color:#facc15">₱${totalPaid.toLocaleString('en-PH',{minimumFractionDigits:2})}</strong></div>
+        </div>
+        <button onclick="document.getElementById('payoutHistModal').remove()" style="background:none;border:none;color:#888;font-size:20px;cursor:pointer">✕</button>
+      </div>
+      <div style="padding:16px 20px;overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;min-width:500px">
+          <thead>
+            <tr style="border-bottom:1px solid rgba(255,255,255,.1)">
+              <th style="padding:8px;text-align:left;font-size:10px;color:#666;font-weight:700;text-transform:uppercase">Date</th>
+              <th style="padding:8px;text-align:left;font-size:10px;color:#666;font-weight:700;text-transform:uppercase">Amount</th>
+              <th style="padding:8px;text-align:left;font-size:10px;color:#666;font-weight:700;text-transform:uppercase">Period</th>
+              <th style="padding:8px;text-align:left;font-size:10px;color:#666;font-weight:700;text-transform:uppercase">Note</th>
+              <th style="padding:8px;text-align:left;font-size:10px;color:#666;font-weight:700;text-transform:uppercase">By</th>
+              <th style="padding:8px;text-align:center;font-size:10px;color:#666;font-weight:700;text-transform:uppercase">Del</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>
+  </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+async function deleteCommissionPayout(id) {
+  if (!confirm('Delete this payout record?')) return;
+  try {
+    await apiDel('KGCommissionPayout', id);
+    document.getElementById('payoutHistModal').remove();
+    toast('Payout deleted', 'success');
+    renderEmployees();
+  } catch(e) {
+    toast('Error: ' + e.message, 'error');
+  }
+}
+
+async function openEmpModal(id) {
   editEmpId = id || null;
   empPhotoBase64 = '';
   document.getElementById('empModalTitle').textContent = id ? 'Edit Employee' : 'Add Employee';
@@ -3868,13 +4572,13 @@ function openEmpModal(id) {
   document.getElementById('empModal').style.display = 'flex';
 }
 
-function closeEmpModal() {
+async function closeEmpModal() {
   document.getElementById('empModal').style.display = 'none';
   editEmpId = null;
   empPhotoBase64 = '';
 }
 
-function previewEmpPhoto(input) {
+async function previewEmpPhoto(input) {
   const file = input.files[0];
   if (!file) return;
   if (file.size > 2 * 1024 * 1024) { toast('Image must be under 2MB', 'error'); return; }
@@ -3959,6 +4663,55 @@ function showWOCommission(laborTotal) {
     commDiv.innerHTML = `<span style="font-size:12px;color:var(--gold)">👷 <strong>${emp.name}</strong> commission: <strong>${emp.commission_rate}%</strong> of labor = <strong>${peso(comm)}</strong></span>`;
   } else {
     commDiv.style.display = 'none';
+  }
+}
+
+
+// ═══════════════════ OVERDUE AR EMAIL NOTIFICATIONS ═══════════════════
+let _lastOverdueEmailSent = null; // track so we don't spam
+
+async function sendOverdueAREmail(overdueWOs) {
+  if (!overdueWOs || overdueWOs.length === 0) return;
+  const recipient = 'goldmates.enterprises@gmail.com';
+  const today = new Date().toLocaleDateString('en-PH', {year:'numeric',month:'long',day:'numeric'});
+  const woLines = overdueWOs.map(w => {
+    const name    = w.client_name || w.client_name || 'Unknown Client';
+    const woNum   = w.wo_number || 'N/A';
+    const due     = w.due_date ? new Date(w.due_date).toLocaleDateString('en-PH',{year:'numeric',month:'short',day:'numeric'}) : 'No date set';
+    const bal     = w.balance_due || w.grand_total || 0;
+    const plate   = w.plate_number || '';
+    const vehicle = w.vehicle_makemake || w.vehicle_make || '';
+    return '* WO ' + woNum + ' - ' + name + ' (' + plate + ' ' + vehicle + ') | Due: ' + due + ' | Balance: PHP ' + bal.toLocaleString('en-PH',{minimumFractionDigits:2});
+  }).join('%0A');
+  const total = overdueWOs.reduce((s,w)=>s+(w.balance_due||w.grand_total||0),0).toLocaleString('en-PH',{minimumFractionDigits:2});
+  const subject = encodeURIComponent('[GOLDMATES] OVERDUE AR - ' + overdueWOs.length + ' Work Order(s) - ' + today);
+  const bodyText = 'GOLDMATES ENTERPRISES - OVERDUE A/R NOTIFICATION%0A'
+    + 'Generated: ' + encodeURIComponent(today) + '%0A%0A'
+    + 'The following ' + overdueWOs.length + ' work order(s) are past due:%0A%0A'
+    + woLines
+    + '%0A%0ATotal Outstanding: PHP ' + encodeURIComponent(total)
+    + '%0A%0APlease follow up with these clients immediately.%0A%0AGoldmates Dashboard';
+  window.open('mailto:' + recipient + '?subject=' + subject + '&body=' + bodyText, '_blank');
+  showToast('📧 Email draft opened — please send from your email app', 'success');
+  try {
+    await apiPost('KGActivity', {
+      action_type: 'AR_OVERDUE_NOTIF',
+      product_name: overdueWOs.length + ' overdue WO(s)',
+      detail: 'Overdue AR email notification triggered for ' + recipient,
+      performed_by: curUser ? curUser.name : 'Admin',
+      user_role: curUser ? curUser.role : 'admin',
+      timestamp_ph: new Date().toISOString()
+    });
+  } catch(e) { /* non-critical */ }
+}
+
+// Auto-check overdue on dashboard load and show email button in banner
+function checkOverdueAndNotify(overdueWOs) {
+  if (!overdueWOs || overdueWOs.length === 0) return;
+  // Inject email button into the overdue banner if not already there
+  const emailBtn = document.getElementById('overdueEmailBtn');
+  if (emailBtn) {
+    emailBtn.onclick = () => sendOverdueAREmail(overdueWOs);
   }
 }
 
@@ -4068,13 +4821,13 @@ function showWOCommission(laborTotal) {
         <span id="woTtlDisc" style="color:var(--red)">-₱0.00</span>
       </div>
       <div class="wo-total-row grand"><span>GRAND TOTAL</span><span id="woTtlGrand">₱0.00</span></div>
-      <div id="woDownRow" class="wo-total-row" style="display:none"><span>Down Payment</span><span id="woTtlDown">₱0.00</span></div>
+      <div id="woDownRow" class="wo-total-row" style="display:none"><span>Partial Payment</span><span id="woTtlDown">₱0.00</span></div>
       <div id="woBalRow" class="wo-total-row" style="display:none;color:var(--red)"><span style="font-weight:700;color:var(--red)">Balance Due</span><span id="woTtlBal" style="color:var(--red)">₱0.00</span></div>
     </div>
 
     <!-- Payment Mode -->
     <div class="wo-section" style="margin-top:14px">
-      <div class="wo-section-title">Payment</div>
+      <div class="wo-section-title">PAYMENT</div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
         <div class="fg" style="flex:1;min-width:160px">
           <label class="label">Payment Mode</label>
@@ -4083,13 +4836,34 @@ function showWOCommission(laborTotal) {
             <option value="receivable">📋 Account Receivable (A/R)</option>
           </select>
         </div>
+        <!-- Cash: Paid/Unpaid toggle -->
+        <div class="fg" id="woCashPaidWrap" style="flex:1;min-width:160px">
+          <label class="label">Cash Status</label>
+          <select class="sel2" id="woCashPaid" onchange="calcWOTotals()" style="font-size:16px">
+            <option value="paid">✅ Paid</option>
+            <option value="unpaid">⏳ Unpaid</option>
+          </select>
+        </div>
+        <!-- AR: Down payment -->
         <div class="fg" id="woDownWrap" style="flex:1;min-width:160px;display:none">
-          <label class="label">Down Payment ₱</label>
+          <label class="label">Partial Payment ₱</label>
           <input class="inp" id="woPayAmount" type="number" min="0" step="0.01" placeholder="0.00" oninput="calcWOTotals()" style="font-size:16px"/>
         </div>
+        <!-- AR: Due date -->
         <div class="fg" id="woDueDateWrap" style="flex:1;min-width:160px;display:none">
           <label class="label">Due Date</label>
           <input class="inp" id="woDueDate" type="date" style="font-size:16px"/>
+        </div>
+      </div>
+      <!-- AR: Balance display -->
+      <div id="woARBalanceWrap" style="display:none;margin-top:10px;background:rgba(255,255,255,.04);border-radius:10px;padding:12px 14px;display:none">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:12px;color:var(--gray);font-weight:600">PARTIAL PAID</span>
+          <span style="font-size:14px;font-weight:700;color:#4ade80" id="woARPartialDisplay">₱0.00</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
+          <span style="font-size:12px;color:var(--gray);font-weight:600">BALANCE DUE</span>
+          <span style="font-size:15px;font-weight:800;color:#f87171" id="woARBalanceDisplay">₱0.00</span>
         </div>
       </div>
     </div>
@@ -4239,5 +5013,19 @@ function showWOCommission(laborTotal) {
   </div>
 </div>
 
+
+<!-- Commission History Modal -->
+<div id="empCommHistoryModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;padding:16px">
+  <div style="background:#1c1c1c;border-radius:16px;width:100%;max-width:600px;max-height:90vh;overflow-y:auto;border:1px solid rgba(255,255,255,.08)">
+    <div style="padding:20px 24px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#1c1c1c;z-index:2">
+      <div>
+        <div style="font-size:16px;font-weight:700;color:#fff" id="empCommHistName">Commission History</div>
+        <div style="font-size:12px;color:var(--gray);margin-top:2px" id="empCommHistSub"></div>
+      </div>
+      <button onclick="document.getElementById('empCommHistoryModal').style.display='none'" style="background:rgba(255,255,255,.08);border:none;color:#fff;width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center">✕</button>
+    </div>
+    <div id="empCommHistBody" style="padding:20px 24px"></div>
+  </div>
+</div>
 </body>
 </html>
