@@ -245,7 +245,7 @@ tbody td{padding:13px 16px;vertical-align:middle}
 /* SALE SEARCH */
 .prod-results{background:var(--navy3);border:1px solid var(--navy4);border-radius:var(--r2);max-height:240px;overflow-y:auto;margin-top:6px;z-index:100}
 .prod-item{padding:14px 16px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--navy4);transition:background .1s;min-height:48px}
-.prod-item:last-child{border-bottom:none}.prod-item:hover{background:rgba(232,168,0,0.13)}
+.prod-item:last-child{border-bottom:none}.prod-item:hover{background:rgba(232,168,0,0.13)}.prod-item-disabled{opacity:0.4!important;cursor:not-allowed!important;pointer-events:none!important}.prod-item-disabled:hover{background:none!important}
 .prod-item-name{font-size:13px;font-weight:600}
 .prod-item-sub{font-size:11px;color:var(--gray);margin-top:2px}
 .sel-prod-box{background:rgba(232,168,0,0.13);border:1px solid rgba(212,168,67,.3);border-radius:var(--r2);padding:14px 16px;margin-top:8px}
@@ -2341,18 +2341,18 @@ async function saleSearch(){
   res.style.display='block';
   res.innerHTML=matches.map(p=>{
     const oos=(p.stock_qty||0)<=0;
-    const oosbadge=oos?'<span style="margin-left:8px;background:#3a1010;color:#ff6b6b;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;letter-spacing:.5px">⛔ OUT OF STOCK</span>':'';
-    const clickAttr=oos?'':'onclick="pickProd(\'' +p.id+ '\')"';
-    const rowStyle=oos?'opacity:0.45;cursor:not-allowed;pointer-events:none;':'cursor:pointer;';
-    return '<div class="prod-item" style="'+rowStyle+'" '+clickAttr+'>'
-      +'<div style="flex:1"><div class="prod-item-name" style="'+(oos?'color:#888;':'')+'">'+p.product_name+oosbadge+'</div>'
+    const badge=oos?'<span style="margin-left:8px;background:#3a1010;color:#ff6b6b;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px">⛔ OUT OF STOCK</span>':'';
+    return '<div class="prod-item'+(oos?' prod-item-disabled':'')+'" '+(oos?'':'data-pick="'+p.id+'"')+'>'
+      +'<div style="flex:1"><div class="prod-item-name" style="'+(oos?'color:#888;':'')+'">'+p.product_name+badge+'</div>'
       +'<div class="prod-item-sub">'+(p.brand||'')+' · '+p.category+(p.sku?' · SKU: '+p.sku:'')+'</div></div>'
       +'<div style="text-align:right;flex-shrink:0;margin-left:12px">'
       +'<div class="num fw7 fs12" style="color:'+(oos?'#666':'var(--gold)')+'">'+peso(p.markup_price||p.unit_price)+'</div>'
       +'<div class="fs11 '+(p.stock_qty<=0?'text-red':p.stock_qty<=(p.min_stock||0)?'text-yellow':'text-gray')+'">'+p.stock_qty+' in stock</div>'
       +'</div></div>';
   }).join('');
+  res.querySelectorAll('[data-pick]').forEach(el=>el.addEventListener('click',()=>pickProd(el.dataset.pick)));
 }
+
 async function pickProd(id){
   selProd=products.find(p=>p.id===id);if(!selProd)return;
   if((selProd.stock_qty||0)<=0){toast('⛔ This product is out of stock','err');selProd=null;return;}
@@ -3393,7 +3393,7 @@ async function positionDropdown(inputId, dropId) {
   drop.style.width = rect.width + 'px';
   drop.style.zIndex = '9999';
 }
-async function woPartSearch() {
+function woPartSearch() {
   const q = document.getElementById('woPartQ').value.toLowerCase().trim();
   const res = document.getElementById('woPartResults');
   if (!q || products.length === 0) { res.style.display = 'none'; return; }
@@ -3408,16 +3408,16 @@ async function woPartSearch() {
   positionDropdown('woPartQ','woPartResults');
   res.innerHTML = matches.map(p => {
     const oos=(p.stock_qty||0)<=0;
-    const oosB=oos?'<span style="margin-left:8px;background:#3a1010;color:#ff6b6b;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;letter-spacing:.5px">⛔ OUT OF STOCK</span>':'';
-    const clickAttr=oos?'':'onclick="pickWOPart(\'' +p.id+ '\')"';
-    const rowStyle=oos?'opacity:0.45;cursor:not-allowed;pointer-events:none;':'cursor:pointer;';
-    return '<div class="prod-item" style="'+rowStyle+'" '+clickAttr+'>'
+    const badge=oos?'<span style="margin-left:8px;background:#3a1010;color:#ff6b6b;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px">⛔ OUT OF STOCK</span>':'';
+    return '<div class="prod-item'+(oos?' prod-item-disabled':'')+'" '+(oos?'':'data-wopick="'+p.id+'"')+'>'
       +'<div style="flex:1">'
-      +'<div class="prod-item-name" style="'+(oos?'color:#888;':'')+'">'+p.product_name+oosB+'</div>'
+      +'<div class="prod-item-name" style="'+(oos?'color:#888;':'')+'">'+p.product_name+badge+'</div>'
       +'<div class="prod-item-sub">'+(p.category||'')+' · <span style="color:'+(oos?'#666':'var(--green)')+';font-weight:600">MU: '+peso(p.markup_price||p.unit_price||0)+'</span> · Stock: '+(p.stock_qty||0)+'</div>'
       +'</div></div>';
   }).join('');
+  res.querySelectorAll('[data-wopick]').forEach(el=>el.addEventListener('click',()=>pickWOPart(el.dataset.wopick)));
 }
+
 async function pickWOPart(pid) {
   const p = products.find(x => x.id === pid);
   if (!p) return;
