@@ -2342,7 +2342,9 @@ async function saleSearch(){
   res.innerHTML=matches.map(p=>{
     const oos=(p.stock_qty||0)<=0;
     const oosbadge=oos?'<span style="margin-left:8px;background:#3a1010;color:#ff6b6b;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;letter-spacing:.5px">⛔ OUT OF STOCK</span>':'';
-    return '<div class="prod-item sale-prod-row" data-pid="'+p.id+'" style="'+(oos?'opacity:0.45;cursor:not-allowed;':'')+'">'
+    const clickAttr=oos?'':'onclick="pickProd(\'' +p.id+ '\')"';
+    const rowStyle=oos?'opacity:0.45;cursor:not-allowed;pointer-events:none;':'cursor:pointer;';
+    return '<div class="prod-item" style="'+rowStyle+'" '+clickAttr+'>'
       +'<div style="flex:1"><div class="prod-item-name" style="'+(oos?'color:#888;':'')+'">'+p.product_name+oosbadge+'</div>'
       +'<div class="prod-item-sub">'+(p.brand||'')+' · '+p.category+(p.sku?' · SKU: '+p.sku:'')+'</div></div>'
       +'<div style="text-align:right;flex-shrink:0;margin-left:12px">'
@@ -2350,12 +2352,6 @@ async function saleSearch(){
       +'<div class="fs11 '+(p.stock_qty<=0?'text-red':p.stock_qty<=(p.min_stock||0)?'text-yellow':'text-gray')+'">'+p.stock_qty+' in stock</div>'
       +'</div></div>';
   }).join('');
-  // attach click only to in-stock rows
-  res.querySelectorAll('.sale-prod-row').forEach(el=>{
-    const pid=el.dataset.pid;
-    const pr=products.find(x=>x.id===pid);
-    if(pr&&(pr.stock_qty||0)>0) el.addEventListener('click',()=>pickProd(pid));
-  });
 }
 async function pickProd(id){
   selProd=products.find(p=>p.id===id);if(!selProd)return;
@@ -3413,18 +3409,14 @@ async function woPartSearch() {
   res.innerHTML = matches.map(p => {
     const oos=(p.stock_qty||0)<=0;
     const oosB=oos?'<span style="margin-left:8px;background:#3a1010;color:#ff6b6b;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;letter-spacing:.5px">⛔ OUT OF STOCK</span>':'';
-    return '<div class="prod-item wo-prod-row" data-wopid="'+p.id+'" style="'+(oos?'opacity:0.45;cursor:not-allowed;':'')+'">'
+    const clickAttr=oos?'':'onclick="pickWOPart(\'' +p.id+ '\')"';
+    const rowStyle=oos?'opacity:0.45;cursor:not-allowed;pointer-events:none;':'cursor:pointer;';
+    return '<div class="prod-item" style="'+rowStyle+'" '+clickAttr+'>'
       +'<div style="flex:1">'
       +'<div class="prod-item-name" style="'+(oos?'color:#888;':'')+'">'+p.product_name+oosB+'</div>'
       +'<div class="prod-item-sub">'+(p.category||'')+' · <span style="color:'+(oos?'#666':'var(--green)')+';font-weight:600">MU: '+peso(p.markup_price||p.unit_price||0)+'</span> · Stock: '+(p.stock_qty||0)+'</div>'
       +'</div></div>';
   }).join('');
-  // attach click only to in-stock rows
-  res.querySelectorAll('.wo-prod-row').forEach(el=>{
-    const pid=el.dataset.wopid;
-    const pr=products.find(x=>x.id===pid);
-    if(pr&&(pr.stock_qty||0)>0) el.addEventListener('click',()=>pickWOPart(pid));
-  });
 }
 async function pickWOPart(pid) {
   const p = products.find(x => x.id === pid);
