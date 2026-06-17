@@ -2,6 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
+<meta http-equiv="Pragma" content="no-cache"/>
+<meta http-equiv="Expires" content="0"/>
+<!-- GM_VERSION:20260618_v5 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <title>Goldmates — Product Database</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
@@ -2367,6 +2371,12 @@ async function saleSearch(){
 
 async function pickProd(id){
   selProd=products.find(p=>p.id===id);if(!selProd)return;
+  // Always re-fetch live stock from DB before allowing selection
+  try {
+    const liveRes = await fetch(SB_URL+'/gm_products?id=eq.'+id+'&select=stock_qty', {headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
+    const liveData = await liveRes.json();
+    if(liveData&&liveData[0]) selProd.stock_qty = liveData[0].stock_qty;
+  } catch(e){}
   if((selProd.stock_qty||0)<=0){toast('⛔ This product is out of stock','err');selProd=null;return;}
   document.getElementById('saleQ').value=selProd.product_name;
   document.getElementById('saleResults').style.display='none';
@@ -2376,7 +2386,7 @@ async function pickProd(id){
   document.getElementById('saleHint').textContent=`Available: ${selProd.stock_qty} ${selProd.unit||'pcs'}`;
   calcTotal();
 }
-async function quickSell(id){go('sale');setTimeout(()=>pickProd(id),50);}
+async function quickSell(id){const p=products.find(x=>x.id===id);if(!p||(p.stock_qty||0)<=0){toast('⛔ This product is out of stock','err');return;}go('sale');setTimeout(()=>pickProd(id),50);}
 async function calcTotal(){
   if(!selProd)return;
   const q=parseInt(document.getElementById('saleQty').value)||0;
@@ -2384,6 +2394,7 @@ async function calcTotal(){
 }
 async function doSale(){
   if(!selProd){toast('Select a product first','err');return;}
+  if((selProd.stock_qty||0)<=0){toast('⛔ Cannot record sale — this product is out of stock','err');selProd=null;document.getElementById('selProdBox').style.display='none';document.getElementById('saleQ').value='';return;}
   const qty=parseInt(document.getElementById('saleQty').value)||0;
   if(qty<=0){toast('Enter a valid quantity','err');return;}
   if(qty>selProd.stock_qty){toast(`Only ${selProd.stock_qty} in stock!`,'err');return;}
@@ -3443,6 +3454,12 @@ function woPartSearch() {
 async function pickWOPart(pid) {
   const p = products.find(x => x.id === pid);
   if (!p) return;
+  // Always re-fetch live stock from DB before allowing selection
+  try {
+    const liveRes = await fetch(SB_URL+'/gm_products?id=eq.'+pid+'&select=stock_qty', {headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
+    const liveData = await liveRes.json();
+    if(liveData&&liveData[0]) p.stock_qty = liveData[0].stock_qty;
+  } catch(e){}
   if((p.stock_qty||0)<=0){toast('⛔ This product is out of stock','err');return;}
   const existing = woParts.find(x => x.id === pid);
   if (existing) { existing.qty = (existing.qty || 1) + 1; }
