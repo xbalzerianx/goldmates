@@ -1097,6 +1097,73 @@ tbody td{padding:13px 16px;vertical-align:middle}
   </div>
 </div>
 
+<!-- ===== ACCOUNTS RECEIVABLE PAGE ===== -->
+<div id="page-receivables" class="page">
+  <div class="page-hdr">
+    <div class="page-hdr-row">
+      <div>
+        <div class="page-title">Accounts Receivable</div>
+        <div class="page-sub">Work Orders with outstanding balances</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <div style="display:flex;gap:6px;align-items:center;background:var(--navy3);padding:6px 14px;border-radius:8px;font-size:12px">
+          <span style="width:8px;height:8px;border-radius:50%;background:#ef4444;display:inline-block"></span>
+          <span id="arOverdueCount" style="font-weight:700;color:#f87171">0 overdue</span>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;background:var(--navy3);padding:6px 14px;border-radius:8px;font-size:12px">
+          <span style="color:var(--gray)">Total Outstanding:</span>
+          <span id="arTotalOutstanding" style="font-weight:800;color:var(--gold)">₱0.00</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FILTER BAR -->
+  <div class="toolbar" style="flex-wrap:wrap;gap:8px;margin-bottom:16px">
+    <div class="search" style="flex:1;min-width:180px">
+      <span style="font-size:15px;color:var(--gray)">🔍</span>
+      <input type="text" id="arQ" placeholder="Search client, plate, WO#…" oninput="renderAR()"/>
+    </div>
+    <select class="sel" id="arFilter" onchange="renderAR()">
+      <option value="all">All Outstanding</option>
+      <option value="overdue">🔴 Overdue Only</option>
+      <option value="current">🟡 Not Yet Due</option>
+    </select>
+    <select class="sel" id="arSort" onchange="renderAR()">
+      <option value="date_desc">Newest First</option>
+      <option value="date_asc">Oldest First</option>
+      <option value="balance_desc">Highest Balance</option>
+      <option value="balance_asc">Lowest Balance</option>
+    </select>
+  </div>
+
+  <!-- AR TABLE (desktop) -->
+  <div class="tbl-wrap ar-desktop">
+    <table>
+      <thead>
+        <tr>
+          <th>WO #</th>
+          <th>Client</th>
+          <th>Vehicle / Plate</th>
+          <th>Mechanic</th>
+          <th>WO Date</th>
+          <th>Due Date</th>
+          <th>Grand Total</th>
+          <th>Balance Due</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="arBody"></tbody>
+    </table>
+  </div>
+
+  <!-- AR CARDS (mobile) -->
+  <div id="arCards" class="ar-mobile"></div>
+
+  <div id="arFooter" class="mt16" style="text-align:right;font-size:13px;color:var(--gray)"></div>
+</div>
+<!-- ===== END ACCOUNTS RECEIVABLE PAGE ===== -->
     </div>
   </div>
 </div>
@@ -1573,7 +1640,7 @@ async function loadAll(){
 }
 
 // ═══════════════════ NAVIGATION ═══════════════════
-const TITLES={dashboard:'Dashboard',inventory:'Products & Inventory',sale:'Record Sale',saleslog:'Sales Log',expenses:'Expenses',actlog:'Activity Log',alerts:'Stock Alerts',catmgr:'Category Manager',workorders:'Work Orders',employees:'Employees'};
+const TITLES={dashboard:'Dashboard',inventory:'Products & Inventory',sale:'Record Sale',saleslog:'Sales Log',expenses:'Expenses',actlog:'Activity Log',alerts:'Stock Alerts',catmgr:'Category Manager',workorders:'Work Orders',employees:'Employees',receivables:'Accounts Receivable'};
 async function go(page){
   curPage=page;
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
@@ -4886,7 +4953,7 @@ function renderAR() {
           <td>
             <div style="display:flex;gap:6px">
               <button class="btn btn-xs btn-ghost" onclick="openPartialPayment('${w.id}')">💳 Pay</button>
-              <button class="btn btn-xs btn-ghost" onclick="openViewWO('${w.id}')">👁 View</button>
+              <button class="btn btn-xs btn-ghost" onclick="viewWO('${w.id}')">👁 View</button>
             </div>
           </td>
         </tr>`;
@@ -4930,7 +4997,7 @@ function renderAR() {
           </div>
           <div class="ar-card-actions">
             <button class="btn btn-xs btn-ghost" onclick="openPartialPayment('${w.id}')">💳 Record Payment</button>
-            <button class="btn btn-xs btn-ghost" onclick="openViewWO('${w.id}')">👁 View WO</button>
+            <button class="btn btn-xs btn-ghost" onclick="viewWO('${w.id}')">👁 View WO</button>
           </div>
         </div>`;
       }).join('');
@@ -4962,75 +5029,6 @@ function updateARBadge() {
 // ═══════════════════════════════════════════════════════════════════════════════════
 
 </script>
-
-
-<!-- ===== ACCOUNTS RECEIVABLE PAGE ===== -->
-<div id="page-receivables" class="page">
-  <div class="page-hdr">
-    <div class="page-hdr-row">
-      <div>
-        <div class="page-title">Accounts Receivable</div>
-        <div class="page-sub">Work Orders with outstanding balances</div>
-      </div>
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <div style="display:flex;gap:6px;align-items:center;background:var(--navy3);padding:6px 14px;border-radius:8px;font-size:12px">
-          <span style="width:8px;height:8px;border-radius:50%;background:#ef4444;display:inline-block"></span>
-          <span id="arOverdueCount" style="font-weight:700;color:#f87171">0 overdue</span>
-        </div>
-        <div style="display:flex;gap:6px;align-items:center;background:var(--navy3);padding:6px 14px;border-radius:8px;font-size:12px">
-          <span style="color:var(--gray)">Total Outstanding:</span>
-          <span id="arTotalOutstanding" style="font-weight:800;color:var(--gold)">₱0.00</span>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- FILTER BAR -->
-  <div class="toolbar" style="flex-wrap:wrap;gap:8px;margin-bottom:16px">
-    <div class="search" style="flex:1;min-width:180px">
-      <span style="font-size:15px;color:var(--gray)">🔍</span>
-      <input type="text" id="arQ" placeholder="Search client, plate, WO#…" oninput="renderAR()"/>
-    </div>
-    <select class="sel" id="arFilter" onchange="renderAR()">
-      <option value="all">All Outstanding</option>
-      <option value="overdue">🔴 Overdue Only</option>
-      <option value="current">🟡 Not Yet Due</option>
-    </select>
-    <select class="sel" id="arSort" onchange="renderAR()">
-      <option value="date_desc">Newest First</option>
-      <option value="date_asc">Oldest First</option>
-      <option value="balance_desc">Highest Balance</option>
-      <option value="balance_asc">Lowest Balance</option>
-    </select>
-  </div>
-
-  <!-- AR TABLE (desktop) -->
-  <div class="tbl-wrap ar-desktop">
-    <table>
-      <thead>
-        <tr>
-          <th>WO #</th>
-          <th>Client</th>
-          <th>Vehicle / Plate</th>
-          <th>Mechanic</th>
-          <th>WO Date</th>
-          <th>Due Date</th>
-          <th>Grand Total</th>
-          <th>Balance Due</th>
-          <th>Status</th>
-          <th>Action</th>
-        </tr>
-      </thead>
-      <tbody id="arBody"></tbody>
-    </table>
-  </div>
-
-  <!-- AR CARDS (mobile) -->
-  <div id="arCards" class="ar-mobile" style="display:none"></div>
-
-  <div id="arFooter" class="mt16" style="text-align:right;font-size:13px;color:var(--gray)"></div>
-</div>
-<!-- ===== END ACCOUNTS RECEIVABLE PAGE ===== -->
 <!-- ===== WORK ORDER MODAL ===== -->
 <div class="overlay" id="woModal" style="display:none;align-items:flex-start;padding-top:20px">
   <div class="modal" style="max-width:720px;width:98%;max-height:92vh;overflow-y:auto">
