@@ -1808,7 +1808,9 @@ async function renderDash(){
   const totMarkupPct=totSRP>0?((totMarkupGain/totSRP)*100).toFixed(1):0;
 
   // Sales breakdown — Total / Cash / Unpaid Cash / A/R / Paid A/R
-  const fsCash       = fs.filter(s => !s.payment_status || s.payment_status === 'cash');
+  // AR-PAY- sales are cash partial payments — separate them to avoid double-counting
+  const fsCash       = fs.filter(s => (!s.payment_status || s.payment_status === 'cash') && !String(s.sale_id||'').startsWith('AR-PAY-'));
+  const fsARPay      = fs.filter(s => String(s.sale_id||'').startsWith('AR-PAY-')); // new partial payment records
   const fsCashUnpaid = fs.filter(s => s.payment_status === 'cash_unpaid');
   const fsAR         = fs.filter(s => s.payment_status === 'receivable');
   const fsPaidAR     = fs.filter(s => s.payment_status === 'paid');
@@ -1816,6 +1818,7 @@ async function renderDash(){
   const cashUnpaidRev  = fsCashUnpaid.reduce((s,sl)=>s+(sl.sale_total||0),0);
   const arRev          = fsAR.reduce((s,sl)=>s+(sl.sale_total||0),0);
   const paidARRev      = fsPaidAR.reduce((s,sl)=>s+(sl.sale_total||0),0);
+  const arPayRev       = fsARPay.reduce((s,sl)=>s+(sl.sale_total||0),0); // cash collected from AR
   // Collected from partial payments on A/R WOs — filtered by active date period
   const now=new Date();
   const todayStr=today();
@@ -1847,15 +1850,19 @@ async function renderDash(){
       // Filter history entries that fall in the selected period
       const histTotal = hist.filter(p => _inPeriod(p.date)).reduce((h,p) => h + (Number(p.amount)||0), 0);
       if (histTotal > 0) return s + histTotal;
-      // Fallback: use (grand_total - balance_due) — payment_history column may be TEXT/null in DB
-      // Check if the WO's payment date (work_date or created_at date) is in selected period
+      // Fallback: use (grand_total - balance_due) — payment_history may be null in DB
+      // Count it if balance_due < grand_total (partial payment exists)
+      // Use work_date or created_at to check period
       const woDate = w.work_date || (w.created_at ? w.created_at.slice(0,10) : null);
-      if (w.balance_due != null && w.grand_total > 0 && w.balance_due < w.grand_total && _inPeriod(woDate)) {
-        return s + Math.max(0, (w.grand_total||0) - (w.balance_due||0));
+      if (w.balance_due != null && w.grand_total > 0 && w.balance_due < w.grand_total) {
+        // Count if WO is in the selected period OR filter is 'all'
+        if (curFilter === 'all' || _inPeriod(woDate)) {
+          return s + Math.max(0, (w.grand_total||0) - (w.balance_due||0));
+        }
       }
       return s;
     }, 0);
-  const periodRev = cashRev + paidARRev + partialCollected;   // Actual collected revenue
+  const periodRev = cashRev + paidARRev + arPayRev + partialCollected;   // Actual collected revenue
   const periodTx  = fs.length;
   const periodQty = fs.reduce((s,sl)=>s+(sl.qty_sold||0),0);
 
@@ -2039,7 +2046,7 @@ async function renderDash(){
               <div style="font-size:12px;font-weight:600;color:#ccc">💳 Partial A/R Collected</div>
               <div style="font-size:10px;color:var(--gray)">Cash partial payments received</div>
             </div>
-            <div class="num" style="font-size:15px;font-weight:700;color:#e8a800">${peso(partialCollected)}</div>
+            <div class="num" style="font-size:15px;font-weight:700;color:#e8a800">${peso(arPayRev + partialCollected)}</div>
           </div>` : ''}
         </div>
         <!-- Top sales mini-table -->
@@ -3141,6 +3148,10 @@ async function openPartialPayment(woId) {
   const totalPaid  = histPaid > 0 ? histPaid : Math.max(0, (wo.grand_total||0) - currentBal);
   const bal        = currentBal;
 
+  // If payment_history is empty but down_payment > 0, show legacy entry
+  if (history.length === 0 && wo.down_payment > 0) {
+    history = [{ date: wo.work_date || wo.created_at?.slice(0,10) || '—', amount: wo.down_payment, note: 'Partial payment (recorded)', recorded_by: 'Admin' }];
+  }
   // Build history table
   const histRows = history.length ? history.map(p => `
     <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.06)">
@@ -3242,7 +3253,7 @@ async function savePartialPayment() {
   const newBalance = Math.max(0, (wo.grand_total||0) - newTotalPaid);
   const isFullyPaid = newBalance <= 0;
   const updates = {
-    payment_history: history,
+    payment_history: JSON.stringify(history),  // Save as JSON string — TEXT column in Supabase
     balance_due: newBalance,
     down_payment: newTotalPaid,
   };
@@ -3253,9 +3264,29 @@ async function savePartialPayment() {
   const _savedWoId = ppWOId;
   try {
     await apiPut('KGWorkOrder', _savedWoId, updates);
-    Object.assign(wo, updates);
-    // Update linked KGSale
-    const linkedSale = (sales||[]).find(s => s.wo_id === ppWOId || s.sale_id === 'WO-'+wo.wo_number);
+    // Update local in-memory record with PARSED array (not string)
+    Object.assign(wo, { ...updates, payment_history: history });
+    // ── Insert a KGSale record for this partial cash payment so it shows on dashboard ──
+    const partialSaleId = 'AR-PAY-' + wo.wo_number + '-' + Date.now();
+    const partialSale = {
+      sale_id:      partialSaleId,
+      product_name: 'A/R Payment · WO-' + wo.wo_number + (wo.client_name ? ' · ' + wo.client_name : ''),
+      category:     'Work Order',
+      qty_sold:     1,
+      unit_price:   amt,
+      sale_total:   amt,
+      sale_date:    date,
+      recorded_by:  curUser?.name || 'Admin',
+      payment_status: 'cash',
+      wo_id:        _savedWoId,
+      notes:        note || 'Partial A/R cash payment',
+    };
+    try {
+      const newSale = await apiPost('KGSale', partialSale);
+      if (newSale) (sales = sales || []).push(newSale);
+    } catch(se) { console.warn('Could not insert partial sale record:', se); }
+    // Update linked KGSale (the original WO sale)
+    const linkedSale = (sales||[]).find(s => (s.wo_id === ppWOId || s.sale_id === 'WO-'+wo.wo_number) && s.sale_id !== partialSaleId);
     if (linkedSale) {
       const saleUp = isFullyPaid ? { payment_status: 'paid' } : { payment_status: 'receivable' };
       await apiPut('KGSale', linkedSale.id, saleUp);
