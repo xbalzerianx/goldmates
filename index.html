@@ -1838,18 +1838,19 @@ async function renderDash(){
   const partialCollected = workOrders
     .filter(w => w.payment_status === 'receivable')
     .reduce((s,w) => {
-      // Try payment_history array first, fall back to (grand_total - balance_due)
+      // Try payment_history array first
       let hist = [];
       if (Array.isArray(w.payment_history)) hist = w.payment_history;
       else if (typeof w.payment_history === 'string' && w.payment_history.trim()) {
         try { hist = JSON.parse(w.payment_history); } catch(_) {}
       }
+      // Filter history entries that fall in the selected period
       const histTotal = hist.filter(p => _inPeriod(p.date)).reduce((h,p) => h + (Number(p.amount)||0), 0);
       if (histTotal > 0) return s + histTotal;
-      // Fallback: if balance_due is set, the difference = what's been paid
-      // But we can only count it if the WO was created in the period (its wo_date is in period)
-      const woDate = w.wo_date || (w.created_at ? w.created_at.slice(0,10) : null);
-      if (w.balance_due != null && w.grand_total && w.balance_due < w.grand_total && _inPeriod(woDate)) {
+      // Fallback: use (grand_total - balance_due) — payment_history column may be TEXT/null in DB
+      // Check if the WO's payment date (work_date or created_at date) is in selected period
+      const woDate = w.work_date || (w.created_at ? w.created_at.slice(0,10) : null);
+      if (w.balance_due != null && w.grand_total > 0 && w.balance_due < w.grand_total && _inPeriod(woDate)) {
         return s + Math.max(0, (w.grand_total||0) - (w.balance_due||0));
       }
       return s;
@@ -1900,17 +1901,17 @@ async function renderDash(){
 
   // top sales rows
   const topRows=fs.slice(0,6).map(s=>`
-    <tr>
-    <td style="padding:8px 8px;overflow:hidden;max-width:0">
-      <div class="fw7" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--white)">${s.product_name||'—'}</div>
-      <div style="font-size:10px;color:var(--gray);margin-top:1px">${phDate(s.sale_date||s.created_at)}</div>
-    </td>
-    <td style="padding:8px 8px;overflow:hidden;max-width:0">
-      <span class="badge b-cat" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:inline-block;max-width:100%">${s.category||'—'}</span>
-    </td>
-    <td style="padding:8px 8px;text-align:right;white-space:nowrap">
-      <span class="num fw7" style="color:var(--gold)">${peso(s.sale_total)}</span>
-    </td>
+    <tr style="border-bottom:1px solid var(--navy3)">
+      <td style="padding:8px 8px;width:45%">
+        <div style="font-size:13px;font-weight:600;color:var(--white);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px">${s.product_name||'—'}</div>
+        <div style="font-size:10px;color:var(--gray);margin-top:1px">${phDate(s.sale_date||s.created_at)}</div>
+      </td>
+      <td style="padding:8px 8px;width:25%;vertical-align:middle">
+        <span class="badge b-cat">${s.category||'—'}</span>
+      </td>
+      <td style="padding:8px 8px;width:30%;text-align:right;vertical-align:middle">
+        <span style="font-size:13px;font-weight:700;color:var(--gold)">${peso(s.sale_total)}</span>
+      </td>
     </tr>`).join('')
     ||`<tr><td colspan="3" style="text-align:center;padding:24px;color:var(--gray)">No sales in this period</td></tr>`;
 
@@ -2045,7 +2046,7 @@ async function renderDash(){
         <div style="margin-top:14px">
           <div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--gray);margin-bottom:6px">Recent Transactions</div>
           <table style="width:100%;border-collapse:collapse;table-layout:fixed">
-            <colgroup><col style="width:42%"><col style="width:28%"><col style="width:30%"></colgroup>
+            <colgroup><col style="width:45%"><col style="width:25%"><col style="width:30%"></colgroup>
             <thead><tr>
               <th style="padding:6px 8px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--gray);text-align:left;border-bottom:1px solid var(--navy3)">Product</th>
               <th style="padding:6px 8px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--gray);text-align:left;border-bottom:1px solid var(--navy3)">Category</th>
