@@ -175,16 +175,16 @@ tbody tr{border-top:1px solid var(--navy3);transition:background .1s}
 tbody tr:hover{background:rgba(212,168,67,0.03)}
 tbody td{padding:13px 16px;vertical-align:middle}
 /* ── INVENTORY / TABLE PAGES: eliminate dead space below table ── */
-#page-inventory,#page-saleslog,#page-workorders,#page-actlog,#page-employees{
+#page-inventory,#page-saleslog,#page-workorders,#page-actlog,#page-employees,#page-receivables{
   display:none;flex-direction:column;height:100%;overflow:hidden;
   padding:20px 28px;box-sizing:border-box;
 }
 #page-inventory.active,#page-saleslog.active,#page-workorders.active,
-#page-actlog.active,#page-employees.active{
+#page-actlog.active,#page-employees.active,#page-receivables.active{
   display:flex;
 }
 #page-inventory .tbl-wrap,#page-saleslog .tbl-wrap,#page-workorders .tbl-wrap,
-#page-actlog .tbl-wrap,#page-employees .tbl-wrap{
+#page-actlog .tbl-wrap,#page-employees .tbl-wrap,#page-receivables .tbl-wrap{
   flex:1;overflow-y:auto;min-height:0;
 }
 
@@ -624,6 +624,30 @@ tbody td{padding:13px 16px;vertical-align:middle}
 #woPrintContent .grand-row { background: #1c1c1c !important; }
 #woPrintContent .grand-row span { color: #cc9500 !important; }
 
+
+/* ===== ACCOUNTS RECEIVABLE ===== */
+.ar-desktop{display:block}
+.ar-mobile{display:none}
+@media(max-width:768px){
+  .ar-desktop{display:none}
+  .ar-mobile{display:block!important}
+}
+.ar-card{background:var(--navy2);border:1px solid var(--navy3);border-radius:var(--r2);padding:16px;margin-bottom:10px;position:relative}
+.ar-card.overdue{border-left:3px solid #ef4444}
+.ar-card.current{border-left:3px solid var(--gold)}
+.ar-card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
+.ar-card-wo{font-size:11px;font-weight:700;color:var(--gold);letter-spacing:.5px}
+.ar-card-client{font-size:15px;font-weight:700;color:var(--white);margin-top:2px}
+.ar-card-vehicle{font-size:12px;color:var(--gray);margin-top:2px}
+.ar-card-meta{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;font-size:12px;color:var(--gray)}
+.ar-card-meta span{display:flex;align-items:center;gap:4px}
+.ar-card-balance{font-size:20px;font-weight:800;color:#f87171;text-align:right}
+.ar-card-total{font-size:11px;color:var(--gray);text-align:right;margin-top:2px}
+.ar-card-actions{display:flex;gap:6px;margin-top:12px;justify-content:flex-end}
+.ar-overdue-badge{background:rgba(239,68,68,.15);color:#f87171;font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;text-transform:uppercase;letter-spacing:.5px}
+.ar-current-badge{background:rgba(212,168,67,.15);color:var(--gold);font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;text-transform:uppercase;letter-spacing:.5px}
+.ar-partial-bar{height:4px;background:var(--navy3);border-radius:2px;margin-top:8px;overflow:hidden}
+.ar-partial-fill{height:100%;background:var(--gold);border-radius:2px;transition:width .4s}
 </style>
 </head>
 <body>
@@ -684,33 +708,20 @@ tbody td{padding:13px 16px;vertical-align:middle}
       </div>
     </div>
     <div class="sb-user" id="sbUser"></div>
+
+    <!-- OVERVIEW -->
     <div class="sb-section">Overview</div>
     <button class="sb-item active" data-page="dashboard" onclick="go('dashboard')">
-      <span class="sb-item-icon">📊</span>Dashboard<span id="sbARBadge" style="display:none;margin-left:auto;background:#ef4444;color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;line-height:1.4">0</span>
+      <span class="sb-item-icon">📊</span>Dashboard
     </button>
-    <div class="sb-section">Inventory</div>
+
+    <!-- OPERATIONS -->
+    <div class="sb-section">Operations</div>
     <button class="sb-item" data-page="inventory" onclick="go('inventory')">
       <span class="sb-item-icon">📦</span>Products
     </button>
     <button class="sb-item" data-page="sale" onclick="go('sale')">
       <span class="sb-item-icon">💰</span>Record Sale
-    </button>
-    <div class="sb-section">Reports</div>
-    <button class="sb-item" data-page="saleslog" onclick="go('saleslog')">
-      <span class="sb-item-icon">📋</span>Sales Log
-    </button>
-    <button class="sb-item" data-page="expenses" onclick="go('expenses')">
-      <span class="sb-item-icon">💸</span>Expenses
-    </button>
-    <button class="sb-item" data-page="actlog" onclick="go('actlog')">
-      <span class="sb-item-icon">🕓</span>Activity Log
-    </button>
-    <button class="sb-item" data-page="alerts" onclick="go('alerts')">
-      <span class="sb-item-icon">⚠️</span>Stock Alerts
-      <span class="sb-badge yellow" id="sbBadge" style="display:none">0</span>
-    </button>
-    <button class="sb-item" data-page="catmgr" onclick="go('catmgr')" id="sbCatMgrBtn" style="display:none">
-      <span class="sb-item-icon">🗂️</span>Category Manager
     </button>
     <button class="sb-item" data-page="workorders" onclick="go('workorders')" id="sbWOBtn">
       <span class="sb-item-icon">🔧</span>Work Orders
@@ -718,8 +729,36 @@ tbody td{padding:13px 16px;vertical-align:middle}
     <button class="sb-item" data-page="employees" onclick="go('employees')">
       <span class="sb-item-icon">👥</span>Employees
     </button>
-    <!-- WO Templates merged into WO modal — no longer a separate page -->
+
+    <!-- FINANCE -->
+    <div class="sb-section">Finance</div>
+    <button class="sb-item" data-page="saleslog" onclick="go('saleslog')">
+      <span class="sb-item-icon">📋</span>Sales Log
+    </button>
+    <button class="sb-item" data-page="expenses" onclick="go('expenses')">
+      <span class="sb-item-icon">💸</span>Expenses
+    </button>
+    <button class="sb-item" data-page="receivables" onclick="go('receivables')">
+      <span class="sb-item-icon">🧾</span>Accounts Receivable
+      <span class="sb-badge" id="sbARBadge" style="display:none">0</span>
+    </button>
+
+    <!-- SYSTEM -->
+    <div class="sb-section">System</div>
+    <button class="sb-item" data-page="alerts" onclick="go('alerts')">
+      <span class="sb-item-icon">⚠️</span>Stock Alerts
+      <span class="sb-badge yellow" id="sbBadge" style="display:none">0</span>
+    </button>
+    <button class="sb-item" data-page="actlog" onclick="go('actlog')">
+      <span class="sb-item-icon">🕓</span>Activity Log
+    </button>
+    <button class="sb-item" data-page="catmgr" onclick="go('catmgr')" id="sbCatMgrBtn" style="display:none">
+      <span class="sb-item-icon">🗂️</span>Category Manager
+    </button>
+
+    <!-- WO Templates merged into WO modal -->
     <div id="sbWOTplBtn" style="display:none"></div>
+
     <div class="sb-footer">
       <div id="sbChangePinBtn" style="display:none;margin-bottom:10px">
         <button class="btn btn-ghost btn-sm" style="width:100%;justify-content:center" onclick="openChangePin()">🔑 Change PINs</button>
@@ -1068,13 +1107,14 @@ tbody td{padding:13px 16px;vertical-align:middle}
     <button class="mob-item active" data-page="dashboard" onclick="go('dashboard')"><span class="mob-item-icon">📊</span>Dashboard</button>
     <button class="mob-item" data-page="inventory" onclick="go('inventory')"><span class="mob-item-icon">📦</span>Products</button>
     <button class="mob-item" data-page="sale" onclick="go('sale')"><span class="mob-item-icon">💰</span>Sell</button>
-    <button class="mob-item" data-page="saleslog" onclick="go('saleslog')"><span class="mob-item-icon">📋</span>Log</button>
-    <button class="mob-item" data-page="expenses" onclick="go('expenses')"><span class="mob-item-icon">💸</span>Expenses</button>
-<button class="mob-item" data-page="actlog" onclick="go('actlog')"><span class="mob-item-icon">🕓</span>Logs</button>
-    <button class="mob-item" data-page="catmgr" onclick="go('catmgr')" id="mobCatMgrBtn" style="display:none"><span class="mob-item-icon">🗂️</span>Categories</button>
     <button class="mob-item" data-page="workorders" onclick="go('workorders')" id="mobWOBtn"><span class="mob-item-icon">🔧</span>Work Orders</button>
+    <button class="mob-item" data-page="receivables" onclick="go('receivables')"><span class="mob-item-icon">🧾</span>A/R</button>
+    <button class="mob-item" data-page="saleslog" onclick="go('saleslog')"><span class="mob-item-icon">📋</span>Sales</button>
+    <button class="mob-item" data-page="expenses" onclick="go('expenses')"><span class="mob-item-icon">💸</span>Expenses</button>
     <button class="mob-item" data-page="employees" onclick="go('employees')"><span class="mob-item-icon">👥</span>Staff</button>
     <button class="mob-item" data-page="alerts" onclick="go('alerts')"><span class="mob-item-icon">⚠️</span>Alerts</button>
+    <button class="mob-item" data-page="actlog" onclick="go('actlog')"><span class="mob-item-icon">🕓</span>Logs</button>
+    <button class="mob-item" data-page="catmgr" onclick="go('catmgr')" id="mobCatMgrBtn" style="display:none"><span class="mob-item-icon">🗂️</span>Categories</button>
   </div>
 </nav>
 
@@ -1514,7 +1554,7 @@ async function loadAll(){
     });
     actLogs.sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0));
     alertBadge();
-    try { await renderDash(); } catch(re){ console.error('renderDash error:',re); }
+    try { await renderDash(); updateARBadge(); } catch(re){ console.error('renderDash error:',re); }
     try { await renderExpenses(); } catch(re){ console.error('renderExpenses error:',re); }
     try { await render(); } catch(re){ console.error('render error:',re); }
     try { await populateCatDropdown(); } catch(re){ console.error('populateCatDropdown error:',re); }
@@ -1566,6 +1606,9 @@ async function go(page){
       setWOFilter('active');
       renderWOList();
     });
+  }
+  if(page==='receivables'){
+    loadWorkOrders().then(()=>{ renderAR(); });
   }
   // wotemplates page removed — templates accessed from WO modal
   if(page==='saleslog'){
@@ -4751,8 +4794,243 @@ function checkOverdueAndNotify(overdueWOs) {
   }
 }
 
+// ═══════════════════════════════ ACCOUNTS RECEIVABLE ═══════════════════════════════
+function renderAR() {
+  const q       = (document.getElementById('arQ')?.value || '').toLowerCase().trim();
+  const filter  = document.getElementById('arFilter')?.value || 'all';
+  const sortBy  = document.getElementById('arSort')?.value || 'date_desc';
+  const todayPH = new Date().toLocaleDateString('en-CA', {timeZone: 'Asia/Manila'});
+
+  // All WOs that have payment_status === 'receivable' (balance still outstanding)
+  let arList = (workOrders || []).filter(w =>
+    w.payment_status === 'receivable' && w.status !== 'cancelled'
+  );
+
+  // Apply overdue / current filter
+  if (filter === 'overdue') {
+    arList = arList.filter(w => w.due_date && w.due_date < todayPH);
+  } else if (filter === 'current') {
+    arList = arList.filter(w => !w.due_date || w.due_date >= todayPH);
+  }
+
+  // Apply search
+  if (q) {
+    arList = arList.filter(w =>
+      [w.client_name, w.plate_number, w.wo_number, w.vehicle_make, w.mechanic_name]
+        .filter(Boolean).join(' ').toLowerCase().includes(q)
+    );
+  }
+
+  // Sort
+  arList.sort((a, b) => {
+    if (sortBy === 'date_asc')      return (a.created_at||'') > (b.created_at||'') ? 1 : -1;
+    if (sortBy === 'balance_desc')  return (b.balance_due||b.grand_total||0) - (a.balance_due||a.grand_total||0);
+    if (sortBy === 'balance_asc')   return (a.balance_due||a.grand_total||0) - (b.balance_due||b.grand_total||0);
+    return (a.created_at||'') < (b.created_at||'') ? 1 : -1; // date_desc default
+  });
+
+  // Update header counters
+  const allAR     = (workOrders || []).filter(w => w.payment_status === 'receivable' && w.status !== 'cancelled');
+  const overdueAR = allAR.filter(w => w.due_date && w.due_date < todayPH);
+  const totalOut  = allAR.reduce((s, w) => s + (w.balance_due || w.grand_total || 0), 0);
+  const el1 = document.getElementById('arOverdueCount');
+  const el2 = document.getElementById('arTotalOutstanding');
+  if (el1) el1.textContent = overdueAR.length + ' overdue';
+  if (el2) el2.textContent = peso(totalOut);
+
+  // Update sidebar badge
+  const sbAR = document.getElementById('sbARBadge');
+  if (sbAR) {
+    if (allAR.length > 0) { sbAR.style.display = ''; sbAR.textContent = allAR.length; }
+    else sbAR.style.display = 'none';
+  }
+
+  // ── DESKTOP TABLE ──
+  const tbody = document.getElementById('arBody');
+  if (tbody) {
+    if (!arList.length) {
+      tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:48px;color:var(--gray)">
+        <div style="font-size:32px;margin-bottom:8px">🎉</div>
+        <div style="font-weight:700;font-size:15px">No outstanding receivables!</div>
+        <div style="font-size:12px;margin-top:4px">All work orders are fully paid.</div>
+      </td></tr>`;
+    } else {
+      tbody.innerHTML = arList.map(w => {
+        const bal       = w.balance_due || w.grand_total || 0;
+        const gt        = w.grand_total || 0;
+        const paid      = Math.max(0, gt - bal);
+        const paidPct   = gt > 0 ? Math.round((paid / gt) * 100) : 0;
+        const isOverdue = w.due_date && w.due_date < todayPH;
+        const statusBadge = isOverdue
+          ? `<span class="ar-overdue-badge">⚠️ Overdue</span>`
+          : `<span class="ar-current-badge">📅 Pending</span>`;
+        const dueDateStr = w.due_date
+          ? `<span style="color:${isOverdue ? '#f87171' : 'var(--gray)'}">${phDate(w.due_date)}</span>`
+          : `<span style="color:var(--gray2)">—</span>`;
+        return `<tr>
+          <td class="fw7" style="color:var(--gold);font-size:12px">${w.wo_number || '—'}</td>
+          <td>
+            <div class="fw7">${w.client_name || '—'}</div>
+            <div class="fs11 text-gray">${w.contact_number || ''}</div>
+          </td>
+          <td>
+            <div class="fw7">${w.plate_number || '—'}</div>
+            <div class="fs11 text-gray">${w.vehicle_make || ''}</div>
+          </td>
+          <td class="fs12">${w.mechanic_name || '<span style="color:var(--gray2)">—</span>'}</td>
+          <td class="fs12">${phDate(w.wo_date || w.created_at)}</td>
+          <td class="fs12">${dueDateStr}</td>
+          <td class="num fs12">${peso(gt)}</td>
+          <td class="num fw7" style="color:#f87171;font-size:14px">${peso(bal)}</td>
+          <td>${statusBadge}</td>
+          <td>
+            <div style="display:flex;gap:6px">
+              <button class="btn btn-xs btn-ghost" onclick="openPartialPayment('${w.id}')">💳 Pay</button>
+              <button class="btn btn-xs btn-ghost" onclick="openViewWO('${w.id}')">👁 View</button>
+            </div>
+          </td>
+        </tr>`;
+      }).join('');
+    }
+  }
+
+  // ── MOBILE CARDS ──
+  const cards = document.getElementById('arCards');
+  if (cards) {
+    if (!arList.length) {
+      cards.innerHTML = `<div style="text-align:center;padding:48px 0;color:var(--gray)">
+        <div style="font-size:32px;margin-bottom:8px">🎉</div>
+        <div style="font-weight:700">No outstanding receivables!</div>
+      </div>`;
+    } else {
+      cards.innerHTML = arList.map(w => {
+        const bal       = w.balance_due || w.grand_total || 0;
+        const gt        = w.grand_total || 0;
+        const paid      = Math.max(0, gt - bal);
+        const paidPct   = gt > 0 ? Math.round((paid / gt) * 100) : 0;
+        const isOverdue = w.due_date && w.due_date < todayPH;
+        return `<div class="ar-card ${isOverdue ? 'overdue' : 'current'}">
+          <div class="ar-card-top">
+            <div>
+              <div class="ar-card-wo">${w.wo_number || '—'}</div>
+              <div class="ar-card-client">${w.client_name || '—'}</div>
+              <div class="ar-card-vehicle">${[w.plate_number, w.vehicle_make].filter(Boolean).join(' · ') || 'No vehicle info'}</div>
+            </div>
+            <div>
+              <div class="ar-card-balance">${peso(bal)}</div>
+              <div class="ar-card-total">of ${peso(gt)}</div>
+            </div>
+          </div>
+          <div class="ar-partial-bar"><div class="ar-partial-fill" style="width:${paidPct}%"></div></div>
+          <div class="ar-card-meta" style="margin-top:10px">
+            ${w.mechanic_name ? `<span>🔧 ${w.mechanic_name}</span>` : ''}
+            <span>📅 ${phDate(w.wo_date || w.created_at)}</span>
+            ${w.due_date ? `<span style="color:${isOverdue?'#f87171':'var(--gold)'}">⏰ Due: ${phDate(w.due_date)}</span>` : ''}
+            ${isOverdue ? `<span class="ar-overdue-badge">Overdue</span>` : `<span class="ar-current-badge">Pending</span>`}
+          </div>
+          <div class="ar-card-actions">
+            <button class="btn btn-xs btn-ghost" onclick="openPartialPayment('${w.id}')">💳 Record Payment</button>
+            <button class="btn btn-xs btn-ghost" onclick="openViewWO('${w.id}')">👁 View WO</button>
+          </div>
+        </div>`;
+      }).join('');
+    }
+  }
+
+  // Footer
+  const footer = document.getElementById('arFooter');
+  if (footer) {
+    if (arList.length) {
+      const shownBal = arList.reduce((s, w) => s + (w.balance_due || w.grand_total || 0), 0);
+      footer.innerHTML = `${arList.length} record${arList.length > 1 ? 's' : ''} shown · Outstanding: <span class="num" style="color:#f87171;font-weight:700">${peso(shownBal)}</span>`;
+    } else {
+      footer.innerHTML = '';
+    }
+  }
+}
+
+// Keep AR badge updated whenever workOrders data refreshes
+function updateARBadge() {
+  const todayPH = new Date().toLocaleDateString('en-CA', {timeZone: 'Asia/Manila'});
+  const allAR   = (workOrders || []).filter(w => w.payment_status === 'receivable' && w.status !== 'cancelled');
+  const sbAR    = document.getElementById('sbARBadge');
+  if (sbAR) {
+    if (allAR.length > 0) { sbAR.style.display = ''; sbAR.textContent = allAR.length; }
+    else sbAR.style.display = 'none';
+  }
+}
+// ═══════════════════════════════════════════════════════════════════════════════════
+
 </script>
 
+
+<!-- ===== ACCOUNTS RECEIVABLE PAGE ===== -->
+<div id="page-receivables" class="page">
+  <div class="page-hdr">
+    <div class="page-hdr-row">
+      <div>
+        <div class="page-title">Accounts Receivable</div>
+        <div class="page-sub">Work Orders with outstanding balances</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <div style="display:flex;gap:6px;align-items:center;background:var(--navy3);padding:6px 14px;border-radius:8px;font-size:12px">
+          <span style="width:8px;height:8px;border-radius:50%;background:#ef4444;display:inline-block"></span>
+          <span id="arOverdueCount" style="font-weight:700;color:#f87171">0 overdue</span>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;background:var(--navy3);padding:6px 14px;border-radius:8px;font-size:12px">
+          <span style="color:var(--gray)">Total Outstanding:</span>
+          <span id="arTotalOutstanding" style="font-weight:800;color:var(--gold)">₱0.00</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FILTER BAR -->
+  <div class="toolbar" style="flex-wrap:wrap;gap:8px;margin-bottom:16px">
+    <div class="search" style="flex:1;min-width:180px">
+      <span style="font-size:15px;color:var(--gray)">🔍</span>
+      <input type="text" id="arQ" placeholder="Search client, plate, WO#…" oninput="renderAR()"/>
+    </div>
+    <select class="sel" id="arFilter" onchange="renderAR()">
+      <option value="all">All Outstanding</option>
+      <option value="overdue">🔴 Overdue Only</option>
+      <option value="current">🟡 Not Yet Due</option>
+    </select>
+    <select class="sel" id="arSort" onchange="renderAR()">
+      <option value="date_desc">Newest First</option>
+      <option value="date_asc">Oldest First</option>
+      <option value="balance_desc">Highest Balance</option>
+      <option value="balance_asc">Lowest Balance</option>
+    </select>
+  </div>
+
+  <!-- AR TABLE (desktop) -->
+  <div class="tbl-wrap ar-desktop">
+    <table>
+      <thead>
+        <tr>
+          <th>WO #</th>
+          <th>Client</th>
+          <th>Vehicle / Plate</th>
+          <th>Mechanic</th>
+          <th>WO Date</th>
+          <th>Due Date</th>
+          <th>Grand Total</th>
+          <th>Balance Due</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="arBody"></tbody>
+    </table>
+  </div>
+
+  <!-- AR CARDS (mobile) -->
+  <div id="arCards" class="ar-mobile" style="display:none"></div>
+
+  <div id="arFooter" class="mt16" style="text-align:right;font-size:13px;color:var(--gray)"></div>
+</div>
+<!-- ===== END ACCOUNTS RECEIVABLE PAGE ===== -->
 <!-- ===== WORK ORDER MODAL ===== -->
 <div class="overlay" id="woModal" style="display:none;align-items:flex-start;padding-top:20px">
   <div class="modal" style="max-width:720px;width:98%;max-height:92vh;overflow-y:auto">
