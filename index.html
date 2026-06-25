@@ -1600,7 +1600,7 @@ async function loadAll(){
     });
     actLogs.sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0));
     alertBadge();
-    try { await renderDash(); } catch(re){ console.error('renderDash error:',re); }
+    try { await renderDash(); updateARBadge(); } catch(re){ console.error('renderDash error:',re); }
     try { await renderExpenses(); } catch(re){ console.error('renderExpenses error:',re); }
     try { await render(); } catch(re){ console.error('render error:',re); }
     try { await populateCatDropdown(); } catch(re){ console.error('populateCatDropdown error:',re); }
@@ -1838,8 +1838,21 @@ async function renderDash(){
   const partialCollected = workOrders
     .filter(w => w.payment_status === 'receivable')
     .reduce((s,w) => {
-      const hist = Array.isArray(w.payment_history) ? w.payment_history : [];
-      return s + hist.filter(p => _inPeriod(p.date)).reduce((h,p) => h + (p.amount||0), 0);
+      // Try payment_history array first, fall back to (grand_total - balance_due)
+      let hist = [];
+      if (Array.isArray(w.payment_history)) hist = w.payment_history;
+      else if (typeof w.payment_history === 'string' && w.payment_history.trim()) {
+        try { hist = JSON.parse(w.payment_history); } catch(_) {}
+      }
+      const histTotal = hist.filter(p => _inPeriod(p.date)).reduce((h,p) => h + (Number(p.amount)||0), 0);
+      if (histTotal > 0) return s + histTotal;
+      // Fallback: if balance_due is set, the difference = what's been paid
+      // But we can only count it if the WO was created in the period (its wo_date is in period)
+      const woDate = w.wo_date || (w.created_at ? w.created_at.slice(0,10) : null);
+      if (w.balance_due != null && w.grand_total && w.balance_due < w.grand_total && _inPeriod(woDate)) {
+        return s + Math.max(0, (w.grand_total||0) - (w.balance_due||0));
+      }
+      return s;
     }, 0);
   const periodRev = cashRev + paidARRev + partialCollected;   // Actual collected revenue
   const periodTx  = fs.length;
@@ -1887,12 +1900,19 @@ async function renderDash(){
 
   // top sales rows
   const topRows=fs.slice(0,6).map(s=>`
-    <tr><td class="fs11 text-gray fw7 tbl-col-hide">${s.sale_id||'—'}</td>
-    <td><div class="fw7">${s.product_name||'—'}</div><div class="fs11 text-gray">${phDate(s.sale_date||s.created_at)}</div></td>
-    <td class="tbl-col-hide"><span class="badge b-cat">${s.category||'—'}</span></td>
-    <td class="num text-gold fw7">${peso(s.sale_total)}</td>
-    <td class="tbl-col-hide"><span class="badge ${s.recorded_by==='Admin'?'b-admin':'b-asst'}">${s.recorded_by||'—'}</span></td></tr>`).join('')
-    ||`<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--gray)">No sales in this period</td></tr>`;
+    <tr>
+    <td style="padding:8px 8px;overflow:hidden;max-width:0">
+      <div class="fw7" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--white)">${s.product_name||'—'}</div>
+      <div style="font-size:10px;color:var(--gray);margin-top:1px">${phDate(s.sale_date||s.created_at)}</div>
+    </td>
+    <td style="padding:8px 8px;overflow:hidden;max-width:0">
+      <span class="badge b-cat" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:inline-block;max-width:100%">${s.category||'—'}</span>
+    </td>
+    <td style="padding:8px 8px;text-align:right;white-space:nowrap">
+      <span class="num fw7" style="color:var(--gold)">${peso(s.sale_total)}</span>
+    </td>
+    </tr>`).join('')
+    ||`<tr><td colspan="3" style="text-align:center;padding:24px;color:var(--gray)">No sales in this period</td></tr>`;
 
   const expRows=fexp.slice(0,6).map(e=>`
     <tr>
@@ -2010,8 +2030,16 @@ async function renderDash(){
               <div style="font-size:12px;font-weight:600;color:#ccc">✅ Paid A/R</div>
               <div style="font-size:10px;color:var(--gray)">A/R collected this period</div>
             </div>
-            <div class="num" style="font-size:15px;font-weight:700;color:var(--green)">${peso(paidARRev + partialCollected)}</div>
+            <div class="num" style="font-size:15px;font-weight:700;color:var(--green)">${peso(paidARRev)}</div>
           </div>
+          ${partialCollected > 0 ? `
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-top:1px solid var(--navy3)">
+            <div>
+              <div style="font-size:12px;font-weight:600;color:#ccc">💳 Partial A/R Collected</div>
+              <div style="font-size:10px;color:var(--gray)">Cash partial payments received</div>
+            </div>
+            <div class="num" style="font-size:15px;font-weight:700;color:#e8a800">${peso(partialCollected)}</div>
+          </div>` : ''}
         </div>
         <!-- Top sales mini-table -->
         <div style="margin-top:14px">
