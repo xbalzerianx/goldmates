@@ -3106,9 +3106,11 @@ async function openPartialPayment(woId) {
   } else if (typeof wo.payment_history === 'string' && wo.payment_history.trim()) {
     try { history = JSON.parse(wo.payment_history); } catch(e) { history = []; }
   }
-  const totalPaid = history.reduce((s,p) => s + (Number(p.amount)||0), 0);
-  const currentBal = Math.max(0, (wo.grand_total || 0) - totalPaid);
-  const bal = wo.balance_due != null ? wo.balance_due : currentBal;
+  const histPaid  = history.reduce((s,p) => s + (Number(p.amount)||0), 0);
+  // Use balance_due from DB as source of truth
+  const currentBal = (wo.balance_due != null && wo.balance_due >= 0) ? wo.balance_due : Math.max(0, (wo.grand_total||0) - histPaid);
+  const totalPaid  = histPaid > 0 ? histPaid : Math.max(0, (wo.grand_total||0) - currentBal);
+  const bal        = currentBal;
 
   // Build history table
   const histRows = history.length ? history.map(p => `
@@ -3290,6 +3292,16 @@ async function renderWOList() {
       <div class="wo-card-vehicle">${plateLine || '—'}</div>
       ${mechLine ? `<div class="wo-card-meta">${mechLine}</div>` : ''}
       <div class="wo-card-meta">${w.work_date || ''}${w.work_time ? ' · '+w.work_time : ''} · ${svcCount} svc · ${partsCount} part(s)</div>
+      ${w.payment_status === 'receivable' && w.grand_total > 0 ? (() => {
+        const _paid = Math.max(0, (w.grand_total||0) - (w.balance_due != null ? w.balance_due : (w.grand_total||0)));
+        const _pct  = Math.min(100, Math.round((_paid / w.grand_total) * 100));
+        return _paid > 0 ? `<div style="margin:4px 0 2px">
+          <div style="height:3px;background:#252525;border-radius:2px;overflow:hidden">
+            <div style="height:100%;width:${_pct}%;background:#e8a800;border-radius:2px"></div>
+          </div>
+          <div style="font-size:10px;color:#e8a800;margin-top:2px">💳 Paid: ${peso(_paid)} (${_pct}%)</div>
+        </div>` : '';
+      })() : ''}
       <div class="wo-card-footer">
         <div class="wo-card-actions">
           <button class="btn btn-ghost btn-sm no-print" title="Edit" onclick="event.stopPropagation();openEditWO('${w.id}')">✏️</button>
@@ -4903,9 +4915,11 @@ function renderAR() {
   grid.innerHTML = arList.map(w => {
     const gt        = w.grand_total || 0;
     const history   = Array.isArray(w.payment_history) ? w.payment_history :
-                      (typeof w.payment_history === 'string' ? (() => { try { return JSON.parse(w.payment_history); } catch(e){ return []; } })() : []);
-    const totalPaid = history.reduce((s, p) => s + (p.amount || 0), 0);
-    const bal       = w.balance_due != null ? w.balance_due : Math.max(0, gt - totalPaid);
+                      (typeof w.payment_history === 'string' && w.payment_history.trim() ? (() => { try { return JSON.parse(w.payment_history); } catch(e){ return []; } })() : []);
+    const histPaid  = history.reduce((s, p) => s + (Number(p.amount) || 0), 0);
+    // Use balance_due from DB as source of truth; derive totalPaid from it
+    const bal       = (w.balance_due != null && w.balance_due >= 0) ? w.balance_due : Math.max(0, gt - histPaid);
+    const totalPaid = histPaid > 0 ? histPaid : Math.max(0, gt - bal);
     const paidPct   = gt > 0 ? Math.min(100, Math.round((totalPaid / gt) * 100)) : 0;
     const isOverdue = w.due_date && w.due_date < todayPH;
     const mechLine  = w.mechanic_name ? `<span>🔧 ${w.mechanic_name}</span>` : '';
