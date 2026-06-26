@@ -1838,22 +1838,25 @@ async function renderDash(){
     if (curFilter==='custom')    return (!filterFrom||dateStr>=filterFrom)&&(!filterTo||dateStr<=filterTo);
     return true;
   }
-  // Build set of WO IDs already covered by AR-PAY sale records (to avoid double-count)
-  const _arPayWoIds = new Set(fsARPay.map(s => s.wo_id).filter(Boolean));
+  // partialCollected: only counts WOs NOT already covered by an AR-PAY sale in arPayRev
+  // Build a set of WO IDs that already have an AR-PAY sale record (counted in arPayRev)
+  const _arPayWoIds = new Set(
+    (sales||[]).filter(s => String(s.sale_id||'').startsWith('AR-PAY-')).map(s => s.wo_id).filter(Boolean)
+  );
   const partialCollected = workOrders
     .filter(w => w.payment_status === 'receivable')
     .reduce((s,w) => {
-      // Parse payment_history (stored as JSON string in Supabase TEXT column)
+      // If this WO already has an AR-PAY sale record → skip entirely (already in arPayRev)
+      if (_arPayWoIds.has(w.id)) return s;
+      // Parse payment_history for WOs without AR-PAY sale yet (legacy / manual entries)
       let hist = [];
       if (Array.isArray(w.payment_history)) hist = w.payment_history;
       else if (typeof w.payment_history === 'string' && w.payment_history.trim() && w.payment_history !== '[]') {
         try { const _p = JSON.parse(w.payment_history); hist = Array.isArray(_p) ? _p : []; } catch(_) {}
       }
-      // Sum history entries in the selected period
       const histTotal = hist.filter(p => _inPeriod(p.date)).reduce((h,p) => h + (Number(p.amount)||0), 0);
       if (histTotal > 0) return s + histTotal;
-      // Fallback ONLY if no AR-PAY sale record already covers this WO (prevents double-count)
-      if (_arPayWoIds.has(w.id)) return s;
+      // Last fallback: balance_due diff (for WOs with no payment_history and no AR-PAY sale)
       const _woManilaDate = w.created_at
         ? (() => { const _d = new Date(new Date(w.created_at).toLocaleString('en-US',{timeZone:'Asia/Manila'})); return _d.getFullYear()+'-'+String(_d.getMonth()+1).padStart(2,'0')+'-'+String(_d.getDate()).padStart(2,'0'); })()
         : null;
