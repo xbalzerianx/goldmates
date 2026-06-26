@@ -3627,28 +3627,53 @@ async function renderWOParts() {
   const el = document.getElementById('woPartList');
   if (!el) return;
   if (!woParts.length) { el.innerHTML = '<div style="color:#888888;font-size:13px;padding:6px 0">No parts added yet.</div>'; return; }
-  el.innerHTML = woParts.map((p, i) => `
-    <div class="wo-service-item">
-      <div class="wo-service-item-name">${p.product_name}
+  el.innerHTML = woParts.map((p, i) => {
+    const disc = p.discount_pct || 0;
+    const baseAmt = (p.unit_price || 0) * (p.qty || 1);
+    const discAmt = baseAmt * (disc / 100);
+    const finalAmt = baseAmt - discAmt;
+    return `
+    <div class="wo-service-item" style="flex-wrap:wrap;gap:6px;align-items:center">
+      <div class="wo-service-item-name" style="flex:1;min-width:160px">${p.product_name}
         <span style="margin-left:8px">
           <button onclick="changeWOPartQty(${i},-1)" style="background:#1c1c1c;border:none;color:#e8e0d5;border-radius:4px;width:22px;height:22px;cursor:pointer;font-size:14px;line-height:1">−</button>
           <span style="margin:0 6px;font-size:13px;color:#e8a800">${p.qty}</span>
           <button onclick="changeWOPartQty(${i},1)" style="background:#1c1c1c;border:none;color:#e8e0d5;border-radius:4px;width:22px;height:22px;cursor:pointer;font-size:14px;line-height:1">+</button>
         </span>
       </div>
-      <div class="wo-service-item-price">${peso((p.unit_price || 0) * (p.qty || 1))}</div>
+      <div style="display:flex;align-items:center;gap:5px;flex-shrink:0">
+        <span style="font-size:11px;color:#888;font-weight:600">Discount</span>
+        <input type="number" min="0" max="100" value="${disc}"
+          style="width:52px;padding:3px 5px;background:#1c1c1c;border:1px solid #333;border-radius:6px;color:#e8a800;font-size:13px;font-weight:700;text-align:center;font-size:16px"
+          oninput="setWOPartDisc(${i},this.value)"/>
+        <span style="font-size:12px;color:#888">%</span>
+      </div>
+      <div class="wo-service-item-price" style="flex-shrink:0">
+        ${disc > 0 ? `<span style="text-decoration:line-through;color:#666;font-size:11px;margin-right:4px">${peso(baseAmt)}</span>` : ''}${peso(finalAmt)}
+      </div>
       <button class="wo-service-item-del" onclick="removeWOPart(${i})">×</button>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 async function changeWOPartQty(i, delta) {
   woParts[i].qty = Math.max(1, (woParts[i].qty || 1) + delta);
   renderWOParts(); calcWOTotals();
 }
+function setWOPartDisc(i, val) {
+  woParts[i].discount_pct = Math.min(100, Math.max(0, parseFloat(val) || 0));
+  calcWOTotals();
+  // Re-render only price display without full re-render (to keep focus)
+  renderWOParts();
+}
 
 // ---- Totals ----
 async function calcWOTotals() {
   const labor = woServices.reduce((s, x) => s + (x.price || 0), 0);
-  const parts = woParts.reduce((s, x) => s + (x.unit_price || 0) * (x.qty || 1), 0);
+  const parts = woParts.reduce((s, x) => {
+    const base = (x.unit_price || 0) * (x.qty || 1);
+    const disc = x.discount_pct || 0;
+    return s + base * (1 - disc / 100);
+  }, 0);
   const sub = labor + parts;
   const vat = woVatEnabled ? sub * 0.12 : 0;
   const afterVat = sub + vat;
@@ -3754,7 +3779,7 @@ async function saveWO() {
   const t = await calcWOTotals();
   const chargesArr = [
     ...woServices.map(s => ({ type: 'service', name: s.name, qty: 1, price: s.price || 0 })),
-    ...woParts.map(p => ({ type: 'part', name: p.product_name, product_id: p.id || null, qty: p.qty || 1, price: p.unit_price || 0 }))
+    ...woParts.map(p => ({ type: 'part', name: p.product_name, product_id: p.id || null, qty: p.qty || 1, price: p.unit_price || 0, discount_pct: p.discount_pct || 0 }))
   ];
   const vehicleStr = document.getElementById('woVehicle').value.trim();
   const mechVal = document.getElementById('woMechanic').value.trim();
@@ -4044,16 +4069,25 @@ async function openWOPrint(id) {
   var partsRows = '';
   for (var j = 0; j < parts.length; j++) {
     var pbg = (j % 2 === 0) ? '#fff' : '#fafafa';
-    var pname  = parts[j].product_name || parts[j].name || '—';
-    var pprice = parseFloat(parts[j].unit_price || parts[j].price || 0);
-    var pqty   = parseInt(parts[j].qty || 1);
+    var pname   = parts[j].product_name || parts[j].name || '—';
+    var pprice  = parseFloat(parts[j].unit_price || parts[j].price || 0);
+    var pqty    = parseInt(parts[j].qty || 1);
+    var pdisc   = parseFloat(parts[j].discount_pct || 0);
     var pamount = pprice * pqty;
+    var pfinal  = pamount * (1 - pdisc / 100);
+    var discCell = pdisc > 0
+      ? '<td style="padding:9px 14px;border-bottom:1px solid #eee;color:#b45309;font-size:12px;text-align:center;white-space:nowrap">' + pdisc + '%</td>'
+      : '<td style="padding:9px 14px;border-bottom:1px solid #eee;color:#aaa;font-size:12px;text-align:center">—</td>';
+    var amountDisplay = pdisc > 0
+      ? '<span style="text-decoration:line-through;color:#aaa;font-size:11px;margin-right:4px">' + peso(pamount) + '</span><strong>' + peso(pfinal) + '</strong>'
+      : peso(pamount);
     partsRows +=
       '<tr style="background:' + pbg + '">' +
         '<td style="padding:9px 14px;border-bottom:1px solid #eee;color:#1c1c1c;font-size:13px">' + pname + '</td>' +
         '<td style="padding:9px 14px;border-bottom:1px solid #eee;color:#1c1c1c;font-size:13px;text-align:center">' + pqty + '</td>' +
         '<td style="padding:9px 14px;border-bottom:1px solid #eee;color:#1c1c1c;font-size:13px;text-align:right;white-space:nowrap">' + peso(pprice) + '</td>' +
-        '<td style="padding:9px 14px;border-bottom:1px solid #eee;color:#1c1c1c;font-size:13px;font-weight:700;text-align:right;white-space:nowrap">' + peso(pamount) + '</td>' +
+        discCell +
+        '<td style="padding:9px 14px;border-bottom:1px solid #eee;color:#1c1c1c;font-size:13px;font-weight:700;text-align:right;white-space:nowrap">' + amountDisplay + '</td>' +
       '</tr>';
   }
   if (!partsRows) partsRows = '<tr><td colspan="4" style="padding:10px 14px;color:#888;font-size:13px;text-align:center">No parts added</td></tr>';
@@ -4066,8 +4100,9 @@ async function openWOPrint(id) {
           '<tr style="background:#f5f5f5">' +
             '<th style="padding:9px 14px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#444;border-bottom:2px solid #ddd;width:45%">Part / Product</th>' +
             '<th style="padding:9px 14px;text-align:center;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#444;border-bottom:2px solid #ddd;width:10%">Qty</th>' +
-            '<th style="padding:9px 14px;text-align:right;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#444;border-bottom:2px solid #ddd;width:22.5%;white-space:nowrap">Unit Price</th>' +
-            '<th style="padding:9px 14px;text-align:right;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#444;border-bottom:2px solid #ddd;width:22.5%;white-space:nowrap">Amount</th>' +
+            '<th style="padding:9px 14px;text-align:right;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#444;border-bottom:2px solid #ddd;width:20%;white-space:nowrap">Unit Price</th>' +
+            '<th style="padding:9px 14px;text-align:center;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#444;border-bottom:2px solid #ddd;width:10%;white-space:nowrap">Disc</th>' +
+            '<th style="padding:9px 14px;text-align:right;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#444;border-bottom:2px solid #ddd;width:20%;white-space:nowrap">Amount</th>' +
           '</tr>' +
         '</thead>' +
         '<tbody>' + partsRows + '</tbody>' +
@@ -4168,7 +4203,8 @@ async function openWOPrint(id) {
       '</div>' +
       '<div style="text-align:right">' +
         '<div style="font-size:22px;font-weight:900;color:#1c1c1c;letter-spacing:-.5px">' + ((wo.wo_number && !wo.wo_number.includes('[object')) ? wo.wo_number : ('WO-' + (wo.id||'').slice(-6).toUpperCase())) + '</div>' +
-        '<div style="font-size:12px;color:#888;margin-top:2px">' + (wo.work_date || '—') + timeSpan + '</div>' +
+        '<div style="font-size:12px;color:#888;margin-top:4px"><span style="font-weight:700;color:#444">Work Date:</span> ' + (wo.work_date || '—') + timeSpan + '</div>' +
+        (() => { const _d=new Date(new Date((wo.created_at||new Date())).toLocaleString('en-US',{timeZone:'Asia/Manila'})); const _mo=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][_d.getMonth()]; const _h=_d.getHours(); const _ampm=_h>=12?'PM':'AM'; const _h12=_h%12||12; const _mm=String(_d.getMinutes()).padStart(2,'0'); return '<div style="font-size:11px;color:#b8860b;margin-top:3px;font-weight:700">Issued: '+_mo+' '+_d.getDate()+', '+_d.getFullYear()+' · '+_h12+':'+_mm+' '+_ampm+' PHT</div>'; })() +
       '</div>' +
     '</div>' +
     '<hr style="border:none;border-top:2px solid #e8a800;margin:12px 0 18px">' +
