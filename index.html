@@ -1850,13 +1850,13 @@ async function renderDash(){
       // Filter history entries that fall in the selected period
       const histTotal = hist.filter(p => _inPeriod(p.date)).reduce((h,p) => h + (Number(p.amount)||0), 0);
       if (histTotal > 0) return s + histTotal;
-      // Fallback: use (grand_total - balance_due) — payment_history may be null in DB
-      // Count it if balance_due < grand_total (partial payment exists)
-      // Use work_date or created_at to check period
-      const woDate = w.work_date || (w.created_at ? w.created_at.slice(0,10) : null);
+      // Fallback: use (grand_total - balance_due) — for WOs whose payment_history is empty
+      // Convert created_at to Manila date for correct period matching
+      const _woManilaDate = w.created_at
+        ? (() => { const _d = new Date(new Date(w.created_at).toLocaleString('en-US',{timeZone:'Asia/Manila'})); return _d.getFullYear()+'-'+String(_d.getMonth()+1).padStart(2,'0')+'-'+String(_d.getDate()).padStart(2,'0'); })()
+        : null;
       if (w.balance_due != null && w.grand_total > 0 && w.balance_due < w.grand_total) {
-        // Count if WO is in the selected period OR filter is 'all'
-        if (curFilter === 'all' || _inPeriod(woDate)) {
+        if (curFilter === 'all' || _inPeriod(_woManilaDate)) {
           return s + Math.max(0, (w.grand_total||0) - (w.balance_due||0));
         }
       }
@@ -3137,15 +3137,16 @@ async function openPartialPayment(woId) {
   const wo = workOrders.find(w => w.id === woId);
   if (!wo) return;
   let history = [];
-  if (Array.isArray(wo.payment_history)) {
-    history = wo.payment_history;
-  } else if (typeof wo.payment_history === 'string' && wo.payment_history.trim()) {
-    try { history = JSON.parse(wo.payment_history); } catch(e) { history = []; }
+  const _rawHist = wo.payment_history;
+  if (Array.isArray(_rawHist)) {
+    history = _rawHist;
+  } else if (typeof _rawHist === 'string' && _rawHist.trim() && _rawHist !== '[]') {
+    try { const _p = JSON.parse(_rawHist); history = Array.isArray(_p) ? _p : []; } catch(e) { history = []; }
   }
   const histPaid  = history.reduce((s,p) => s + (Number(p.amount)||0), 0);
-  // Use balance_due from DB as source of truth
-  const currentBal = (wo.balance_due != null && wo.balance_due >= 0) ? wo.balance_due : Math.max(0, (wo.grand_total||0) - histPaid);
-  const totalPaid  = histPaid > 0 ? histPaid : Math.max(0, (wo.grand_total||0) - currentBal);
+  // Use balance_due + down_payment from DB as ground truth (more reliable than parsing history)
+  const currentBal = (wo.balance_due != null && wo.balance_due >= 0) ? Number(wo.balance_due) : Math.max(0, (wo.grand_total||0) - histPaid);
+  const totalPaid  = Number(wo.down_payment) > 0 ? Number(wo.down_payment) : (histPaid > 0 ? histPaid : Math.max(0, (wo.grand_total||0) - currentBal));
   const bal        = currentBal;
 
   // If payment_history is empty but down_payment > 0, show legacy entry
@@ -3253,7 +3254,7 @@ async function savePartialPayment() {
   const newBalance = Math.max(0, (wo.grand_total||0) - newTotalPaid);
   const isFullyPaid = newBalance <= 0;
   const updates = {
-    payment_history: JSON.stringify(history),  // Save as JSON string — TEXT column in Supabase
+    payment_history: JSON.stringify(history),  // Save as JSON string (TEXT column in Supabase)
     balance_due: newBalance,
     down_payment: newTotalPaid,
   };
@@ -3270,7 +3271,7 @@ async function savePartialPayment() {
     const partialSaleId = 'AR-PAY-' + wo.wo_number + '-' + Date.now();
     const partialSale = {
       sale_id:      partialSaleId,
-      product_name: 'A/R Payment · WO-' + wo.wo_number + (wo.client_name ? ' · ' + wo.client_name : ''),
+      product_name: 'A/R Payment · ' + wo.wo_number + (wo.client_name ? ' · ' + wo.client_name : ''),
       category:     'Work Order',
       qty_sold:     1,
       unit_price:   amt,
@@ -3280,6 +3281,7 @@ async function savePartialPayment() {
       payment_status: 'cash',
       wo_id:        _savedWoId,
       notes:        note || 'Partial A/R cash payment',
+      source:       'ar_payment',
     };
     try {
       const newSale = await apiPost('KGSale', partialSale);
