@@ -1868,7 +1868,7 @@ async function renderDash(){
       return s;
     }, 0);
   const periodRev = cashRev + paidARRev + arPayRev + partialCollected;   // Actual collected revenue
-  const periodTx  = fs.length;
+  const periodTx  = fs.filter(s=>!String(s.sale_id||"").startsWith("AR-PAY-")).length;
   const periodQty = fs.reduce((s,sl)=>s+(sl.qty_sold||0),0);
 
   const low=products.filter(p=>st(p)==='low').length;
@@ -1912,7 +1912,7 @@ async function renderDash(){
     <div class="cat-qty">${num(d.qty)} pcs</div></div>`).join('');
 
   // top sales rows
-  const topRows=fs.slice(0,6).map(s=>`
+  const topRows=fs.filter(s=>!String(s.sale_id||"").startsWith("AR-PAY-")).slice(0,6).map(s=>`
     <tr style="border-bottom:1px solid var(--navy3)">
       <td style="padding:8px 8px;width:45%">
         <div style="font-size:13px;font-weight:600;color:var(--white);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px">${s.product_name||'—'}</div>
@@ -2041,18 +2041,11 @@ async function renderDash(){
           <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-top:1px solid var(--navy3)">
             <div>
               <div style="font-size:12px;font-weight:600;color:#ccc">✅ Paid A/R</div>
-              <div style="font-size:10px;color:var(--gray)">A/R collected this period</div>
+              <div style="font-size:10px;color:var(--gray)">Fully paid + partial payments collected</div>
             </div>
-            <div class="num" style="font-size:15px;font-weight:700;color:var(--green)">${peso(paidARRev)}</div>
+            <div class="num" style="font-size:15px;font-weight:700;color:var(--green)">${peso(paidARRev + arPayRev)}</div>
           </div>
-          ${partialCollected > 0 ? `
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-top:1px solid var(--navy3)">
-            <div>
-              <div style="font-size:12px;font-weight:600;color:#ccc">💳 Partial A/R Collected</div>
-              <div style="font-size:10px;color:var(--gray)">Cash partial payments received</div>
-            </div>
-            <div class="num" style="font-size:15px;font-weight:700;color:#e8a800">${peso(arPayRev + partialCollected)}</div>
-          </div>` : ''}
+          
         </div>
         <!-- Top sales mini-table -->
         <div style="margin-top:14px">
