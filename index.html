@@ -878,6 +878,14 @@ tbody td{padding:13px 16px;vertical-align:middle}
                 <input class="inp" type="text" id="saleTot" readonly style="color:var(--gold);font-weight:800;font-size:16px"/>
               </div>
               <div class="fg">
+                <label class="label">Discount (%)</label>
+                <input class="inp" type="number" id="saleDisc" min="0" max="100" value="0" placeholder="0" oninput="calcTotal()" style="font-size:16px"/>
+              </div>
+              <div class="fg">
+                <label class="label">Final Total</label>
+                <input class="inp" type="text" id="saleDiscTot" readonly style="color:#4ade80;font-weight:800;font-size:16px;display:none"/>
+              </div>
+              <div class="fg">
                 <label class="label">Sale Date</label>
                 <input class="inp" type="date" id="saleDate"/>
               </div>
@@ -2505,7 +2513,21 @@ async function quickSell(id){const _p=products.find(x=>x.id===id);if(!_p||((_p.s
 async function calcTotal(){
   if(!selProd)return;
   const q=parseInt(document.getElementById('saleQty').value)||0;
-  document.getElementById('saleTot').value=q>0?peso(q*(selProd.markup_price||selProd.unit_price)):'';
+  const base=q>0?q*(selProd.markup_price||selProd.unit_price):0;
+  document.getElementById('saleTot').value=base>0?peso(base):'';
+  const discEl=document.getElementById('saleDisc');
+  const discTotEl=document.getElementById('saleDiscTot');
+  if(discEl&&discTotEl){
+    const disc=parseFloat(discEl.value)||0;
+    if(disc>0&&base>0){
+      const final=base*(1-disc/100);
+      discTotEl.value=peso(final);
+      discTotEl.style.display='';
+    } else {
+      discTotEl.value='';
+      discTotEl.style.display='none';
+    }
+  }
 }
 async function doSale(){
   if(!selProd){toast('Select a product first','err');return;}
@@ -2518,17 +2540,21 @@ async function doSale(){
   btn.disabled=true;btn.textContent='Processing…';
   try {
     const saleId=genSaleId();
+    const _basePrice=selProd.markup_price||selProd.unit_price;
+    const _discPct=parseFloat(document.getElementById('saleDisc').value)||0;
+    const _finalPrice=_basePrice*(1-_discPct/100);
     const saleData={
       sale_id:saleId,
       product_id:selProd.product_id,
       product_name:selProd.product_name,
       category:selProd.category,
       qty_sold:qty,
-      unit_price:selProd.markup_price||selProd.unit_price,
-      sale_total:qty*(selProd.markup_price||selProd.unit_price),
+      unit_price:_finalPrice,
+      sale_total:qty*_finalPrice,
       recorded_by:curUser?.name||'Admin',
       notes:document.getElementById('saleNote').value,
       sale_date:document.getElementById('saleDate').value,
+      discount_pct:_discPct>0?_discPct:null,
     };
     const newStock = selProd.stock_qty - qty;
     await apiPut('KGProduct', selProd.id, {stock_qty: newStock});
