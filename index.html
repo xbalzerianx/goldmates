@@ -2543,6 +2543,7 @@ async function doSale(){
     const _basePrice=selProd.markup_price||selProd.unit_price;
     const _discPct=parseFloat(document.getElementById('saleDisc').value)||0;
     const _finalPrice=_basePrice*(1-_discPct/100);
+    const _saleNote=document.getElementById('saleNote').value;
     const saleData={
       sale_id:saleId,
       product_id:selProd.product_id,
@@ -2552,9 +2553,8 @@ async function doSale(){
       unit_price:_finalPrice,
       sale_total:qty*_finalPrice,
       recorded_by:curUser?.name||'Admin',
-      notes:document.getElementById('saleNote').value,
+      notes:_discPct>0?(_saleNote?_saleNote+' [Disc:'+_discPct+'%]':'Disc: '+_discPct+'%'):_saleNote,
       sale_date:document.getElementById('saleDate').value,
-      discount_pct:_discPct>0?_discPct:null,
     };
     const newStock = selProd.stock_qty - qty;
     await apiPut('KGProduct', selProd.id, {stock_qty: newStock});
