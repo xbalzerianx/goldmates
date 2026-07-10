@@ -3377,6 +3377,7 @@ async function renderWOList() {
       </div>
       </div>
       <div class="wo-card-customer">${(w.client_name||w.client_name) || '—'}</div>
+      <div style="font-size:10px;color:#6b7280;margin-top:-2px;margin-bottom:2px;">📅 Created: ${w.created_at ? new Date(w.created_at).toLocaleDateString('en-PH', {month:'short',day:'numeric',year:'numeric'}) : '—'}</div>
       <div class="wo-card-vehicle">${plateLine || '—'}</div>
       ${mechLine ? `<div class="wo-card-meta">${mechLine}</div>` : ''}
       <div class="wo-card-meta">${w.work_date || ''}${w.work_time ? ' · '+w.work_time : ''} · ${svcCount} svc · ${partsCount} part(s)</div>
