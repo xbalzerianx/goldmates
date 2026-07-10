@@ -175,16 +175,16 @@ tbody tr{border-top:1px solid var(--navy3);transition:background .1s}
 tbody tr:hover{background:rgba(212,168,67,0.03)}
 tbody td{padding:13px 16px;vertical-align:middle}
 /* ── INVENTORY / TABLE PAGES: eliminate dead space below table ── */
-#page-inventory,#page-saleslog,#page-workorders,#page-actlog,#page-employees{
+#page-inventory,#page-saleslog,#page-workorders,#page-actlog,#page-employees,#page-receivables{
   display:none;flex-direction:column;height:100%;overflow:hidden;
   padding:20px 28px;box-sizing:border-box;
 }
 #page-inventory.active,#page-saleslog.active,#page-workorders.active,
-#page-actlog.active,#page-employees.active{
+#page-actlog.active,#page-employees.active,#page-receivables.active{
   display:flex;
 }
 #page-inventory .tbl-wrap,#page-saleslog .tbl-wrap,#page-workorders .tbl-wrap,
-#page-actlog .tbl-wrap,#page-employees .tbl-wrap{
+#page-actlog .tbl-wrap,#page-employees .tbl-wrap,#page-receivables .tbl-wrap{
   flex:1;overflow-y:auto;min-height:0;
 }
 
@@ -624,6 +624,30 @@ tbody td{padding:13px 16px;vertical-align:middle}
 #woPrintContent .grand-row { background: #1c1c1c !important; }
 #woPrintContent .grand-row span { color: #cc9500 !important; }
 
+
+/* ===== ACCOUNTS RECEIVABLE ===== */
+.ar-desktop{display:block}
+.ar-mobile{display:none}
+@media(max-width:768px){
+  .ar-desktop{display:none}
+  .ar-mobile{display:block!important}
+}
+.ar-card{background:var(--navy2);border:1px solid var(--navy3);border-radius:var(--r2);padding:16px;margin-bottom:10px;position:relative}
+.ar-card.overdue{border-left:3px solid #ef4444}
+.ar-card.current{border-left:3px solid var(--gold)}
+.ar-card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
+.ar-card-wo{font-size:11px;font-weight:700;color:var(--gold);letter-spacing:.5px}
+.ar-card-client{font-size:15px;font-weight:700;color:var(--white);margin-top:2px}
+.ar-card-vehicle{font-size:12px;color:var(--gray);margin-top:2px}
+.ar-card-meta{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;font-size:12px;color:var(--gray)}
+.ar-card-meta span{display:flex;align-items:center;gap:4px}
+.ar-card-balance{font-size:20px;font-weight:800;color:#f87171;text-align:right}
+.ar-card-total{font-size:11px;color:var(--gray);text-align:right;margin-top:2px}
+.ar-card-actions{display:flex;gap:6px;margin-top:12px;justify-content:flex-end}
+.ar-overdue-badge{background:rgba(239,68,68,.15);color:#f87171;font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;text-transform:uppercase;letter-spacing:.5px}
+.ar-current-badge{background:rgba(212,168,67,.15);color:var(--gold);font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;text-transform:uppercase;letter-spacing:.5px}
+.ar-partial-bar{height:4px;background:var(--navy3);border-radius:2px;margin-top:8px;overflow:hidden}
+.ar-partial-fill{height:100%;background:var(--gold);border-radius:2px;transition:width .4s}
 </style>
 </head>
 <body>
@@ -684,33 +708,20 @@ tbody td{padding:13px 16px;vertical-align:middle}
       </div>
     </div>
     <div class="sb-user" id="sbUser"></div>
+
+    <!-- OVERVIEW -->
     <div class="sb-section">Overview</div>
     <button class="sb-item active" data-page="dashboard" onclick="go('dashboard')">
-      <span class="sb-item-icon">📊</span>Dashboard<span id="sbARBadge" style="display:none;margin-left:auto;background:#ef4444;color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;line-height:1.4">0</span>
+      <span class="sb-item-icon">📊</span>Dashboard
     </button>
-    <div class="sb-section">Inventory</div>
+
+    <!-- OPERATIONS -->
+    <div class="sb-section">Operations</div>
     <button class="sb-item" data-page="inventory" onclick="go('inventory')">
       <span class="sb-item-icon">📦</span>Products
     </button>
     <button class="sb-item" data-page="sale" onclick="go('sale')">
       <span class="sb-item-icon">💰</span>Record Sale
-    </button>
-    <div class="sb-section">Reports</div>
-    <button class="sb-item" data-page="saleslog" onclick="go('saleslog')">
-      <span class="sb-item-icon">📋</span>Sales Log
-    </button>
-    <button class="sb-item" data-page="expenses" onclick="go('expenses')">
-      <span class="sb-item-icon">💸</span>Expenses
-    </button>
-    <button class="sb-item" data-page="actlog" onclick="go('actlog')">
-      <span class="sb-item-icon">🕓</span>Activity Log
-    </button>
-    <button class="sb-item" data-page="alerts" onclick="go('alerts')">
-      <span class="sb-item-icon">⚠️</span>Stock Alerts
-      <span class="sb-badge yellow" id="sbBadge" style="display:none">0</span>
-    </button>
-    <button class="sb-item" data-page="catmgr" onclick="go('catmgr')" id="sbCatMgrBtn" style="display:none">
-      <span class="sb-item-icon">🗂️</span>Category Manager
     </button>
     <button class="sb-item" data-page="workorders" onclick="go('workorders')" id="sbWOBtn">
       <span class="sb-item-icon">🔧</span>Work Orders
@@ -718,8 +729,36 @@ tbody td{padding:13px 16px;vertical-align:middle}
     <button class="sb-item" data-page="employees" onclick="go('employees')">
       <span class="sb-item-icon">👥</span>Employees
     </button>
-    <!-- WO Templates merged into WO modal — no longer a separate page -->
+
+    <!-- FINANCE -->
+    <div class="sb-section">Finance</div>
+    <button class="sb-item" data-page="saleslog" onclick="go('saleslog')">
+      <span class="sb-item-icon">📋</span>Sales Log
+    </button>
+    <button class="sb-item" data-page="expenses" onclick="go('expenses')">
+      <span class="sb-item-icon">💸</span>Expenses
+    </button>
+    <button class="sb-item" data-page="receivables" onclick="go('receivables')">
+      <span class="sb-item-icon">🧾</span>Accounts Receivable
+      <span class="sb-badge" id="sbARBadge" style="display:none">0</span>
+    </button>
+
+    <!-- SYSTEM -->
+    <div class="sb-section">System</div>
+    <button class="sb-item" data-page="alerts" onclick="go('alerts')">
+      <span class="sb-item-icon">⚠️</span>Stock Alerts
+      <span class="sb-badge yellow" id="sbBadge" style="display:none">0</span>
+    </button>
+    <button class="sb-item" data-page="actlog" onclick="go('actlog')">
+      <span class="sb-item-icon">🕓</span>Activity Log
+    </button>
+    <button class="sb-item" data-page="catmgr" onclick="go('catmgr')" id="sbCatMgrBtn" style="display:none">
+      <span class="sb-item-icon">🗂️</span>Category Manager
+    </button>
+
+    <!-- WO Templates merged into WO modal -->
     <div id="sbWOTplBtn" style="display:none"></div>
+
     <div class="sb-footer">
       <div id="sbChangePinBtn" style="display:none;margin-bottom:10px">
         <button class="btn btn-ghost btn-sm" style="width:100%;justify-content:center" onclick="openChangePin()">🔑 Change PINs</button>
@@ -837,6 +876,14 @@ tbody td{padding:13px 16px;vertical-align:middle}
               <div class="fg">
                 <label class="label">Sale Total</label>
                 <input class="inp" type="text" id="saleTot" readonly style="color:var(--gold);font-weight:800;font-size:16px"/>
+              </div>
+              <div class="fg">
+                <label class="label">Discount (%)</label>
+                <input class="inp" type="number" id="saleDisc" min="0" max="100" value="0" placeholder="0" oninput="calcTotal()" style="font-size:16px"/>
+              </div>
+              <div class="fg">
+                <label class="label">Final Total</label>
+                <input class="inp" type="text" id="saleDiscTot" readonly style="color:#4ade80;font-weight:800;font-size:16px;display:none"/>
               </div>
               <div class="fg">
                 <label class="label">Sale Date</label>
@@ -1058,6 +1105,52 @@ tbody td{padding:13px 16px;vertical-align:middle}
   </div>
 </div>
 
+<!-- ===== ACCOUNTS RECEIVABLE PAGE ===== -->
+<div id="page-receivables" class="page">
+  <div class="page-hdr">
+    <div class="page-hdr-row">
+      <div>
+        <div class="page-title">Accounts Receivable</div>
+        <div class="page-sub">Work Orders with outstanding balances</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <div style="display:flex;gap:6px;align-items:center;background:var(--navy3);padding:6px 14px;border-radius:8px;font-size:12px">
+          <span style="width:8px;height:8px;border-radius:50%;background:#ef4444;display:inline-block"></span>
+          <span id="arOverdueCount" style="font-weight:700;color:#f87171">0 overdue</span>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;background:var(--navy3);padding:6px 14px;border-radius:8px;font-size:12px">
+          <span style="color:var(--gray)">Total Outstanding:</span>
+          <span id="arTotalOutstanding" style="font-weight:800;color:var(--gold)">₱0.00</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FILTER BAR -->
+  <div class="toolbar" style="flex-wrap:wrap;gap:8px;margin-bottom:16px">
+    <div class="search" style="flex:1;min-width:180px">
+      <span style="font-size:15px;color:var(--gray)">🔍</span>
+      <input type="text" id="arQ" placeholder="Search client, plate, WO#…" oninput="renderAR()"/>
+    </div>
+    <select class="sel" id="arFilter" onchange="renderAR()">
+      <option value="all">All Outstanding</option>
+      <option value="overdue">🔴 Overdue Only</option>
+      <option value="current">🟡 Not Yet Due</option>
+    </select>
+    <select class="sel" id="arSort" onchange="renderAR()">
+      <option value="date_desc">Newest First</option>
+      <option value="date_asc">Oldest First</option>
+      <option value="balance_desc">Highest Balance</option>
+      <option value="balance_asc">Lowest Balance</option>
+    </select>
+  </div>
+
+  <!-- AR CARD GRID -->
+  <div id="arGrid" class="wo-grid"></div>
+
+  <div id="arFooter" class="mt16" style="text-align:right;font-size:13px;color:var(--gray)"></div>
+</div>
+<!-- ===== END ACCOUNTS RECEIVABLE PAGE ===== -->
     </div>
   </div>
 </div>
@@ -1068,13 +1161,14 @@ tbody td{padding:13px 16px;vertical-align:middle}
     <button class="mob-item active" data-page="dashboard" onclick="go('dashboard')"><span class="mob-item-icon">📊</span>Dashboard</button>
     <button class="mob-item" data-page="inventory" onclick="go('inventory')"><span class="mob-item-icon">📦</span>Products</button>
     <button class="mob-item" data-page="sale" onclick="go('sale')"><span class="mob-item-icon">💰</span>Sell</button>
-    <button class="mob-item" data-page="saleslog" onclick="go('saleslog')"><span class="mob-item-icon">📋</span>Log</button>
-    <button class="mob-item" data-page="expenses" onclick="go('expenses')"><span class="mob-item-icon">💸</span>Expenses</button>
-<button class="mob-item" data-page="actlog" onclick="go('actlog')"><span class="mob-item-icon">🕓</span>Logs</button>
-    <button class="mob-item" data-page="catmgr" onclick="go('catmgr')" id="mobCatMgrBtn" style="display:none"><span class="mob-item-icon">🗂️</span>Categories</button>
     <button class="mob-item" data-page="workorders" onclick="go('workorders')" id="mobWOBtn"><span class="mob-item-icon">🔧</span>Work Orders</button>
+    <button class="mob-item" data-page="receivables" onclick="go('receivables')"><span class="mob-item-icon">🧾</span>A/R</button>
+    <button class="mob-item" data-page="saleslog" onclick="go('saleslog')"><span class="mob-item-icon">📋</span>Sales</button>
+    <button class="mob-item" data-page="expenses" onclick="go('expenses')"><span class="mob-item-icon">💸</span>Expenses</button>
     <button class="mob-item" data-page="employees" onclick="go('employees')"><span class="mob-item-icon">👥</span>Staff</button>
     <button class="mob-item" data-page="alerts" onclick="go('alerts')"><span class="mob-item-icon">⚠️</span>Alerts</button>
+    <button class="mob-item" data-page="actlog" onclick="go('actlog')"><span class="mob-item-icon">🕓</span>Logs</button>
+    <button class="mob-item" data-page="catmgr" onclick="go('catmgr')" id="mobCatMgrBtn" style="display:none"><span class="mob-item-icon">🗂️</span>Categories</button>
   </div>
 </nav>
 
@@ -1514,10 +1608,11 @@ async function loadAll(){
     });
     actLogs.sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0));
     alertBadge();
-    try { await renderDash(); } catch(re){ console.error('renderDash error:',re); }
+    try { await renderDash(); updateARBadge(); } catch(re){ console.error('renderDash error:',re); }
     try { await renderExpenses(); } catch(re){ console.error('renderExpenses error:',re); }
     try { await render(); } catch(re){ console.error('render error:',re); }
     try { await populateCatDropdown(); } catch(re){ console.error('populateCatDropdown error:',re); }
+    updateARBadge();
     try { await refreshMCatSelect(); } catch(re){ console.error('refreshMCatSelect error:',re); }
     // Pre-render actlog so spinner is removed even if not navigated yet
     if(curPage!=='actlog') {
@@ -1533,7 +1628,7 @@ async function loadAll(){
 }
 
 // ═══════════════════ NAVIGATION ═══════════════════
-const TITLES={dashboard:'Dashboard',inventory:'Products & Inventory',sale:'Record Sale',saleslog:'Sales Log',expenses:'Expenses',actlog:'Activity Log',alerts:'Stock Alerts',catmgr:'Category Manager',workorders:'Work Orders',employees:'Employees'};
+const TITLES={dashboard:'Dashboard',inventory:'Products & Inventory',sale:'Record Sale',saleslog:'Sales Log',expenses:'Expenses',actlog:'Activity Log',alerts:'Stock Alerts',catmgr:'Category Manager',workorders:'Work Orders',employees:'Employees',receivables:'Accounts Receivable'};
 async function go(page){
   curPage=page;
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
@@ -1566,6 +1661,9 @@ async function go(page){
       setWOFilter('active');
       renderWOList();
     });
+  }
+  if(page==='receivables'){
+    loadWorkOrders().then(()=>{ renderAR(); });
   }
   // wotemplates page removed — templates accessed from WO modal
   if(page==='saleslog'){
@@ -1718,7 +1816,9 @@ async function renderDash(){
   const totMarkupPct=totSRP>0?((totMarkupGain/totSRP)*100).toFixed(1):0;
 
   // Sales breakdown — Total / Cash / Unpaid Cash / A/R / Paid A/R
-  const fsCash       = fs.filter(s => !s.payment_status || s.payment_status === 'cash');
+  // AR-PAY- sales are cash partial payments — separate them to avoid double-counting
+  const fsCash       = fs.filter(s => (!s.payment_status || s.payment_status === 'cash') && !String(s.sale_id||'').startsWith('AR-PAY-'));
+  const fsARPay      = fs.filter(s => String(s.sale_id||'').startsWith('AR-PAY-')); // new partial payment records
   const fsCashUnpaid = fs.filter(s => s.payment_status === 'cash_unpaid');
   const fsAR         = fs.filter(s => s.payment_status === 'receivable');
   const fsPaidAR     = fs.filter(s => s.payment_status === 'paid');
@@ -1726,6 +1826,7 @@ async function renderDash(){
   const cashUnpaidRev  = fsCashUnpaid.reduce((s,sl)=>s+(sl.sale_total||0),0);
   const arRev          = fsAR.reduce((s,sl)=>s+(sl.sale_total||0),0);
   const paidARRev      = fsPaidAR.reduce((s,sl)=>s+(sl.sale_total||0),0);
+  const arPayRev       = fsARPay.reduce((s,sl)=>s+(sl.sale_total||0),0); // cash collected from AR
   // Collected from partial payments on A/R WOs — filtered by active date period
   const now=new Date();
   const todayStr=today();
@@ -1745,14 +1846,37 @@ async function renderDash(){
     if (curFilter==='custom')    return (!filterFrom||dateStr>=filterFrom)&&(!filterTo||dateStr<=filterTo);
     return true;
   }
+  // partialCollected: only counts WOs NOT already covered by an AR-PAY sale in arPayRev
+  // Build a set of WO IDs that already have an AR-PAY sale record (counted in arPayRev)
+  const _arPayWoIds = new Set(
+    (sales||[]).filter(s => String(s.sale_id||'').startsWith('AR-PAY-')).map(s => s.wo_id).filter(Boolean)
+  );
   const partialCollected = workOrders
     .filter(w => w.payment_status === 'receivable')
     .reduce((s,w) => {
-      const hist = Array.isArray(w.payment_history) ? w.payment_history : [];
-      return s + hist.filter(p => _inPeriod(p.date)).reduce((h,p) => h + (p.amount||0), 0);
+      // If this WO already has an AR-PAY sale record → skip entirely (already in arPayRev)
+      if (_arPayWoIds.has(w.id)) return s;
+      // Parse payment_history for WOs without AR-PAY sale yet (legacy / manual entries)
+      let hist = [];
+      if (Array.isArray(w.payment_history)) hist = w.payment_history;
+      else if (typeof w.payment_history === 'string' && w.payment_history.trim() && w.payment_history !== '[]') {
+        try { const _p = JSON.parse(w.payment_history); hist = Array.isArray(_p) ? _p : []; } catch(_) {}
+      }
+      const histTotal = hist.filter(p => _inPeriod(p.date)).reduce((h,p) => h + (Number(p.amount)||0), 0);
+      if (histTotal > 0) return s + histTotal;
+      // Last fallback: balance_due diff (for WOs with no payment_history and no AR-PAY sale)
+      const _woManilaDate = w.created_at
+        ? (() => { const _d = new Date(new Date(w.created_at).toLocaleString('en-US',{timeZone:'Asia/Manila'})); return _d.getFullYear()+'-'+String(_d.getMonth()+1).padStart(2,'0')+'-'+String(_d.getDate()).padStart(2,'0'); })()
+        : null;
+      if (w.balance_due != null && w.grand_total > 0 && w.balance_due < w.grand_total) {
+        if (curFilter === 'all' || _inPeriod(_woManilaDate)) {
+          return s + Math.max(0, (w.grand_total||0) - (w.balance_due||0));
+        }
+      }
+      return s;
     }, 0);
-  const periodRev = cashRev + paidARRev + partialCollected;   // Actual collected revenue
-  const periodTx  = fs.length;
+  const periodRev = cashRev + paidARRev + arPayRev + partialCollected;   // Actual collected revenue
+  const periodTx  = fs.filter(s=>!String(s.sale_id||"").startsWith("AR-PAY-")).length;
   const periodQty = fs.reduce((s,sl)=>s+(sl.qty_sold||0),0);
 
   const low=products.filter(p=>st(p)==='low').length;
@@ -1796,13 +1920,20 @@ async function renderDash(){
     <div class="cat-qty">${num(d.qty)} pcs</div></div>`).join('');
 
   // top sales rows
-  const topRows=fs.slice(0,6).map(s=>`
-    <tr><td class="fs11 text-gray fw7 tbl-col-hide">${s.sale_id||'—'}</td>
-    <td><div class="fw7">${s.product_name||'—'}</div><div class="fs11 text-gray">${phDate(s.sale_date||s.created_at)}</div></td>
-    <td class="tbl-col-hide"><span class="badge b-cat">${s.category||'—'}</span></td>
-    <td class="num text-gold fw7">${peso(s.sale_total)}</td>
-    <td class="tbl-col-hide"><span class="badge ${s.recorded_by==='Admin'?'b-admin':'b-asst'}">${s.recorded_by||'—'}</span></td></tr>`).join('')
-    ||`<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--gray)">No sales in this period</td></tr>`;
+  const topRows=fs.filter(s=>!String(s.sale_id||"").startsWith("AR-PAY-")).slice(0,6).map(s=>`
+    <tr style="border-bottom:1px solid var(--navy3)">
+      <td style="padding:8px 8px;width:45%">
+        <div style="font-size:13px;font-weight:600;color:var(--white);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px">${s.product_name||'—'}</div>
+        <div style="font-size:10px;color:var(--gray);margin-top:1px">${phDate(s.sale_date||s.created_at)}</div>
+      </td>
+      <td style="padding:8px 8px;width:25%;vertical-align:middle">
+        <span class="badge b-cat">${s.category||'—'}</span>
+      </td>
+      <td style="padding:8px 8px;width:30%;text-align:right;vertical-align:middle">
+        <span style="font-size:13px;font-weight:700;color:var(--gold)">${peso(s.sale_total)}</span>
+      </td>
+    </tr>`).join('')
+    ||`<tr><td colspan="3" style="text-align:center;padding:24px;color:var(--gray)">No sales in this period</td></tr>`;
 
   const expRows=fexp.slice(0,6).map(e=>`
     <tr>
@@ -1918,16 +2049,17 @@ async function renderDash(){
           <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-top:1px solid var(--navy3)">
             <div>
               <div style="font-size:12px;font-weight:600;color:#ccc">✅ Paid A/R</div>
-              <div style="font-size:10px;color:var(--gray)">A/R collected this period</div>
+              <div style="font-size:10px;color:var(--gray)">Fully paid + partial payments collected</div>
             </div>
-            <div class="num" style="font-size:15px;font-weight:700;color:var(--green)">${peso(paidARRev + partialCollected)}</div>
+            <div class="num" style="font-size:15px;font-weight:700;color:var(--green)">${peso(paidARRev + arPayRev)}</div>
           </div>
+          
         </div>
         <!-- Top sales mini-table -->
         <div style="margin-top:14px">
           <div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--gray);margin-bottom:6px">Recent Transactions</div>
           <table style="width:100%;border-collapse:collapse;table-layout:fixed">
-            <colgroup><col style="width:42%"><col style="width:28%"><col style="width:30%"></colgroup>
+            <colgroup><col style="width:45%"><col style="width:25%"><col style="width:30%"></colgroup>
             <thead><tr>
               <th style="padding:6px 8px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--gray);text-align:left;border-bottom:1px solid var(--navy3)">Product</th>
               <th style="padding:6px 8px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--gray);text-align:left;border-bottom:1px solid var(--navy3)">Category</th>
@@ -2079,6 +2211,7 @@ async function openAdd(){
   document.getElementById('prodModal').classList.add('open');
 }
 async function openEdit(id){
+  if(curUser?.role !== 'admin'){ toast('Only Admin can edit products.','error'); return; }
   const p=products.find(x=>x.id===id);if(!p)return;
   editId=id;
   refreshMCatSelect();
@@ -2381,7 +2514,21 @@ async function quickSell(id){const _p=products.find(x=>x.id===id);if(!_p||((_p.s
 async function calcTotal(){
   if(!selProd)return;
   const q=parseInt(document.getElementById('saleQty').value)||0;
-  document.getElementById('saleTot').value=q>0?peso(q*(selProd.markup_price||selProd.unit_price)):'';
+  const base=q>0?q*(selProd.markup_price||selProd.unit_price):0;
+  document.getElementById('saleTot').value=base>0?peso(base):'';
+  const discEl=document.getElementById('saleDisc');
+  const discTotEl=document.getElementById('saleDiscTot');
+  if(discEl&&discTotEl){
+    const disc=parseFloat(discEl.value)||0;
+    if(disc>0&&base>0){
+      const final=base*(1-disc/100);
+      discTotEl.value=peso(final);
+      discTotEl.style.display='';
+    } else {
+      discTotEl.value='';
+      discTotEl.style.display='none';
+    }
+  }
 }
 async function doSale(){
   if(!selProd){toast('Select a product first','err');return;}
@@ -2394,16 +2541,20 @@ async function doSale(){
   btn.disabled=true;btn.textContent='Processing…';
   try {
     const saleId=genSaleId();
+    const _basePrice=selProd.markup_price||selProd.unit_price;
+    const _discPct=parseFloat(document.getElementById('saleDisc').value)||0;
+    const _finalPrice=_basePrice*(1-_discPct/100);
+    const _saleNote=document.getElementById('saleNote').value;
     const saleData={
       sale_id:saleId,
       product_id:selProd.product_id,
       product_name:selProd.product_name,
       category:selProd.category,
       qty_sold:qty,
-      unit_price:selProd.markup_price||selProd.unit_price,
-      sale_total:qty*(selProd.markup_price||selProd.unit_price),
+      unit_price:_finalPrice,
+      sale_total:qty*_finalPrice,
       recorded_by:curUser?.name||'Admin',
-      notes:document.getElementById('saleNote').value,
+      notes:_discPct>0?(_saleNote?_saleNote+' [Disc:'+_discPct+'%]':'Disc: '+_discPct+'%'):_saleNote,
       sale_date:document.getElementById('saleDate').value,
     };
     const newStock = selProd.stock_qty - qty;
@@ -2826,6 +2977,7 @@ async function saveExpense(){
 // ═══════════════════ DELETE ═══════════════════
 let deleteTarget=null;
 async function confirmDelete(id,name){
+  if(curUser?.role !== 'admin'){ toast('Only Admin can delete products.','error'); return; }
   deleteTarget={id,name};
   document.getElementById('delName').textContent=name;
   document.getElementById('delModal').classList.add('open');
@@ -3010,11 +3162,23 @@ async function openPartialPayment(woId) {
   } catch(e) { console.warn('Could not refresh WO for pay modal:', e); }
   const wo = workOrders.find(w => w.id === woId);
   if (!wo) return;
-  const bal = wo.balance_due || wo.grand_total || 0;
-  const history = Array.isArray(wo.payment_history) ? wo.payment_history : [];
-  const totalPaid = history.reduce((s,p) => s + (p.amount||0), 0);
-  const currentBal = (wo.grand_total || 0) - totalPaid;
+  let history = [];
+  const _rawHist = wo.payment_history;
+  if (Array.isArray(_rawHist)) {
+    history = _rawHist;
+  } else if (typeof _rawHist === 'string' && _rawHist.trim() && _rawHist !== '[]') {
+    try { const _p = JSON.parse(_rawHist); history = Array.isArray(_p) ? _p : []; } catch(e) { history = []; }
+  }
+  const histPaid  = history.reduce((s,p) => s + (Number(p.amount)||0), 0);
+  // Use balance_due + down_payment from DB as ground truth (more reliable than parsing history)
+  const currentBal = (wo.balance_due != null && wo.balance_due >= 0) ? Number(wo.balance_due) : Math.max(0, (wo.grand_total||0) - histPaid);
+  const totalPaid  = Number(wo.down_payment) > 0 ? Number(wo.down_payment) : (histPaid > 0 ? histPaid : Math.max(0, (wo.grand_total||0) - currentBal));
+  const bal        = currentBal;
 
+  // If payment_history is empty but down_payment > 0, show legacy entry
+  if (history.length === 0 && wo.down_payment > 0) {
+    history = [{ date: wo.work_date || wo.created_at?.slice(0,10) || '—', amount: wo.down_payment, note: 'Partial payment (recorded)', recorded_by: 'Admin' }];
+  }
   // Build history table
   const histRows = history.length ? history.map(p => `
     <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.06)">
@@ -3116,7 +3280,7 @@ async function savePartialPayment() {
   const newBalance = Math.max(0, (wo.grand_total||0) - newTotalPaid);
   const isFullyPaid = newBalance <= 0;
   const updates = {
-    payment_history: history,
+    payment_history: JSON.stringify(history),  // Save as JSON string (TEXT column in Supabase)
     balance_due: newBalance,
     down_payment: newTotalPaid,
   };
@@ -3127,9 +3291,30 @@ async function savePartialPayment() {
   const _savedWoId = ppWOId;
   try {
     await apiPut('KGWorkOrder', _savedWoId, updates);
-    Object.assign(wo, updates);
-    // Update linked KGSale
-    const linkedSale = (sales||[]).find(s => s.wo_id === ppWOId || s.sale_id === 'WO-'+wo.wo_number);
+    // Update local in-memory record with PARSED array (not string)
+    Object.assign(wo, { ...updates, payment_history: history });
+    // ── Insert a KGSale record for this partial cash payment so it shows on dashboard ──
+    const partialSaleId = 'AR-PAY-' + wo.wo_number + '-' + Date.now();
+    const partialSale = {
+      sale_id:      partialSaleId,
+      product_name: 'A/R Payment · ' + wo.wo_number + (wo.client_name ? ' · ' + wo.client_name : ''),
+      category:     'Work Order',
+      qty_sold:     1,
+      unit_price:   amt,
+      sale_total:   amt,
+      sale_date:    date,
+      recorded_by:  curUser?.name || 'Admin',
+      payment_status: 'cash',
+      wo_id:        _savedWoId,
+      notes:        note || 'Partial A/R cash payment',
+      source:       'ar_payment',
+    };
+    try {
+      const newSale = await apiPost('KGSale', partialSale);
+      if (newSale) (sales = sales || []).push(newSale);
+    } catch(se) { console.warn('Could not insert partial sale record:', se); }
+    // Update linked KGSale (the original WO sale)
+    const linkedSale = (sales||[]).find(s => (s.wo_id === ppWOId || s.sale_id === 'WO-'+wo.wo_number) && s.sale_id !== partialSaleId);
     if (linkedSale) {
       const saleUp = isFullyPaid ? { payment_status: 'paid' } : { payment_status: 'receivable' };
       await apiPut('KGSale', linkedSale.id, saleUp);
@@ -3195,6 +3380,16 @@ async function renderWOList() {
       <div class="wo-card-vehicle">${plateLine || '—'}</div>
       ${mechLine ? `<div class="wo-card-meta">${mechLine}</div>` : ''}
       <div class="wo-card-meta">${w.work_date || ''}${w.work_time ? ' · '+w.work_time : ''} · ${svcCount} svc · ${partsCount} part(s)</div>
+      ${w.payment_status === 'receivable' && w.grand_total > 0 ? (() => {
+        const _paid = Math.max(0, (w.grand_total||0) - (w.balance_due != null ? w.balance_due : (w.grand_total||0)));
+        const _pct  = Math.min(100, Math.round((_paid / w.grand_total) * 100));
+        return _paid > 0 ? `<div style="margin:4px 0 2px">
+          <div style="height:3px;background:#252525;border-radius:2px;overflow:hidden">
+            <div style="height:100%;width:${_pct}%;background:#e8a800;border-radius:2px"></div>
+          </div>
+          <div style="font-size:10px;color:#e8a800;margin-top:2px">💳 Paid: ${peso(_paid)} (${_pct}%)</div>
+        </div>` : '';
+      })() : ''}
       <div class="wo-card-footer">
         <div class="wo-card-actions">
           <button class="btn btn-ghost btn-sm no-print" title="Edit" onclick="event.stopPropagation();openEditWO('${w.id}')">✏️</button>
@@ -3204,7 +3399,7 @@ async function renderWOList() {
             <button class="btn btn-ghost btn-sm no-print" title="Add Partial Payment" onclick="event.stopPropagation();openPartialPayment('${w.id}')" style="color:#facc15">💰 Pay</button>
             <button class="btn btn-ghost btn-sm no-print" title="Mark Fully Paid" onclick="event.stopPropagation();markWOPaid('${w.id}')" style="color:#10b981">✅ Full Paid</button>
           ` : ''}
-          <button class="btn btn-ghost btn-sm no-print wo-del-btn" title="Delete Work Order" onclick="event.stopPropagation();deleteWO('${w.id}')" style="color:#f87171;margin-left:4px">🗑️</button>
+          <button class="btn btn-ghost btn-sm no-print wo-del-btn" title="Delete Work Order" onclick="event.stopPropagation();deleteWO('${w.id}')" style="color:#f87171;margin-left:4px;display:${curUser?.role==='admin'?'inline-block':'none'}">🗑️</button>
         </div>
       </div>
     </div>`;
@@ -3460,28 +3655,53 @@ async function renderWOParts() {
   const el = document.getElementById('woPartList');
   if (!el) return;
   if (!woParts.length) { el.innerHTML = '<div style="color:#888888;font-size:13px;padding:6px 0">No parts added yet.</div>'; return; }
-  el.innerHTML = woParts.map((p, i) => `
-    <div class="wo-service-item">
-      <div class="wo-service-item-name">${p.product_name}
+  el.innerHTML = woParts.map((p, i) => {
+    const disc = p.discount_pct || 0;
+    const baseAmt = (p.unit_price || 0) * (p.qty || 1);
+    const discAmt = baseAmt * (disc / 100);
+    const finalAmt = baseAmt - discAmt;
+    return `
+    <div class="wo-service-item" style="flex-wrap:wrap;gap:6px;align-items:center">
+      <div class="wo-service-item-name" style="flex:1;min-width:160px">${p.product_name}
         <span style="margin-left:8px">
           <button onclick="changeWOPartQty(${i},-1)" style="background:#1c1c1c;border:none;color:#e8e0d5;border-radius:4px;width:22px;height:22px;cursor:pointer;font-size:14px;line-height:1">−</button>
           <span style="margin:0 6px;font-size:13px;color:#e8a800">${p.qty}</span>
           <button onclick="changeWOPartQty(${i},1)" style="background:#1c1c1c;border:none;color:#e8e0d5;border-radius:4px;width:22px;height:22px;cursor:pointer;font-size:14px;line-height:1">+</button>
         </span>
       </div>
-      <div class="wo-service-item-price">${peso((p.unit_price || 0) * (p.qty || 1))}</div>
+      <div style="display:flex;align-items:center;gap:5px;flex-shrink:0">
+        <span style="font-size:11px;color:#888;font-weight:600">Discount</span>
+        <input type="number" min="0" max="100" value="${disc}"
+          style="width:52px;padding:3px 5px;background:#1c1c1c;border:1px solid #333;border-radius:6px;color:#e8a800;font-size:13px;font-weight:700;text-align:center;font-size:16px"
+          oninput="setWOPartDisc(${i},this.value)"/>
+        <span style="font-size:12px;color:#888">%</span>
+      </div>
+      <div class="wo-service-item-price" style="flex-shrink:0">
+        ${disc > 0 ? `<span style="text-decoration:line-through;color:#666;font-size:11px;margin-right:4px">${peso(baseAmt)}</span>` : ''}${peso(finalAmt)}
+      </div>
       <button class="wo-service-item-del" onclick="removeWOPart(${i})">×</button>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 async function changeWOPartQty(i, delta) {
   woParts[i].qty = Math.max(1, (woParts[i].qty || 1) + delta);
   renderWOParts(); calcWOTotals();
 }
+function setWOPartDisc(i, val) {
+  woParts[i].discount_pct = Math.min(100, Math.max(0, parseFloat(val) || 0));
+  calcWOTotals();
+  // Re-render only price display without full re-render (to keep focus)
+  renderWOParts();
+}
 
 // ---- Totals ----
 async function calcWOTotals() {
   const labor = woServices.reduce((s, x) => s + (x.price || 0), 0);
-  const parts = woParts.reduce((s, x) => s + (x.unit_price || 0) * (x.qty || 1), 0);
+  const parts = woParts.reduce((s, x) => {
+    const base = (x.unit_price || 0) * (x.qty || 1);
+    const disc = x.discount_pct || 0;
+    return s + base * (1 - disc / 100);
+  }, 0);
   const sub = labor + parts;
   const vat = woVatEnabled ? sub * 0.12 : 0;
   const afterVat = sub + vat;
@@ -3587,7 +3807,7 @@ async function saveWO() {
   const t = await calcWOTotals();
   const chargesArr = [
     ...woServices.map(s => ({ type: 'service', name: s.name, qty: 1, price: s.price || 0 })),
-    ...woParts.map(p => ({ type: 'part', name: p.product_name, product_id: p.id || null, qty: p.qty || 1, price: p.unit_price || 0 }))
+    ...woParts.map(p => ({ type: 'part', name: p.product_name, product_id: p.id || null, qty: p.qty || 1, price: p.unit_price || 0, discount_pct: p.discount_pct || 0 }))
   ];
   const vehicleStr = document.getElementById('woVehicle').value.trim();
   const mechVal = document.getElementById('woMechanic').value.trim();
@@ -3719,6 +3939,7 @@ async function saveWO() {
 
 // ---- Delete WO ----
 async function deleteWO(id) {
+  if(curUser?.role !== 'admin'){ toast('Only Admin can delete work orders.','error'); return; }
   const wo = workOrders.find(w => w.id === id);
   const status = wo ? wo.status : 'unknown';
   const statusLabel = status === 'completed' ? 'completed' : status === 'cancelled' ? 'cancelled' : 'in-progress/open';
@@ -3877,16 +4098,25 @@ async function openWOPrint(id) {
   var partsRows = '';
   for (var j = 0; j < parts.length; j++) {
     var pbg = (j % 2 === 0) ? '#fff' : '#fafafa';
-    var pname  = parts[j].product_name || parts[j].name || '—';
-    var pprice = parseFloat(parts[j].unit_price || parts[j].price || 0);
-    var pqty   = parseInt(parts[j].qty || 1);
+    var pname   = parts[j].product_name || parts[j].name || '—';
+    var pprice  = parseFloat(parts[j].unit_price || parts[j].price || 0);
+    var pqty    = parseInt(parts[j].qty || 1);
+    var pdisc   = parseFloat(parts[j].discount_pct || 0);
     var pamount = pprice * pqty;
+    var pfinal  = pamount * (1 - pdisc / 100);
+    var discCell = pdisc > 0
+      ? '<td style="padding:9px 14px;border-bottom:1px solid #eee;color:#b45309;font-size:12px;text-align:center;white-space:nowrap">' + pdisc + '%</td>'
+      : '<td style="padding:9px 14px;border-bottom:1px solid #eee;color:#aaa;font-size:12px;text-align:center">—</td>';
+    var amountDisplay = pdisc > 0
+      ? '<span style="text-decoration:line-through;color:#aaa;font-size:11px;margin-right:4px">' + peso(pamount) + '</span><strong>' + peso(pfinal) + '</strong>'
+      : peso(pamount);
     partsRows +=
       '<tr style="background:' + pbg + '">' +
         '<td style="padding:9px 14px;border-bottom:1px solid #eee;color:#1c1c1c;font-size:13px">' + pname + '</td>' +
         '<td style="padding:9px 14px;border-bottom:1px solid #eee;color:#1c1c1c;font-size:13px;text-align:center">' + pqty + '</td>' +
         '<td style="padding:9px 14px;border-bottom:1px solid #eee;color:#1c1c1c;font-size:13px;text-align:right;white-space:nowrap">' + peso(pprice) + '</td>' +
-        '<td style="padding:9px 14px;border-bottom:1px solid #eee;color:#1c1c1c;font-size:13px;font-weight:700;text-align:right;white-space:nowrap">' + peso(pamount) + '</td>' +
+        discCell +
+        '<td style="padding:9px 14px;border-bottom:1px solid #eee;color:#1c1c1c;font-size:13px;font-weight:700;text-align:right;white-space:nowrap">' + amountDisplay + '</td>' +
       '</tr>';
   }
   if (!partsRows) partsRows = '<tr><td colspan="4" style="padding:10px 14px;color:#888;font-size:13px;text-align:center">No parts added</td></tr>';
@@ -3899,8 +4129,9 @@ async function openWOPrint(id) {
           '<tr style="background:#f5f5f5">' +
             '<th style="padding:9px 14px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#444;border-bottom:2px solid #ddd;width:45%">Part / Product</th>' +
             '<th style="padding:9px 14px;text-align:center;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#444;border-bottom:2px solid #ddd;width:10%">Qty</th>' +
-            '<th style="padding:9px 14px;text-align:right;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#444;border-bottom:2px solid #ddd;width:22.5%;white-space:nowrap">Unit Price</th>' +
-            '<th style="padding:9px 14px;text-align:right;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#444;border-bottom:2px solid #ddd;width:22.5%;white-space:nowrap">Amount</th>' +
+            '<th style="padding:9px 14px;text-align:right;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#444;border-bottom:2px solid #ddd;width:20%;white-space:nowrap">Unit Price</th>' +
+            '<th style="padding:9px 14px;text-align:center;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#444;border-bottom:2px solid #ddd;width:10%;white-space:nowrap">Disc</th>' +
+            '<th style="padding:9px 14px;text-align:right;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#444;border-bottom:2px solid #ddd;width:20%;white-space:nowrap">Amount</th>' +
           '</tr>' +
         '</thead>' +
         '<tbody>' + partsRows + '</tbody>' +
@@ -4001,7 +4232,8 @@ async function openWOPrint(id) {
       '</div>' +
       '<div style="text-align:right">' +
         '<div style="font-size:22px;font-weight:900;color:#1c1c1c;letter-spacing:-.5px">' + ((wo.wo_number && !wo.wo_number.includes('[object')) ? wo.wo_number : ('WO-' + (wo.id||'').slice(-6).toUpperCase())) + '</div>' +
-        '<div style="font-size:12px;color:#888;margin-top:2px">' + (wo.work_date || '—') + timeSpan + '</div>' +
+        '<div style="font-size:12px;color:#888;margin-top:4px"><span style="font-weight:700;color:#444">Work Date:</span> ' + (wo.work_date || '—') + timeSpan + '</div>' +
+        (() => { const _d=new Date(new Date((wo.created_at||new Date())).toLocaleString('en-US',{timeZone:'Asia/Manila'})); const _mo=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][_d.getMonth()]; const _h=_d.getHours(); const _ampm=_h>=12?'PM':'AM'; const _h12=_h%12||12; const _mm=String(_d.getMinutes()).padStart(2,'0'); return '<div style="font-size:11px;color:#b8860b;margin-top:3px;font-weight:700">Issued: '+_mo+' '+_d.getDate()+', '+_d.getFullYear()+' · '+_h12+':'+_mm+' '+_ampm+' PHT</div>'; })() +
       '</div>' +
     '</div>' +
     '<hr style="border:none;border-top:2px solid #e8a800;margin:12px 0 18px">' +
@@ -4751,8 +4983,130 @@ function checkOverdueAndNotify(overdueWOs) {
   }
 }
 
-</script>
+// ═══════════════════════════════ ACCOUNTS RECEIVABLE ═══════════════════════════════
+function renderAR() {
+  const q       = (document.getElementById('arQ')?.value || '').toLowerCase().trim();
+  const filter  = document.getElementById('arFilter')?.value || 'all';
+  const sortBy  = document.getElementById('arSort')?.value || 'date_desc';
+  const todayPH = new Date().toLocaleDateString('en-CA', {timeZone: 'Asia/Manila'});
 
+  // All WOs with outstanding balance
+  let arList = (workOrders || []).filter(w =>
+    w.payment_status === 'receivable' && w.status !== 'cancelled'
+  );
+
+  if (filter === 'overdue') arList = arList.filter(w => w.due_date && w.due_date < todayPH);
+  else if (filter === 'current') arList = arList.filter(w => !w.due_date || w.due_date >= todayPH);
+
+  if (q) {
+    arList = arList.filter(w =>
+      [w.client_name, w.plate_number, w.wo_number, w.vehicle_make, w.mechanic_name]
+        .filter(Boolean).join(' ').toLowerCase().includes(q)
+    );
+  }
+
+  arList.sort((a, b) => {
+    if (sortBy === 'date_asc')     return (a.created_at||'') > (b.created_at||'') ? 1 : -1;
+    if (sortBy === 'balance_desc') return (b.balance_due||b.grand_total||0) - (a.balance_due||a.grand_total||0);
+    if (sortBy === 'balance_asc')  return (a.balance_due||a.grand_total||0) - (b.balance_due||b.grand_total||0);
+    return (a.created_at||'') < (b.created_at||'') ? 1 : -1;
+  });
+
+  // Update header stats
+  const allAR    = (workOrders || []).filter(w => w.payment_status === 'receivable' && w.status !== 'cancelled');
+  const overdueAR = allAR.filter(w => w.due_date && w.due_date < todayPH);
+  const totalOut  = allAR.reduce((s, w) => s + (w.balance_due || w.grand_total || 0), 0);
+  const el1 = document.getElementById('arOverdueCount');
+  const el2 = document.getElementById('arTotalOutstanding');
+  if (el1) el1.textContent = overdueAR.length + ' overdue';
+  if (el2) el2.textContent = peso(totalOut);
+
+  updateARBadge();
+
+  // ── CARD GRID (same style as Work Orders) ──
+  const grid = document.getElementById('arGrid');
+  if (!grid) return;
+
+  if (!arList.length) {
+    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:64px 0;color:var(--gray)">
+      <div style="font-size:40px;margin-bottom:12px">🎉</div>
+      <div style="font-weight:700;font-size:16px;color:var(--white)">No outstanding receivables!</div>
+      <div style="font-size:13px;margin-top:6px">All work orders are fully paid.</div>
+    </div>`;
+    document.getElementById('arFooter').innerHTML = '';
+    return;
+  }
+
+  grid.innerHTML = arList.map(w => {
+    const gt        = w.grand_total || 0;
+    const history   = Array.isArray(w.payment_history) ? w.payment_history :
+                      (typeof w.payment_history === 'string' && w.payment_history.trim() ? (() => { try { return JSON.parse(w.payment_history); } catch(e){ return []; } })() : []);
+    const histPaid  = history.reduce((s, p) => s + (Number(p.amount) || 0), 0);
+    // Use balance_due from DB as source of truth; derive totalPaid from it
+    const bal       = (w.balance_due != null && w.balance_due >= 0) ? w.balance_due : Math.max(0, gt - histPaid);
+    const totalPaid = histPaid > 0 ? histPaid : Math.max(0, gt - bal);
+    const paidPct   = gt > 0 ? Math.min(100, Math.round((totalPaid / gt) * 100)) : 0;
+    const isOverdue = w.due_date && w.due_date < todayPH;
+    const mechLine  = w.mechanic_name ? `<span>🔧 ${w.mechanic_name}</span>` : '';
+    const dueLine   = w.due_date
+      ? `<span style="color:${isOverdue ? '#f87171' : 'var(--gold)'}">⏰ ${isOverdue ? 'Overdue' : 'Due'}: ${phDate(w.due_date)}</span>`
+      : '';
+    const statusBadge = isOverdue
+      ? `<span style="font-size:10px;background:rgba(239,68,68,.15);color:#f87171;border:1px solid #ef4444;border-radius:10px;padding:1px 7px;font-weight:700">⚠️ OVERDUE</span>`
+      : `<span style="font-size:10px;background:rgba(251,146,60,.15);color:#fb923c;border:1px solid #fb923c;border-radius:10px;padding:1px 7px;font-weight:700">📋 A/R</span>`;
+
+    return `<div class="wo-card" style="border-left:3px solid ${isOverdue ? '#ef4444' : '#fb923c'};cursor:default">
+      <div class="wo-card-top">
+        <div>
+          <div class="wo-card-num">${w.wo_number || '—'} ${statusBadge}</div>
+          <div class="wo-card-customer">${w.client_name || '—'}</div>
+          <div class="wo-card-vehicle">${[w.plate_number, w.vehicle_make].filter(Boolean).join(' · ') || 'No vehicle info'}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:11px;color:var(--gray);margin-bottom:2px">Balance Due</div>
+          <div style="font-size:16px;font-weight:800;color:#f87171">${peso(bal)}</div>
+          <div style="font-size:11px;color:var(--gray);margin-top:2px">of ${peso(gt)}</div>
+        </div>
+      </div>
+      <!-- Progress bar -->
+      <div style="height:4px;background:#252525;border-radius:2px;overflow:hidden;margin:4px 0">
+        <div style="height:100%;width:${paidPct}%;background:var(--gold);border-radius:2px;transition:width .4s"></div>
+      </div>
+      <div class="wo-card-meta" style="display:flex;gap:10px;flex-wrap:wrap;font-size:11px;color:var(--gray)">
+        ${mechLine}
+        <span>📅 ${phDate(w.wo_date || w.created_at)}</span>
+        ${dueLine}
+        ${totalPaid > 0 ? `<span style="color:var(--gold)">💳 Paid: ${peso(totalPaid)}</span>` : ''}
+      </div>
+      <div class="wo-card-footer">
+        <div style="font-size:11px;color:var(--gray)">${paidPct}% paid${history.length ? ' · ' + history.length + ' payment' + (history.length>1?'s':'') : ''}</div>
+        <div class="wo-card-actions">
+          <button class="btn btn-xs btn-ghost" onclick="event.stopPropagation();viewWO('${w.id}')">👁 View</button>
+          <button class="btn btn-xs" style="background:var(--gold);color:#000;font-weight:700" onclick="event.stopPropagation();openPartialPayment('${w.id}')">💳 Pay</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const footer = document.getElementById('arFooter');
+  if (footer) {
+    const shownBal = arList.reduce((s, w) => s + (w.balance_due || w.grand_total || 0), 0);
+    footer.innerHTML = `${arList.length} record${arList.length>1?'s':''} shown · Total Outstanding: <span style="color:#f87171;font-weight:700">${peso(shownBal)}</span>`;
+  }
+}
+
+// Keep AR badge updated whenever workOrders data refreshes
+function updateARBadge() {
+  const allAR = (workOrders || []).filter(w => w.payment_status === 'receivable' && w.status !== 'cancelled');
+  const sbAR  = document.getElementById('sbARBadge');
+  if (sbAR) {
+    if (allAR.length > 0) { sbAR.style.display = ''; sbAR.textContent = allAR.length; }
+    else sbAR.style.display = 'none';
+  }
+}
+// ═══════════════════════════════════════════════════════════════════════════════════
+
+</script>
 <!-- ===== WORK ORDER MODAL ===== -->
 <div class="overlay" id="woModal" style="display:none;align-items:flex-start;padding-top:20px">
   <div class="modal" style="max-width:720px;width:98%;max-height:92vh;overflow-y:auto">
