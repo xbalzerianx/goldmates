@@ -561,6 +561,11 @@ tbody td{padding:13px 16px;vertical-align:middle}
 .wop-footer{text-align:center;margin-top:20px;font-size:10px;color:#bbb !important;border-top:1px solid #eee;padding-top:10px}
 
 @media print {
+  /* ── Hide URLs that browsers append to links ── */
+  a[href]::after { content: none !important; }
+  a[href*="http"]::after { content: none !important; }
+  abbr[title]::after { content: none !important; }
+  /* ── Hide nav chrome ── */
   .sidebar,.mob-nav,.topbar,.no-print{display:none!important}
   .main{margin:0!important;padding:0!important;height:auto!important}
   .page{display:none!important}.page.active{display:block!important;height:auto!important;overflow:visible!important;padding:0!important}
